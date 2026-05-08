@@ -1033,7 +1033,7 @@ const BASEMAPS = {
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
   // seremban_final/ — gdal raster tile output, TMS scheme (Y-axis flipped)
-  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:16, scheme:'tms' },
+  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:9, scheme:'tms' },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
