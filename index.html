@@ -1,0 +1,2250 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UZMA Geospatial AI — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --cream: #FEF8F3;
+    --orange: #DE9151;
+    --orange-dark: #C07240;
+    --orange-light: #EEB07A;
+    --charcoal: #424242;
+    --charcoal-light: #5A5A5A;
+    --charcoal-dark: #2E2E2E;
+    --white: #FFFFFF;
+    --sidebar-w: 220px;
+    --topbar-h: 60px;
+    --panel-w: 340px;
+    --green: #4CAF50;
+    --red: #e53935;
+    --blue: #1E88E5;
+    --yellow: #FDD835;
+    --purple: #9C27B0;
+    --teal: #00BCD4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--cream); height:100vh; overflow:hidden; display:flex; }
+
+  /* CURSOR */
+  .cursor-select-mode { cursor: none !important; }
+  .cursor-plot-mode   { cursor: crosshair !important; }
+  #custom-cursor { position:fixed; pointer-events:none; z-index:9999; top:0; left:0; transform:translate(-50%,-50%); transition:transform 0.05s linear; display:none; }
+  #custom-cursor.visible { display:block; }
+  #custom-cursor svg { filter:drop-shadow(0 2px 6px rgba(222,145,81,0.6)); animation:cursorPulse 2s ease-in-out infinite; }
+  @keyframes cursorPulse { 0%,100%{filter:drop-shadow(0 2px 6px rgba(222,145,81,0.5));}50%{filter:drop-shadow(0 2px 12px rgba(222,145,81,0.95));} }
+
+  /* SIDEBAR */
+  .sidebar { width:var(--sidebar-w); background:var(--charcoal-dark); height:100vh; display:flex; flex-direction:column; flex-shrink:0; z-index:10; }
+  .sidebar-brand { padding:0; border-bottom:1px solid rgba(255,255,255,0.06); height:72px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+  .brand-logo-img { max-width:170px; max-height:56px; object-fit:contain; display:block; }
+  .brand-fallback { display:flex; align-items:center; gap:10px; padding:0 16px; }
+  .brand-icon-sm { width:36px; height:36px; border-radius:8px; background:var(--orange); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .brand-icon-sm svg { width:18px; height:18px; color:white; }
+  .brand-texts .t1 { font-family:'Syne',sans-serif; font-size:13px; font-weight:800; color:var(--orange); letter-spacing:0.04em; }
+  .brand-texts .t2 { font-size:9px; color:rgba(255,255,255,0.3); letter-spacing:0.1em; text-transform:uppercase; margin-top:2px; }
+  .sidebar-section { padding:18px 12px 6px; }
+  .section-label { font-size:9px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.22); padding:0 8px; margin-bottom:5px; }
+  .nav-item { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:7px; cursor:pointer; transition:background 0.15s; color:rgba(255,255,255,0.45); font-size:12.5px; font-weight:400; margin-bottom:2px; text-decoration:none; }
+  .nav-item svg { width:15px; height:15px; flex-shrink:0; opacity:0.7; }
+  .nav-item:hover { background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.8); }
+  .nav-item.active { background:rgba(222,145,81,0.14); color:var(--orange-light); }
+  .nav-item.active svg { opacity:1; color:var(--orange-light); }
+  .sidebar-footer { margin-top:auto; padding:14px 12px; border-top:1px solid rgba(255,255,255,0.06); }
+  .user-row { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; }
+  .user-avatar { width:30px; height:30px; border-radius:50%; background:var(--orange); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; color:white; flex-shrink:0; }
+  .user-info .name { font-size:12px; color:rgba(255,255,255,0.8); font-weight:500; }
+  .user-info .role { font-size:10px; color:rgba(255,255,255,0.28); }
+
+  /* MAIN */
+  .main-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .topbar { height:var(--topbar-h); background:white; border-bottom:1px solid rgba(66,66,66,0.1); display:flex; align-items:center; padding:0 20px; gap:10px; flex-shrink:0; z-index:5; }
+  .topbar-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--charcoal-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:340px; }
+  .topbar-sub { font-size:11px; color:rgba(66,66,66,0.38); margin-top:1px; }
+  .topbar-spacer { flex:1; }
+  .topbar-search { position:relative; width:240px; }
+  .topbar-search svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); width:13px; height:13px; color:rgba(66,66,66,0.35); pointer-events:none; }
+  .topbar-search input { width:100%; height:34px; border:1px solid rgba(66,66,66,0.15); border-radius:7px; padding:0 10px 0 29px; font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--charcoal); background:var(--cream); outline:none; transition:border-color 0.2s; }
+  .topbar-search input:focus { border-color:var(--orange); }
+  .topbar-btn { height:34px; padding:0 13px; border:1px solid rgba(66,66,66,0.15); border-radius:7px; background:transparent; font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--charcoal); cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.2s; white-space:nowrap; }
+  .topbar-btn svg { width:13px; height:13px; }
+  .topbar-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .topbar-btn.primary { background:var(--charcoal-dark); border-color:var(--charcoal-dark); color:white; }
+  .topbar-btn.primary:hover { background:var(--orange); border-color:var(--orange); }
+  .topbar-btn.upload-btn { background:rgba(222,145,81,0.08); border-color:var(--orange); color:var(--orange); font-weight:500; }
+  .topbar-btn.upload-btn:hover { background:var(--orange); color:white; }
+  .content-area { flex:1; display:flex; overflow:hidden; position:relative; }
+
+  /* STATS */
+  .stats-strip { position:absolute; top:10px; left:14px; display:flex; gap:7px; z-index:4; flex-wrap:wrap; max-width:calc(100% - var(--panel-w) - 28px); }
+  .stat-card { background:white; border-radius:9px; padding:8px 12px; border:1px solid rgba(66,66,66,0.1); box-shadow:0 1px 3px rgba(0,0,0,0.06); display:flex; align-items:center; gap:9px; transition:all 0.3s; }
+  .stat-icon { width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .stat-icon svg { width:13px; height:13px; }
+  .stat-icon.orange { background:rgba(222,145,81,0.12); color:var(--orange); }
+  .stat-icon.green  { background:rgba(76,175,80,0.1); color:#388E3C; }
+  .stat-icon.blue   { background:rgba(30,136,229,0.08); color:#1E88E5; }
+  .stat-icon.purple { background:rgba(156,39,176,0.08); color:#9C27B0; }
+  .stat-icon.teal   { background:rgba(0,188,212,0.1); color:#00BCD4; }
+  .stat-info .val { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--charcoal-dark); line-height:1; }
+  .stat-info .lbl { font-size:9.5px; color:rgba(66,66,66,0.42); margin-top:2px; }
+
+  /* MAP */
+  .map-wrapper { position:relative; flex:1; background:#e8e0d8; }
+  #map { width:100%; height:100%; }
+
+  .mode-indicator { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:5; display:none; background:var(--charcoal-dark); color:white; border-radius:100px; padding:7px 18px; font-family:'DM Sans',sans-serif; font-size:12.5px; font-weight:500; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.25); animation:modeIn 0.3s cubic-bezier(0.34,1.56,0.64,1); pointer-events:none; }
+  .mode-indicator.show { display:flex; }
+  .mode-indicator-dot { width:8px; height:8px; border-radius:50%; background:var(--orange); animation:dotBlink 1s ease-in-out infinite; }
+  .mode-indicator.plot-mode .mode-indicator-dot { background:#ff5252; }
+  @keyframes modeIn { from{opacity:0;transform:translateX(-50%) translateY(-8px) scale(0.9);}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1);} }
+  @keyframes dotBlink { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  .map-controls { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:5px; z-index:4; flex-wrap:wrap; justify-content:center; }
+  .map-ctrl-btn { background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; padding:7px 13px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--charcoal); cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .map-ctrl-btn svg { width:12px; height:12px; }
+  .map-ctrl-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .map-ctrl-btn.active { background:var(--charcoal-dark); color:white; border-color:var(--charcoal-dark); }
+  .map-ctrl-btn.select-active { background:linear-gradient(135deg,var(--orange-dark),var(--orange)); color:white; border-color:var(--orange); box-shadow:0 3px 12px rgba(222,145,81,0.4); }
+  .map-ctrl-btn.plot-active { background:linear-gradient(135deg,#c62828,#e53935); color:white; border-color:#e53935; box-shadow:0 3px 12px rgba(229,57,53,0.4); }
+
+  @keyframes ringExpand { 0%{width:10px;height:10px;opacity:1;}100%{width:60px;height:60px;opacity:0;} }
+  .selection-pulse { position:absolute; pointer-events:none; z-index:6; border-radius:50%; width:20px; height:20px; background:rgba(222,145,81,0.4); border:2px solid var(--orange); transform:translate(-50%,-50%); animation:ringExpand 0.8s cubic-bezier(0.25,0.46,0.45,0.94) forwards; display:none; }
+
+  /* LAYER BADGE */
+  .layer-badge { position:absolute; top:82px; left:14px; background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; padding:11px 14px; z-index:4; min-width:200px; box-shadow:0 1px 3px rgba(0,0,0,0.08); max-height:calc(100vh - 200px); overflow-y:auto; }
+  .layer-badge::-webkit-scrollbar { width:3px; }
+  .layer-badge::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:3px; }
+  .layer-badge-title { font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin-bottom:9px; }
+  .layer-section-header { font-size:8px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:rgba(66,66,66,0.3); margin:10px 0 5px; padding-top:8px; border-top:1px solid rgba(66,66,66,0.06); display:flex; align-items:center; gap:5px; }
+  .layer-item { display:flex; align-items:center; gap:7px; margin-bottom:7px; cursor:pointer; }
+  .layer-item:last-child { margin-bottom:0; }
+  .layer-dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+  .layer-name { font-size:11.5px; color:var(--charcoal); flex:1; }
+  .layer-count { font-size:10px; color:rgba(66,66,66,0.38); }
+  .layer-toggle { width:26px; height:15px; border-radius:100px; position:relative; cursor:pointer; transition:background 0.2s; flex-shrink:0; }
+  .layer-toggle.on  { background:var(--orange); }
+  .layer-toggle.off { background:rgba(66,66,66,0.15); }
+  .layer-toggle::after { content:''; position:absolute; top:2px; width:11px; height:11px; border-radius:50%; background:white; transition:left 0.2s; }
+  .layer-toggle.on::after  { left:13px; }
+  .layer-toggle.off::after { left:2px; }
+
+  /* BASEMAP */
+  .basemap-switcher { position:absolute; top:10px; right:calc(var(--panel-w) + 60px); z-index:4; }
+  .basemap-btn { background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; padding:7px 13px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--charcoal); cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.08); transition:all 0.2s; white-space:nowrap; }
+  .basemap-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .basemap-btn svg { width:12px; height:12px; }
+  .basemap-dropdown { display:none; position:absolute; top:calc(100% + 5px); right:0; background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12); overflow:hidden; min-width:220px; }
+  .basemap-dropdown.open { display:block; }
+  .basemap-option { display:flex; align-items:center; gap:9px; padding:9px 13px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--charcoal); border-bottom:1px solid rgba(66,66,66,0.05); transition:background 0.12s; }
+  .basemap-option:last-child { border-bottom:none; }
+  .basemap-option:hover { background:rgba(222,145,81,0.05); }
+  .basemap-option.active { background:rgba(222,145,81,0.1); color:var(--orange); font-weight:500; }
+  .basemap-option-thumb { width:30px; height:22px; border-radius:4px; flex-shrink:0; border:1px solid rgba(66,66,66,0.1); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .uzmasat-badge { font-size:8.5px; background:linear-gradient(135deg,#DE9151,#C07240); color:white; padding:1px 6px; border-radius:10px; font-weight:700; letter-spacing:0.05em; white-space:nowrap; }
+
+  /* UZMA-sat opacity slider */
+  .uzmasat-controls { display:none; position:absolute; top:calc(100% + 5px); right:0; background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12); padding:13px 15px; min-width:230px; }
+  .uzmasat-controls.open { display:block; }
+  .uzmasat-ctrl-title { font-size:9px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .uzmasat-ctrl-title span { background:linear-gradient(135deg,#DE9151,#C07240); color:white; padding:1px 7px; border-radius:10px; font-size:8px; }
+  .uzmasat-ctrl-row { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .uzmasat-ctrl-row label { font-size:11.5px; color:var(--charcoal); flex:1; }
+  .uzmasat-ctrl-row input[type=range] { width:90px; accent-color:var(--orange); }
+  .uzmasat-ctrl-row .val-display { font-size:11px; color:rgba(66,66,66,0.5); min-width:30px; text-align:right; }
+  .uzmasat-info { font-size:10px; color:rgba(66,66,66,0.4); line-height:1.5; padding-top:8px; border-top:1px solid rgba(66,66,66,0.07); margin-top:4px; }
+
+  /* PLOT TOOLBAR */
+  .plot-toolbar { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:5; background:white; border:1px solid rgba(66,66,66,0.15); border-radius:12px; padding:10px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.12); align-items:center; animation:slideUp 0.25s ease; }
+  .plot-toolbar.show { display:flex; }
+  @keyframes slideUp { from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%) translateY(0);} }
+  .pt-label { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:rgba(66,66,66,0.4); margin-right:4px; }
+  .pt-divider { width:1px; height:22px; background:rgba(66,66,66,0.1); margin:0 4px; }
+  .pt-shape { width:30px; height:30px; border-radius:7px; border:2px solid rgba(66,66,66,0.12); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; transition:all 0.15s; background:transparent; }
+  .pt-shape:hover { border-color:var(--orange); background:rgba(222,145,81,0.08); }
+  .pt-shape.active { border-color:var(--orange); background:rgba(222,145,81,0.15); }
+  .pt-color { width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all 0.15s; flex-shrink:0; }
+  .pt-color:hover { transform:scale(1.2); }
+  .pt-color.active { border-color:var(--charcoal-dark); transform:scale(1.15); }
+  .pt-size { height:28px; padding:0 8px; border:1px solid rgba(66,66,66,0.15); border-radius:6px; font-family:'DM Sans',sans-serif; font-size:11px; color:var(--charcoal); cursor:pointer; outline:none; background:var(--cream); }
+  .pt-clear { height:28px; padding:0 10px; border:1px solid rgba(229,57,53,0.3); border-radius:6px; font-family:'DM Sans',sans-serif; font-size:11px; color:#e53935; cursor:pointer; background:transparent; transition:all 0.15s; }
+  .pt-clear:hover { background:rgba(229,57,53,0.08); }
+  .pt-count { font-size:10.5px; color:rgba(66,66,66,0.48); min-width:55px; }
+
+  /* RIGHT PANEL */
+  .right-panel { width:var(--panel-w); background:var(--cream); border-left:1px solid rgba(66,66,66,0.1); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; }
+  .panel-header { padding:16px 18px 12px; border-bottom:1px solid rgba(66,66,66,0.08); }
+  .panel-header .ph-title { font-family:'Syne',sans-serif; font-size:13.5px; font-weight:700; color:var(--charcoal-dark); }
+  .panel-header .ph-sub { font-size:10.5px; color:rgba(66,66,66,0.38); margin-top:2px; }
+  .panel-tabs { display:flex; padding:8px 10px 0; gap:3px; border-bottom:1px solid rgba(66,66,66,0.08); }
+  .ptab { padding:6px 11px; border-radius:7px 7px 0 0; font-size:11.5px; cursor:pointer; color:rgba(66,66,66,0.48); transition:all 0.15s; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .ptab.active { color:var(--orange); border-bottom-color:var(--orange); font-weight:500; }
+  .panel-body { flex:1; overflow-y:auto; padding:14px; }
+  .panel-body::-webkit-scrollbar { width:4px; }
+  .panel-body::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:4px; }
+
+  /* PARCEL CARD */
+  .parcel-card { background:var(--charcoal-dark); border-radius:11px; padding:15px; margin-bottom:11px; }
+  .parcel-card .pc-label { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.32); margin-bottom:3px; }
+  .parcel-card .pc-id { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; color:white; margin-bottom:12px; word-break:break-word; }
+  .pc-section-title { font-size:8.5px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.22); margin:11px 0 5px; }
+  .parcel-card .pc-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+  .parcel-card .pc-k { font-size:10.5px; color:rgba(255,255,255,0.38); flex-shrink:0; margin-right:7px; }
+  .parcel-card .pc-v { font-size:10.5px; color:rgba(255,255,255,0.82); font-weight:500; text-align:right; word-break:break-word; max-width:60%; }
+  .pc-badge { display:inline-block; font-size:9.5px; padding:2px 7px; border-radius:4px; font-weight:600; }
+  .badge-geo { background:rgba(222,145,81,0.18); color:var(--orange); }
+  .chart-block { background:white; border-radius:9px; padding:13px; margin-bottom:11px; border:1px solid rgba(66,66,66,0.08); }
+  .chart-block .cb-title { font-size:11.5px; font-weight:500; color:var(--charcoal); margin-bottom:11px; }
+  .bar-chart { display:flex; align-items:flex-end; gap:5px; height:72px; margin-bottom:5px; }
+  .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; height:100%; justify-content:flex-end; }
+  .bar { width:100%; border-radius:3px 3px 0 0; transition:height 0.5s ease,opacity 0.2s; cursor:pointer; }
+  .bar:hover { opacity:0.7; }
+  .bar-label { font-size:8.5px; color:rgba(66,66,66,0.38); white-space:nowrap; }
+  .lu-item { display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid rgba(66,66,66,0.05); }
+  .lu-item:last-child { border-bottom:none; }
+  .lu-dot { width:7px; height:7px; border-radius:2px; flex-shrink:0; }
+  .lu-name { font-size:11.5px; color:var(--charcoal); flex:1; }
+  .lu-count { font-size:10.5px; color:rgba(66,66,66,0.48); }
+  .lu-pct { font-family:'Syne',sans-serif; font-size:11.5px; font-weight:700; color:var(--charcoal-dark); }
+  .lu-bar-wrap { width:44px; height:3px; background:rgba(66,66,66,0.07); border-radius:2px; overflow:hidden; }
+  .lu-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
+
+  /* POPUP */
+  .maplibregl-popup-content { font-family:'DM Sans',sans-serif; border-radius:11px; padding:0; box-shadow:0 4px 24px rgba(0,0,0,0.18); min-width:230px; overflow:hidden; }
+  .maplibregl-popup-close-button { font-size:17px; right:7px; top:5px; color:rgba(255,255,255,0.65); z-index:1; }
+  .popup-header { background:var(--charcoal-dark); padding:11px 15px; }
+  .popup-fc { font-size:8.5px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.38); margin-bottom:2px; }
+  .popup-name { font-family:'Syne',sans-serif; font-size:13.5px; font-weight:700; color:white; }
+  .popup-body { padding:11px 15px; }
+  .popup-row { display:flex; justify-content:space-between; margin-bottom:4px; }
+  .popup-k { font-size:10.5px; color:rgba(66,66,66,0.48); }
+  .popup-v { font-size:10.5px; color:var(--charcoal); font-weight:500; }
+  .marker-popup-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; color:white; }
+
+  /* SEARCH DROPDOWN */
+  .search-dd { display:none; position:absolute; top:40px; left:0; right:0; background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:999; overflow:hidden; max-height:300px; overflow-y:auto; }
+  .search-section-header { padding:6px 13px 4px; font-size:9px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); background:rgba(66,66,66,0.03); border-bottom:1px solid rgba(66,66,66,0.06); }
+  .search-item { padding:9px 13px; cursor:pointer; border-bottom:1px solid rgba(66,66,66,0.05); font-size:12px; color:var(--charcoal); display:flex; align-items:flex-start; gap:8px; }
+  .search-item:hover { background:rgba(222,145,81,0.05); }
+  .search-item:last-child { border-bottom:none; }
+  .search-item-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+  .search-item-body .search-item-id  { font-size:12px; color:var(--charcoal); font-weight:500; }
+  .search-item-body .search-item-cls { font-size:10px; color:rgba(66,66,66,0.42); margin-top:1px; }
+  .search-loading { padding:12px 13px; font-size:12px; color:rgba(66,66,66,0.4); display:flex; align-items:center; gap:8px; }
+  .search-spinner { width:14px; height:14px; border:2px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+
+  /* UPLOAD MODAL */
+  .upload-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
+  .upload-overlay.show { display:flex; }
+  .upload-box { background:white; border-radius:18px; padding:36px; max-width:460px; width:90%; text-align:center; animation:slideIn 0.25s ease; }
+  .upload-box h2 { font-family:'Syne',sans-serif; font-size:19px; font-weight:800; color:var(--charcoal-dark); margin-bottom:7px; }
+  .upload-box p { font-size:12.5px; color:rgba(66,66,66,0.48); margin-bottom:24px; line-height:1.6; }
+  .drop-zone { border:2px dashed rgba(222,145,81,0.4); border-radius:13px; padding:32px 20px; cursor:pointer; transition:all 0.2s; background:rgba(222,145,81,0.03); position:relative; }
+  .drop-zone:hover,.drop-zone.drag-over { border-color:var(--orange); background:rgba(222,145,81,0.07); }
+  .drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .drop-zone-icon { font-size:36px; margin-bottom:10px; }
+  .drop-zone-text { font-size:12.5px; color:rgba(66,66,66,0.48); }
+  .drop-zone-text strong { color:var(--orange); }
+  .upload-progress { display:none; margin-top:14px; }
+  .progress-bar-wrap { height:5px; background:rgba(66,66,66,0.1); border-radius:3px; overflow:hidden; margin-bottom:7px; }
+  .progress-bar-fill { height:100%; background:var(--orange); border-radius:3px; transition:width 0.3s; }
+  .progress-text { font-size:11.5px; color:rgba(66,66,66,0.48); }
+  .upload-cancel { margin-top:14px; background:none; border:none; font-family:'DM Sans',sans-serif; font-size:12.5px; color:rgba(66,66,66,0.38); cursor:pointer; }
+  .upload-cancel:hover { color:var(--charcoal); }
+  .dataset-list-modal { margin-top:16px; text-align:left; }
+  .dataset-list-modal-title { font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin-bottom:8px; }
+  .dataset-modal-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:rgba(66,66,66,0.04); border-radius:7px; margin-bottom:5px; }
+  .dataset-modal-item .dm-name { font-size:12px; color:var(--charcoal); font-weight:500; }
+  .dataset-modal-item .dm-count { font-size:10.5px; color:rgba(66,66,66,0.38); }
+  .dataset-modal-item .dm-active { background:rgba(76,175,80,0.12); color:#388E3C; font-size:10px; padding:2px 7px; border-radius:4px; font-weight:600; }
+  .dataset-modal-item .dm-btn { background:none; border:1px solid rgba(229,57,53,0.3); color:#e53935; font-size:10px; padding:2px 7px; border-radius:4px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .dataset-modal-item .dm-btn:hover { background:rgba(229,57,53,0.08); }
+
+  /* EXPORT MODAL */
+  .export-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
+  .export-overlay.show { display:flex; }
+  .export-box { background:white; border-radius:18px; padding:32px; max-width:480px; width:90%; animation:slideIn 0.25s ease; }
+  .export-box h2 { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--charcoal-dark); margin-bottom:5px; }
+  .export-box .export-sub { font-size:12px; color:rgba(66,66,66,0.45); margin-bottom:22px; }
+  .export-opt-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .export-opt { border:1.5px solid rgba(66,66,66,0.12); border-radius:11px; padding:14px 13px; cursor:pointer; transition:all 0.15s; text-align:left; background:transparent; }
+  .export-opt:hover { border-color:var(--orange); background:rgba(222,145,81,0.04); }
+  .export-opt.selected { border-color:var(--orange); background:rgba(222,145,81,0.08); }
+  .export-opt-icon { font-size:22px; margin-bottom:7px; }
+  .export-opt-name { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--charcoal-dark); }
+  .export-opt-desc { font-size:10.5px; color:rgba(66,66,66,0.42); margin-top:2px; line-height:1.4; }
+  .export-settings { background:rgba(66,66,66,0.04); border-radius:10px; padding:14px; margin-bottom:18px; }
+  .export-settings-title { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin-bottom:11px; }
+  .export-field { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+  .export-field:last-child { margin-bottom:0; }
+  .export-field-label { font-size:12px; color:var(--charcoal); }
+  .export-field input[type=text], .export-field select { height:30px; padding:0 9px; border:1px solid rgba(66,66,66,0.15); border-radius:6px; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--charcoal); outline:none; background:white; }
+  .export-field input[type=checkbox] { width:16px; height:16px; accent-color:var(--orange); cursor:pointer; }
+  .export-actions { display:flex; gap:9px; }
+  .export-btn { flex:1; height:40px; border-radius:9px; font-family:'DM Sans',sans-serif; font-size:13.5px; font-weight:500; cursor:pointer; border:none; transition:all 0.2s; }
+  .export-btn.cancel { background:rgba(66,66,66,0.07); color:var(--charcoal); }
+  .export-btn.cancel:hover { background:rgba(66,66,66,0.12); }
+  .export-btn.go { background:var(--charcoal-dark); color:white; }
+  .export-btn.go:hover { background:var(--orange); }
+  .export-progress { display:none; margin-top:14px; text-align:center; }
+  .export-progress .ep-spinner { width:32px; height:32px; border:2px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 9px; }
+  .export-progress .ep-text { font-size:12px; color:rgba(66,66,66,0.48); }
+
+  /* LOADING */
+  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:3000; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  .loading-overlay.show { display:flex; }
+  .loading-spinner { width:44px; height:44px; border:3px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; }
+  .loading-text { font-family:'Syne',sans-serif; font-size:13.5px; font-weight:700; color:var(--charcoal-dark); }
+  .loading-sub { font-size:11.5px; color:rgba(66,66,66,0.38); }
+
+  #toast { display:none; position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#2E2E2E; color:white; padding:10px 18px; border-radius:100px; font-size:12.5px; font-family:'DM Sans',sans-serif; z-index:4000; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,0.2); pointer-events:none; }
+
+  .no-data-state { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:2; background:rgba(254,248,243,0.92); }
+  .no-data-state.hidden { display:none; }
+  .no-data-icon { font-size:52px; }
+  .no-data-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:800; color:var(--charcoal-dark); }
+  .no-data-sub { font-size:12.5px; color:rgba(66,66,66,0.43); text-align:center; line-height:1.6; max-width:290px; }
+  .no-data-btn { height:42px; padding:0 22px; background:var(--orange); border:none; border-radius:9px; font-family:'DM Sans',sans-serif; font-size:13.5px; font-weight:500; color:white; cursor:pointer; transition:background 0.2s; }
+  .no-data-btn:hover { background:var(--orange-dark); }
+
+  .activity-item { display:flex; gap:9px; padding:9px 0; border-bottom:1px solid rgba(66,66,66,0.05); }
+  .activity-item:last-child { border-bottom:none; }
+  .act-icon { width:26px; height:26px; border-radius:6px; background:rgba(222,145,81,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+  .act-icon svg { width:12px; height:12px; color:var(--orange); }
+  .act-info .act-title { font-size:11.5px; color:var(--charcoal); font-weight:500; line-height:1.3; }
+  .act-info .act-time  { font-size:10px; color:rgba(66,66,66,0.38); margin-top:2px; }
+
+  .dataset-badge { position:absolute; top:82px; right:calc(var(--panel-w) + 14px); background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; padding:10px 14px; z-index:4; min-width:180px; box-shadow:0 1px 3px rgba(0,0,0,0.08); display:none; }
+  .dataset-badge-title { font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin-bottom:8px; }
+  .dataset-item { display:flex; align-items:center; gap:7px; padding:5px 0; cursor:pointer; border-bottom:1px solid rgba(66,66,66,0.05); }
+  .dataset-item:last-child { border-bottom:none; }
+  .dataset-radio { width:14px; height:14px; border-radius:50%; border:2px solid rgba(66,66,66,0.2); flex-shrink:0; position:relative; transition:border-color 0.15s; }
+  .dataset-radio.active { border-color:var(--orange); background:var(--orange); }
+  .dataset-radio.active::after { content:''; position:absolute; inset:2px; border-radius:50%; background:white; }
+  .dataset-name { font-size:11px; color:var(--charcoal); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
+  .dataset-count { font-size:10px; color:rgba(66,66,66,0.38); }
+
+  /* GEOSPATIAL CATEGORIES PANEL */
+  .geo-cat-item { border-radius:10px; border:1px solid rgba(66,66,66,0.08); margin-bottom:8px; background:white; overflow:hidden; transition:box-shadow 0.15s; }
+  .geo-cat-item:hover { box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .geo-cat-header { display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; }
+  .geo-cat-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+  .geo-cat-info { flex:1; }
+  .geo-cat-name { font-size:12px; font-weight:600; color:var(--charcoal-dark); }
+  .geo-cat-desc { font-size:10px; color:rgba(66,66,66,0.42); margin-top:1px; }
+  .geo-cat-badge { font-size:9px; padding:2px 7px; border-radius:20px; font-weight:600; background:rgba(66,66,66,0.07); color:rgba(66,66,66,0.4); white-space:nowrap; }
+  .geo-cat-badge.demo { background:rgba(222,145,81,0.12); color:var(--orange); }
+
+  .maplibregl-ctrl-bottom-right,.maplibregl-ctrl-bottom-left { display:none; }
+  .maplibregl-ctrl-top-right { top:14px; right:14px; }
+  .maplibregl-ctrl-group { border-radius:8px !important; border:1px solid rgba(66,66,66,0.15) !important; overflow:hidden; }
+  .maplibregl-ctrl-group button { width:30px !important; height:30px !important; }
+
+  @keyframes spin    { to{transform:rotate(360deg);} }
+  @keyframes slideIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<div id="custom-cursor">
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="18" cy="18" r="16" stroke="#DE9151" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.6"/>
+    <circle cx="18" cy="18" r="8" fill="rgba(222,145,81,0.25)" stroke="#DE9151" stroke-width="1.5"/>
+    <line x1="18" y1="2"  x2="18" y2="10" stroke="#DE9151" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="18" y1="26" x2="18" y2="34" stroke="#DE9151" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="2"  y1="18" x2="10" y2="18" stroke="#DE9151" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="26" y1="18" x2="34" y2="18" stroke="#DE9151" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="18" cy="18" r="2.5" fill="#DE9151"/>
+  </svg>
+</div>
+<div id="selection-pulse" class="selection-pulse"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <img src="GeoAILogo.png" alt="UZMA Geospatial AI" class="brand-logo-img"
+      onerror="this.style.display='none'; document.getElementById('brand-fallback').style.display='flex';" />
+    <div class="brand-fallback" id="brand-fallback" style="display:none;">
+      <div class="brand-icon-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div class="brand-texts">
+        <div class="t1">UZMA BERHAD</div>
+        <div class="t2">Geospatial AI</div>
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="section-label">Navigation</div>
+    <a href="#" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Lot List
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      History Analysis
+    </a>
+  </div>
+  <div class="sidebar-section">
+    <div class="section-label">Alatan</div>
+    <a href="#" class="nav-item" onclick="openUploadModal();return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload GeoJSON
+    </a>
+    <a href="#" class="nav-item" onclick="openExportModal();return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Data Export
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">AM</div>
+      <div class="user-info">
+        <div class="name">Ather Sulaiman</div>
+        <div class="role">Business Development (BD)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-area">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Land Use Dashboard</div>
+      <div class="topbar-sub" id="page-sub">No data loaded · Please upload GeoJSON file</div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-search" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input id="search-input" type="text" placeholder="Search for address, sub-district, lot..." autocomplete="off"/>
+      <div id="search-dropdown" class="search-dd"></div>
+    </div>
+    <button class="topbar-btn upload-btn" onclick="openUploadModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload GeoJSON
+    </button>
+    <button class="topbar-btn" onclick="openExportModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      Export PDF
+    </button>
+    <button class="topbar-btn primary" onclick="flyToData()" id="btn-fly" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+      Again
+    </button>
+  </div>
+
+  <div class="content-area">
+    <!-- STATS -->
+    <div class="stats-strip">
+      <div class="stat-card">
+        <div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div>
+        <div class="stat-info"><div class="val" id="stat-total">—</div><div class="lbl">Total Lot</div></div>
+      </div>
+      <div class="stat-card" id="sc-perumahan" style="display:none;">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
+        <div class="stat-info"><div class="val" id="stat-perumahan">—</div><div class="lbl">Housing</div></div>
+      </div>
+      <div class="stat-card" id="sc-kampung" style="display:none;">
+        <div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/></svg></div>
+        <div class="stat-info"><div class="val" id="stat-kampung">—</div><div class="lbl">Village</div></div>
+      </div>
+      <div class="stat-card" id="sc-niaga" style="display:none;">
+        <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
+        <div class="stat-info"><div class="val" id="stat-niaga">—</div><div class="lbl">Business</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-10l6-3m0 16l5.447-2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m0 13V7"/></svg></div>
+        <div class="stat-info"><div class="val" id="stat-selected">—</div><div class="lbl">Lot Selected</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(229,57,53,0.1);color:#e53935;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        </div>
+        <div class="stat-info"><div class="val" id="stat-markers">0</div><div class="lbl">Plot Marker</div></div>
+      </div>
+    </div>
+
+    <!-- LAYER BADGE -->
+    <div class="layer-badge" id="layer-badge" style="display:none;">
+      <div class="layer-badge-title">Map Layer</div>
+      <div id="layer-items-container"></div>
+    </div>
+
+    <!-- DATASET BADGE -->
+    <div class="dataset-badge" id="dataset-badge">
+      <div class="dataset-badge-title">Active Dataset</div>
+      <div id="dataset-items-container"></div>
+    </div>
+
+    <!-- BASEMAP SWITCHER -->
+    <div class="basemap-switcher">
+      <button class="basemap-btn" onclick="toggleBasemapDropdown()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-10l6-3m0 16l5.447-2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m0 13V7"/></svg>
+        <span id="basemap-label">Google Maps</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="basemap-dropdown" id="basemap-dropdown">
+        <div class="basemap-option active" onclick="switchBasemap('google-road','Google Maps',this)">
+          <div class="basemap-option-thumb">🗺️</div>
+          <div><div style="font-size:12px;font-weight:500;">Google Maps</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Standard road</div></div>
+        </div>
+        <div class="basemap-option" onclick="switchBasemap('google-satellite','Google Satellite',this)">
+          <div class="basemap-option-thumb">🛰️</div>
+          <div><div style="font-size:12px;font-weight:500;">Google Satellite</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Aerial imagery</div></div>
+        </div>
+        <div class="basemap-option" onclick="switchBasemap('google-hybrid','Google Hibrid',this)">
+          <div class="basemap-option-thumb">🌍</div>
+          <div><div style="font-size:12px;font-weight:500;">Google Hibrid</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Satelit + label</div></div>
+        </div>
+        <div class="basemap-option" onclick="switchBasemap('osm','OpenStreetMap',this)">
+          <div class="basemap-option-thumb">🟦</div>
+          <div><div style="font-size:12px;font-weight:500;">OpenStreetMap</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Community map</div></div>
+        </div>
+        <div class="basemap-option" onclick="switchBasemap('uzma-sat','UZMA-sat',this)" style="border-top:2px solid rgba(222,145,81,0.2);">
+          <div class="basemap-option-thumb" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-color:rgba(222,145,81,0.3);">
+            <span style="font-size:11px;">🛰</span>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;font-weight:600;">UZMA-sat</span>
+              <span class="uzmasat-badge">UZMA</span>
+            </div>
+            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban_final/ · TMS · zoom 0–16</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="uzmasat-controls" id="uzmasat-controls">
+        <div class="uzmasat-ctrl-title">
+          🛰 UZMA-sat
+          <span>ACTIVE</span>
+        </div>
+        <div class="uzmasat-ctrl-row">
+          <label>Image opacity</label>
+          <input type="range" id="uzmasat-opacity" min="10" max="100" value="100" oninput="updateUzmaSatOpacity(this.value)"/>
+          <span class="val-display" id="opacity-val">100%</span>
+        </div>
+        <div class="uzmasat-ctrl-row">
+          <label>Overlay lot GeoJSON</label>
+          <div class="layer-toggle on" id="tog-overlay-on" onclick="toggleGeoJsonOverlay(this)" style="flex-shrink:0;"></div>
+        </div>
+        <div class="uzmasat-info">
+          📐 Tiles: seremban_final/ · zoom 0–16<br>
+          📍 Area: Seremban, Negeri Sembilan<br>
+          📁 Source: seremban_final/ (TMS · gdal raster tile)<br>
+          🗓 Proprietary UZMA Berhad
+        </div>
+        <button onclick="switchBasemap('google-road','Google Maps',document.querySelector('.basemap-option'))" style="margin-top:9px;width:100%;height:28px;border:1px solid rgba(66,66,66,0.15);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(66,66,66,0.6);background:transparent;cursor:pointer;">← Back to standard basemap</button>
+      </div>
+    </div>
+
+    <!-- MAP WRAPPER -->
+    <div class="map-wrapper" id="mapWrapper">
+      <div id="map"></div>
+
+      <div class="mode-indicator" id="mode-indicator">
+        <div class="mode-indicator-dot"></div>
+        <span id="mode-indicator-text">Lot Select Mode — Click on a lot for information</span>
+      </div>
+
+      <div class="no-data-state" id="no-data-state">
+        <div class="no-data-icon">🗺️</div>
+        <div class="no-data-title">No GeoJSON Data</div>
+        <div class="no-data-sub">Upload file <strong>GeoJSON</strong> lot to start geospatial analysis.</div>
+        <button class="no-data-btn" onclick="openUploadModal()">📂 Upload GeoJSON</button>
+      </div>
+
+      <!-- Plot Marker Toolbar -->
+      <div class="plot-toolbar" id="plot-toolbar">
+        <span class="pt-label">Shape</span>
+        <button class="pt-shape active" id="shape-pin"    onclick="setMarkerShape('pin',this)"    title="Pin">📍</button>
+        <button class="pt-shape"        id="shape-circle" onclick="setMarkerShape('circle',this)" title="Titik">⬤</button>
+        <button class="pt-shape"        id="shape-flag"   onclick="setMarkerShape('flag',this)"   title="Flag">🚩</button>
+        <button class="pt-shape"        id="shape-star"   onclick="setMarkerShape('star',this)"   title="Bintang">⭐</button>
+        <button class="pt-shape"        id="shape-cross"  onclick="setMarkerShape('cross',this)"  title="Silang">✚</button>
+        <div class="pt-divider"></div>
+        <span class="pt-label">Colour</span>
+        <div class="pt-color active" style="background:#e53935;" onclick="setMarkerColor('#e53935',this)"></div>
+        <div class="pt-color"        style="background:#DE9151;" onclick="setMarkerColor('#DE9151',this)"></div>
+        <div class="pt-color"        style="background:#1E88E5;" onclick="setMarkerColor('#1E88E5',this)"></div>
+        <div class="pt-color"        style="background:#4CAF50;" onclick="setMarkerColor('#4CAF50',this)"></div>
+        <div class="pt-color"        style="background:#FDD835;" onclick="setMarkerColor('#FDD835',this)"></div>
+        <div class="pt-color"        style="background:#9C27B0;" onclick="setMarkerColor('#9C27B0',this)"></div>
+        <div class="pt-color"        style="background:#fff;border:1.5px solid rgba(66,66,66,0.2);" onclick="setMarkerColor('#FFFFFF',this)"></div>
+        <div class="pt-divider"></div>
+        <span class="pt-label">Size</span>
+        <select class="pt-size" id="marker-size-sel" onchange="markerSize=parseInt(this.value)">
+          <option value="22">Small</option>
+          <option value="30" selected>Medium</option>
+          <option value="40">Big</option>
+        </select>
+        <div class="pt-divider"></div>
+        <span class="pt-count" id="marker-count-label">0 marker</span>
+        <button class="pt-clear" onclick="clearAllMarkers()">🗑️ Remove All</button>
+      </div>
+
+      <div class="map-controls">
+        <button class="map-ctrl-btn active" id="mode-navigate" onclick="setMapMode('navigate',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          Navigation
+        </button>
+        <button class="map-ctrl-btn" id="mode-select" onclick="setMapMode('select',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Choose Lot
+        </button>
+        <button class="map-ctrl-btn" id="mode-plot" onclick="setMapMode('plot',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="2"/></svg>
+          Plot Marker
+        </button>
+        <button class="map-ctrl-btn" onclick="openUploadModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload
+        </button>
+        <button class="map-ctrl-btn" onclick="openExportModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export PDF
+        </button>
+        <button class="map-ctrl-btn" onclick="flyToData()" id="btn-semula" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+          Again
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="panel-header">
+        <div class="ph-title">Analysis Panel</div>
+        <div class="ph-sub" id="panel-sub">No data · Upload GeoJSON to start</div>
+      </div>
+      <div class="panel-tabs">
+        <div class="ptab active" onclick="switchTab(this,'overview')">Summary</div>
+        <div class="ptab" onclick="switchTab(this,'parcel')">Info Lot</div>
+        <div class="ptab" onclick="switchTab(this,'layers')">Layer</div>
+        <div class="ptab" onclick="switchTab(this,'activity')">Activity</div>
+      </div>
+      <div class="panel-body">
+
+        <!-- OVERVIEW TAB -->
+        <div id="tab-overview">
+          <div id="overview-no-data" style="text-align:center;padding:36px 18px;">
+            <div style="font-size:30px;margin-bottom:10px;">📊</div>
+            <div style="font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;color:var(--charcoal-dark);margin-bottom:5px;">No Data</div>
+            <div style="font-size:11.5px;color:rgba(66,66,66,0.38);line-height:1.6;">Upload a GeoJSON file to view statistics and analysis of land use distribution.</div>
+            <button onclick="openUploadModal()" style="margin-top:14px;height:34px;padding:0 18px;background:var(--orange);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:white;cursor:pointer;">Upload Sekarang</button>
+          </div>
+          <div id="overview-charts" style="display:none;">
+            <div class="chart-block">
+              <div class="cb-title">Land Use Class Distribution</div>
+              <div class="bar-chart" id="bar-chart-container"></div>
+              <div style="font-size:9.5px;color:rgba(66,66,66,0.32);text-align:center;">Click the bar to filter map layers.</div>
+            </div>
+            <div class="chart-block">
+              <div class="cb-title">Distribution by Class</div>
+              <div id="lu-list"></div>
+            </div>
+            <div class="chart-block">
+              <div class="cb-title">Sub-district / Area</div>
+              <div id="mukim-list"></div>
+            </div>
+            <div class="chart-block">
+              <div class="cb-title">Data Source Information</div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Active File</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filename">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Total Feature</div><div class="lu-pct" style="font-size:10.5px;" id="info-total">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">File Size</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filesize">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Platform</div><div class="lu-pct" style="font-size:10.5px;"><span class="pc-badge badge-geo">Geospatial AI</span></div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Referral System</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);">GDM2000</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Upload</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-loaded">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PARCEL TAB -->
+        <div id="tab-parcel" style="display:none;">
+          <div id="no-parcel-msg" style="text-align:center;padding:36px 18px;">
+            <div style="font-size:30px;margin-bottom:10px;">🗺️</div>
+            <div style="font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;color:var(--charcoal-dark);margin-bottom:5px;">No Lot Selected</div>
+            <div style="font-size:11.5px;color:rgba(66,66,66,0.38);line-height:1.6;">Activate <strong>Lot Select Mode</strong> then click any lot on the map.</div>
+          </div>
+          <div id="parcel-detail" style="display:none;">
+            <div class="parcel-card">
+              <div class="pc-label">Lot Information</div>
+              <div class="pc-id" id="parcel-id">—</div>
+              <div id="parcel-props-container"></div>
+            </div>
+            <div class="chart-block">
+              <div class="cb-title">Action</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <button onclick="zoomToSelected()" style="height:33px;background:transparent;border:1px solid rgba(66,66,66,0.18);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--charcoal);cursor:pointer;">🔍 Zoom to Lot</button>
+                <button onclick="copyCoords()" style="height:33px;background:transparent;border:1px solid rgba(66,66,66,0.18);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--charcoal);cursor:pointer;">📋 Salin Koordinat</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LAYERS TAB -->
+        <div id="tab-layers" style="display:none;">
+          <div style="font-size:11px;color:rgba(66,66,66,0.42);margin-bottom:12px;line-height:1.6;padding:2px 0;">
+            Standard geospatial data categories based on national cadastral standards.
+          </div>
+
+          <!-- UZMA-SAT LAYER CARD -->
+          <div class="geo-cat-item" id="gcat-uzmasat" style="border-color:rgba(222,145,81,0.3);background:linear-gradient(135deg,rgba(222,145,81,0.04),rgba(255,255,255,1));">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:linear-gradient(135deg,#1a1a2e,#2d3561);">🛰️</div>
+              <div class="geo-cat-info">
+                <div class="geo-cat-name" style="display:flex;align-items:center;gap:6px;">
+                  UZMA-sat
+                  <span class="uzmasat-badge" style="font-size:8px;">PROPRIETARI</span>
+                </div>
+                <div class="geo-cat-desc">Raster tiles (seremban_final/) · zoom 0–16 — Seremban</div>
+              </div>
+              <span class="geo-cat-badge demo" id="badge-uzmasat">Tersedia</span>
+              <div class="layer-toggle off" id="tog-uzmasat" onclick="activateUzmaSat(this)" style="margin-left:6px;"></div>
+            </div>
+            <div id="uzmasat-layer-info" style="display:none;padding:0 12px 11px;font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;border-top:1px solid rgba(66,66,66,0.06);margin-top:0;padding-top:9px;">
+              📐 Tiles: seremban_final/{z}/{x}/{y}.png · zoom 0–16<br>
+              🗺 System: WGS84 (gdal raster tile)<br>
+              📍 Area: 101.878° – 101.986°E, 2.674° – 2.783°N<br>
+              🗓 Center: 2.7287°N, 101.9317°E
+            </div>
+          </div>
+
+          <div class="geo-cat-item" id="gcat-topo">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(101,115,85,0.12);">🏔️</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Topografi</div><div class="geo-cat-desc">Bukit, cerun, kontur, ketinggian</div></div>
+              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="layer-toggle off" id="tog-topo" onclick="toggleGeoCat('topo',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-hydro">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(30,136,229,0.12);">💧</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Hydrography</div><div class="geo-cat-desc">Sungai, tasik, lembangan air</div></div>
+              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="layer-toggle off" id="tog-hydro" onclick="toggleGeoCat('hydro',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-transport">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(66,66,66,0.08);">🛣️</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Transportation</div><div class="geo-cat-desc">Jalan raya, rel, lebuh raya</div></div>
+              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="layer-toggle off" id="tog-transport" onclick="toggleGeoCat('transport',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-admin">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(156,39,176,0.10);">🏛️</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Administrative Boundaries</div><div class="geo-cat-desc">State, district, sub-district, sub-district lot</div></div>
+              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="layer-toggle off" id="tog-admin" onclick="toggleGeoCat('admin',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-buildings" style="border-color:rgba(222,145,81,0.25);">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(222,145,81,0.15);">🏢</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Building &amp; Structure</div><div class="geo-cat-desc">Home, commercial, public facilities</div></div>
+              <span class="geo-cat-badge demo" id="badge-buildings">Active</span>
+              <div class="layer-toggle on" id="tog-buildings" onclick="toggleGeoCat('buildings',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-landuse" style="border-color:rgba(76,175,80,0.2);">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(76,175,80,0.12);">🌿</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Land Use</div><div class="geo-cat-desc">Agriculture, housing, industry, forestry</div></div>
+              <span class="geo-cat-badge demo" id="badge-landuse">Active</span>
+              <div class="layer-toggle on" id="tog-landuse" onclick="toggleGeoCat('landuse',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-utility">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(253,216,53,0.18);">⚡</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Utiliti</div><div class="geo-cat-desc">Electricity, plumbing, telecommunications</div></div>
+              <span class="geo-cat-badge">Data Tidak Aktif</span>
+              <div class="layer-toggle off" id="tog-utility" onclick="toggleGeoCat('utility',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+          <div class="geo-cat-item" id="gcat-gazetteer">
+            <div class="geo-cat-header">
+              <div class="geo-cat-icon" style="background:rgba(0,188,212,0.10);">📍</div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Tempat / Gazetteer</div><div class="geo-cat-desc">City, village, mountain, location name</div></div>
+              <span class="geo-cat-badge">Data Tidak Aktif</span>
+              <div class="layer-toggle off" id="tog-gazetteer" onclick="toggleGeoCat('gazetteer',this)" style="margin-left:6px;"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding:12px;background:rgba(222,145,81,0.06);border-radius:9px;border:1px dashed rgba(222,145,81,0.3);">
+            <div style="font-size:10px;font-weight:600;color:var(--orange);margin-bottom:4px;">💡 Platform Note</div>
+            <div style="font-size:10.5px;color:rgba(66,66,66,0.52);line-height:1.6;">
+              Marked categories <strong>Active</strong> using the loaded GeoJSON data. <strong>UZMA-sat</strong> is a proprietary image of UZMA Berhad which can be displayed as a basemap.
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVITY TAB -->
+        <div id="tab-activity" style="display:none;">
+          <div class="chart-block">
+            <div class="cb-title">Activity Log</div>
+            <div id="activity-list">
+              <div class="activity-item">
+                <div class="act-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+                <div class="act-info"><div class="act-title">Dashboard uploaded</div><div class="act-time">Ready to receive GeoJSON data</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="upload-overlay" id="upload-overlay">
+  <div class="upload-box">
+    <h2>📂 Upload GeoJSON</h2>
+    <p>Upload GeoJSON files. Can load multiple datasets simultaneously.</p>
+    <div class="drop-zone" id="drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <input type="file" accept=".geojson,.geojsonn,.json" onchange="handleFileSelect(event)" id="file-input"/>
+      <div class="drop-zone-icon">🗂️</div>
+      <div class="drop-zone-text">
+        <strong>Click to select a file</strong> or drag &amp; leave here<br>
+        <span style="font-size:10.5px;margin-top:3px;display:block;">.geojson or .json · Large file sizes are also possible</span>
+      </div>
+    </div>
+    <div class="upload-progress" id="upload-progress">
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="progress-text" id="progress-text">Processing...</div>
+    </div>
+    <div class="dataset-list-modal" id="datasets-modal-list" style="display:none;">
+      <div class="dataset-list-modal-title">Dataset Uploaded</div>
+      <div id="datasets-modal-items"></div>
+    </div>
+    <button class="upload-cancel" onclick="closeUploadModal()">Close</button>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="export-overlay" id="export-overlay">
+  <div class="export-box">
+    <h2>📄 Export Data</h2>
+    <div class="export-sub">Select the desired export format.</div>
+    <div class="export-opt-grid">
+      <button class="export-opt selected" id="exp-pdf" onclick="selectExportType('pdf',this)">
+        <div class="export-opt-icon">📋</div>
+        <div class="export-opt-name">PDF Report</div>
+        <div class="export-opt-desc">Map screenshots (with markers) + statistics in one PDF report</div>
+      </button>
+      <button class="export-opt" id="exp-png" onclick="selectExportType('png',this)">
+        <div class="export-opt-icon">🖼️</div>
+        <div class="export-opt-name">Map Image</div>
+        <div class="export-opt-desc">Full map screenshot (including markers) as PNG</div>
+      </button>
+      <button class="export-opt" id="exp-geojson" onclick="selectExportType('geojson',this)">
+        <div class="export-opt-icon">🗺️</div>
+        <div class="export-opt-name">GeoJSON</div>
+        <div class="export-opt-desc">Re-export the active dataset as a GeoJSON file</div>
+      </button>
+      <button class="export-opt" id="exp-csv" onclick="selectExportType('csv',this)">
+        <div class="export-opt-icon">📊</div>
+        <div class="export-opt-name">CSV</div>
+        <div class="export-opt-desc">Lot data table in CSV format for Excel</div>
+      </button>
+    </div>
+    <div class="export-settings">
+      <div class="export-settings-title">Export Settings</div>
+      <div class="export-field">
+        <label class="export-field-label">Report Title</label>
+        <input type="text" id="exp-title-input" value="Analysis Geospatial Report" style="width:200px;"/>
+      </div>
+      <div class="export-field">
+        <label class="export-field-label">Include a map (screenshot)</label>
+        <input type="checkbox" id="exp-include-map" checked/>
+      </div>
+      <div class="export-field">
+        <label class="export-field-label">Include plot markers</label>
+        <input type="checkbox" id="exp-include-markers" checked/>
+      </div>
+      <div class="export-field">
+        <label class="export-field-label">Include statistics</label>
+        <input type="checkbox" id="exp-include-stats" checked/>
+      </div>
+    </div>
+    <div class="export-progress" id="export-progress">
+      <div class="ep-spinner"></div>
+      <div class="ep-text" id="export-progress-text">Generate reports...</div>
+    </div>
+    <div class="export-actions">
+      <button class="export-btn cancel" onclick="closeExportModal()">Cancel</button>
+      <button class="export-btn go" onclick="runExport()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Loading data...</div>
+  <div class="loading-sub" id="loading-sub">Please wait a moment</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let map, currentPopup = null;
+let selectedFeature = null;
+let mapMode = 'navigate';
+let currentBasemap = 'google-road';
+let datasets = {};
+let activeDatasetId = null;
+let datasetCounter = 0;
+let hoveredFeatureId = null;
+let hoverDatasetId = null;
+let plotMarkers = [];
+let markerShape = 'pin';
+let markerColor = '#e53935';
+let markerSize = 30;
+let currentExportType = 'pdf';
+let _searchResults = [];
+let _searchTimeout = null;
+let _geocodeTimeout = null;
+
+// UZMA-sat state
+let uzmaSatActive = false;
+let uzmaSatOpacity = 1.0;
+let geoJsonOverlayVisible = true;
+
+const SEREMBAN_FILE = 'serembangeo.geojsonn';
+
+// ============================================================
+// UZMA-SAT — seremban_final/ TMS tiles
+// Bounds from gdal raster tile output (seremban_final/)
+// Leaflet leaflet.html fitBounds: SW=[2.6743, 101.8776], NE=[2.7830, 101.9857]
+// Center from leaflet.html: [2.7287, 101.9317]
+// ============================================================
+const UZMASAT_COORDS = {
+  // MapLibre image source corners: [topLeft, topRight, bottomRight, bottomLeft]
+  coordinates: [
+    [101.87766085815322, 2.7830234586744691],  // top-left  (NW)
+    [101.98574632250876, 2.7830234586744691],  // top-right (NE)
+    [101.98574632250876, 2.6743293354532471],  // bottom-right (SE)
+    [101.87766085815322, 2.6743293354532471],  // bottom-left  (SW)
+  ],
+  bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
+  center: [101.93170359033098, 2.7286763970638583],
+  tifPath: 'seremban_final/',
+  resolution: 'TMS tiles · zoom 0-16',
+  crs: 'WGS84 (gdal raster tile output)',
+  size: 'seremban_final/{z}/{x}/{y}.png',
+};
+
+// ============================================================
+// COLOUR MAPPING
+// ============================================================
+const CLASS_COLORS = {
+  'Perumahan':'#4CAF50','Perkampungan':'#9C27B0','Kemudahan Awam':'#1E88E5',
+  'Perniagaan':'#DE9151','Perniagaan/Industri':'#DE9151','Industri':'#FF7043',
+  'Hidrografi':'#00BCD4','Pertanian':'#8BC34A','Hutan':'#33691E',
+  'Tanah Lapang':'#FDD835','Lain-lain':'#9E9E9E',
+};
+function getColor(cls) {
+  if (!cls) return '#9E9E9E';
+  if (CLASS_COLORS[cls]) return CLASS_COLORS[cls];
+  for (const [k,v] of Object.entries(CLASS_COLORS)) {
+    if (cls.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(cls.toLowerCase())) return v;
+  }
+  let hash = 0;
+  for (let i = 0; i < cls.length; i++) hash = cls.charCodeAt(i) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360},52%,50%)`;
+}
+
+// ============================================================
+// PROPERTY DETECTION
+// ============================================================
+const CLASS_PROP_CANDIDATES  = ['KELAS','kelas','CLASS','class','LANDUSE','landuse','GUNA_TANAH','guna_tanah','JENIS','jenis','TYPE','type','FEATURE_CLASS','feature_class','FC','fc','KELAS_CIRI','kelas_ciri'];
+const ID_PROP_CANDIDATES     = ['LOT_NO','lot_no','LOT','lot','NO_LOT','no_lot','id','ID','FID','fid','OBJECTID','GID','NAME','name','NAMA','nama','geocoded_address'];
+const MUKIM_PROP_CANDIDATES  = ['MUKIM','mukim','KAWASAN','kawasan','AREA','area','DISTRICT','district','DAERAH','daerah'];
+const ADDR_PROP_CANDIDATES   = ['ADDRESS','address','ALAMAT','alamat','geocoded_address','ADDR','addr','JALAN','jalan','STREET','street'];
+function detectProp(props, candidates) {
+  for (const c of candidates) {
+    if (props[c] !== undefined && props[c] !== null && props[c] !== '') return c;
+  }
+  return null;
+}
+
+// ============================================================
+// UTM CONVERSION
+// ============================================================
+function utmToWgs84(easting, northing, zone=47) {
+  const a=6378137.0,f=1/298.257223563,b=a*(1-f),e2=1-(b*b)/(a*a),ep2=e2/(1-e2),k0=0.9996;
+  const x=easting-500000,y=northing;
+  const M=y/k0,mu=M/(a*(1-e2/4-3*e2*e2/64-5*e2*e2*e2/256));
+  const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+  const phi1=mu+(3*e1/2-27*e1*e1*e1/32)*Math.sin(2*mu)+(21*e1*e1/16-55*e1*e1*e1*e1/32)*Math.sin(4*mu)+(151*e1*e1*e1/96)*Math.sin(6*mu);
+  const N1=a/Math.sqrt(1-e2*Math.sin(phi1)*Math.sin(phi1));
+  const T1=Math.tan(phi1)*Math.tan(phi1),C1=ep2*Math.cos(phi1)*Math.cos(phi1),R1=a*(1-e2)/Math.pow(1-e2*Math.sin(phi1)*Math.sin(phi1),1.5);
+  const D=x/(N1*k0);
+  const lat=phi1-(N1*Math.tan(phi1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep2)*D*D*D*D/24+(61+90*T1+298*C1+45*T1*T1-252*ep2-3*C1*C1)*D*D*D*D*D*D/720);
+  const lon0=(zone*6-183)*Math.PI/180;
+  const lon=lon0+(D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*ep2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(phi1);
+  return [lon*180/Math.PI, lat*180/Math.PI];
+}
+function isUTM(coord) { return Math.abs(coord[0]) > 180 || Math.abs(coord[1]) > 90; }
+function detectUTMZone(gj) { const s=JSON.stringify(gj.crs||''); const m=s.match(/326(\d\d)/); return m ? parseInt(m[1]) : 47; }
+function convertGeometryToWgs84(geometry, zone) {
+  if (!geometry) return geometry;
+  function cvt(arr) { if (!arr || !arr.length) return arr; if (typeof arr[0]==='number') return utmToWgs84(arr[0],arr[1],zone); return arr.map(cvt); }
+  const g = JSON.parse(JSON.stringify(geometry)); g.coordinates = cvt(g.coordinates); return g;
+}
+function flattenRaw(geometry) {
+  if (!geometry) return [];
+  const t=geometry.type, c=geometry.coordinates;
+  if (t==='Point') return [c];
+  if (t==='MultiPoint' || t==='LineString') return c;
+  if (t==='Polygon') return c.flat(1);
+  if (t==='MultiLineString') return c.flat(1);
+  if (t==='MultiPolygon') return c.flat(2);
+  return [];
+}
+function flattenCoords(g) { return flattenRaw(g); }
+
+// ============================================================
+// BASEMAPS
+// ============================================================
+const BASEMAPS = {
+  'google-road':      { tiles:['https://mt0.google.com/vt/lyrs=m&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'], tileSize:256 },
+  'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
+  'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
+  'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
+  // seremban_final/ — gdal raster tile output, TMS scheme (Y-axis flipped)
+  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:16, scheme:'tms' },
+};
+function buildMapStyle(key) {
+  const bm = BASEMAPS[key];
+  const src = {
+    type: 'raster',
+    tiles: bm.tiles,
+    tileSize: bm.tileSize,
+    minzoom: bm.minzoom || 0,
+    maxzoom: bm.maxzoom || 19,
+  };
+  if (bm.scheme) src.scheme = bm.scheme;
+  return { version:8, sources:{ basemap: src }, layers:[{ id:'basemap', type:'raster', source:'basemap' }] };
+}
+
+// ============================================================
+// MAP INIT
+// ============================================================
+window.addEventListener('load', () => {
+  map = new maplibregl.Map({
+    container: 'map',
+    style: buildMapStyle('google-road'),
+    center: [101.94, 2.72],
+    zoom: 11,
+    maxZoom: 20,
+    preserveDrawingBuffer: true
+  });
+  map.addControl(new maplibregl.NavigationControl(), 'top-right');
+  map.on('click', onMapClick);
+  map.on('mousemove', onMapMouseMove);
+  map.on('mouseleave', onMapMouseLeave);
+  map.getCanvas().style.cursor = 'grab';
+  map.on('load', () => { autoLoadGeoJSON(); });
+
+  const mapEl = document.getElementById('map');
+  mapEl.addEventListener('mousemove', e => {
+    const cursor = document.getElementById('custom-cursor');
+    cursor.style.left = e.clientX + 'px';
+    cursor.style.top  = e.clientY + 'px';
+  });
+
+  document.getElementById('search-input').addEventListener('input', function() { handleSearch(this.value); });
+  document.getElementById('search-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { document.getElementById('search-dropdown').style.display = 'none'; }
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.topbar-search')) document.getElementById('search-dropdown').style.display = 'none';
+    if (!e.target.closest('.basemap-switcher')) {
+      document.getElementById('basemap-dropdown').classList.remove('open');
+      document.getElementById('uzmasat-controls').classList.remove('open');
+    }
+  });
+});
+
+async function autoLoadGeoJSON() {
+  showLoading('Memuatkan ' + SEREMBAN_FILE + '...', 'Sila tunggu sebentar');
+  try {
+    const res = await fetch(SEREMBAN_FILE);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const geojson = await res.json();
+    const size = parseInt(res.headers.get('content-length') || 0);
+    hideLoading();
+    addDataset(SEREMBAN_FILE, geojson, size, true);
+  } catch (err) {
+    hideLoading();
+    console.warn('Auto-load gagal:', err.message);
+  }
+}
+
+// ============================================================
+// UZMA-SAT — seremban_final/ TMS tiles
+// gdal raster tile output uses TMS (Y-axis flipped) — scheme:'tms' is required
+// Outside the tile bounds, MapLibre returns 404 which shows transparent/empty
+// ============================================================
+function loadUzmaSatLayer() {
+  removeUzmaSatLayer();
+  try {
+    map.addSource('uzmasat-source', {
+      type: 'raster',
+      tiles: ['seremban_final/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      minzoom: 0,
+      maxzoom: 16,
+      scheme: 'tms',          // ← required: gdal raster tile flips Y-axis
+      attribution: '© UZMA Berhad',
+      // bounds tell MapLibre not to request tiles outside the raster extent
+      bounds: [101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691],
+    });
+    map.addLayer({
+      id: 'uzmasat-layer',
+      type: 'raster',
+      source: 'uzmasat-source',
+      paint: {
+        'raster-opacity': uzmaSatOpacity,
+        'raster-fade-duration': 300
+      }
+    }, getFirstGeoJsonLayerId());
+  } catch(e) {
+    console.error('UZMA-sat load error:', e);
+    showToast('⚠️ Tiles tidak dapat dimuatkan. Semak folder seremban_final/');
+  }
+}
+
+function removeUzmaSatLayer() {
+  try { map.removeLayer('uzmasat-layer'); } catch(e) {}
+  try { map.removeSource('uzmasat-source'); } catch(e) {}
+}
+
+function getFirstGeoJsonLayerId() {
+  for (const [,ds] of Object.entries(datasets)) {
+    for (const [,info] of Object.entries(ds.layerVisibility)) {
+      try { if (map.getLayer(info.fillId)) return info.fillId; } catch(e) {}
+    }
+  }
+  return undefined;
+}
+
+function updateUzmaSatOpacity(val) {
+  uzmaSatOpacity = parseInt(val) / 100;
+  document.getElementById('opacity-val').textContent = val + '%';
+  try { map.setPaintProperty('uzmasat-layer', 'raster-opacity', uzmaSatOpacity); } catch(e) {}
+}
+
+function toggleGeoJsonOverlay(el) {
+  geoJsonOverlayVisible = el.classList.contains('on');
+  el.className = 'layer-toggle ' + (geoJsonOverlayVisible ? 'off' : 'on');
+  geoJsonOverlayVisible = !geoJsonOverlayVisible;
+  for (const [,ds] of Object.entries(datasets)) {
+    for (const [,info] of Object.entries(ds.layerVisibility)) {
+      const vis = geoJsonOverlayVisible ? 'visible' : 'none';
+      try { map.setLayoutProperty(info.fillId,    'visibility', vis); } catch(e) {}
+      try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
+    }
+  }
+  showToast(geoJsonOverlayVisible ? '✅ Overlay lot GeoJSON dipapar' : '🔲 Overlay lot GeoJSON disembunyikan');
+}
+
+function activateUzmaSat(el) {
+  const isOn = el.classList.contains('on');
+  if (!isOn) {
+    el.className = 'layer-toggle on';
+    document.getElementById('uzmasat-layer-info').style.display = 'block';
+    document.getElementById('badge-uzmasat').textContent = 'Aktif';
+    document.getElementById('badge-uzmasat').classList.add('demo');
+    loadUzmaSatLayer();
+    switchBasemap('uzma-sat', 'UZMA-sat', null);
+    uzmaSatActive = true;
+    addActivityLog('UZMA-sat diaktifkan', 'seremban_final/ · TMS · scheme:tms');
+    showToast('🛰️ UZMA-sat dimuatkan — seremban_final/ · TMS tiles');
+  } else {
+    el.className = 'layer-toggle off';
+    document.getElementById('uzmasat-layer-info').style.display = 'none';
+    document.getElementById('badge-uzmasat').textContent = 'Tersedia';
+    document.getElementById('badge-uzmasat').classList.remove('demo');
+    removeUzmaSatLayer();
+    uzmaSatActive = false;
+    const firstOpt = document.querySelector('.basemap-option');
+    switchBasemap('google-road', 'Google Maps', firstOpt);
+    showToast('🔲 UZMA-sat dimatikan');
+  }
+}
+
+// ============================================================
+// MULTI-DATASET
+// ============================================================
+function generateDatasetId() { return 'ds_' + (++datasetCounter); }
+
+function addDataset(fileName, geojson, fileSize, isDefault=false) {
+  if (!geojson.features || !geojson.features.length) { showToast('⚠️ GeoJSON tiada features'); return; }
+
+  const sampleCoord = flattenRaw(geojson.features[0].geometry)[0];
+  let processedGeoJSON = geojson;
+  if (sampleCoord && isUTM(sampleCoord)) {
+    const zone = detectUTMZone(geojson);
+    processedGeoJSON = { ...geojson, features: geojson.features.map(f => ({ ...f, geometry: convertGeometryToWgs84(f.geometry, zone) })) };
+  }
+
+  const features = processedGeoJSON.features;
+  const sampleProps = features[0].properties || {};
+  const classProp = detectProp(sampleProps, CLASS_PROP_CANDIDATES);
+  const idProp    = detectProp(sampleProps, ID_PROP_CANDIDATES);
+  const mukimProp = detectProp(sampleProps, MUKIM_PROP_CANDIDATES);
+  const addrProp  = detectProp(sampleProps, ADDR_PROP_CANDIDATES);
+
+  const classCount = {};
+  features.forEach(f => {
+    const cls = classProp ? (f.properties[classProp] || 'Lain-lain') : 'Data';
+    classCount[cls] = (classCount[cls] || 0) + 1;
+  });
+
+  const mukimCount = {};
+  if (mukimProp) features.forEach(f => {
+    const m = f.properties[mukimProp] || 'Tidak diketahui';
+    mukimCount[m] = (mukimCount[m] || 0) + 1;
+  });
+
+  let minLng=180, maxLng=-180, minLat=90, maxLat=-90, hasCoords=false;
+  features.forEach(f => {
+    flattenCoords(f.geometry).forEach(c => {
+      if (!Array.isArray(c) || c.length < 2) return;
+      const [lng, lat] = c;
+      if (typeof lng !== 'number' || typeof lat !== 'number') return;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+      if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+      hasCoords = true;
+    });
+  });
+
+  const dsId = generateDatasetId();
+  datasets[dsId] = {
+    id: dsId, name: fileName, geojson: processedGeoJSON, features,
+    classCount, mukimCount, classProp, idProp, mukimProp, addrProp,
+    layerVisibility: {},
+    bounds: hasCoords && isFinite(minLng) ? [[minLng, minLat], [maxLng, maxLat]] : null,
+    fileSize, loadedAt: new Date()
+  };
+
+  addLayersForDataset(dsId);
+  setActiveDataset(dsId);
+  addActivityLog('Dataset dimuatkan — ' + features.length.toLocaleString() + ' features', fileName);
+  showToast('✅ ' + features.length.toLocaleString() + ' lot dimuatkan · ' + fileName);
+  updateDatasetBadge();
+  updateDatasetModalList();
+  document.getElementById('no-data-state').classList.add('hidden');
+  document.getElementById('btn-fly').style.display = 'flex';
+  document.getElementById('btn-semula').style.display = 'flex';
+  document.getElementById('layer-badge').style.display = 'block';
+}
+
+function addLayersForDataset(dsId) {
+  const ds = datasets[dsId];
+  const sourceId = 'geojson-' + dsId;
+  map.addSource(sourceId, { type:'geojson', data:ds.geojson, generateId:true });
+
+  const classes = Object.keys(ds.classCount);
+  ds.layerVisibility = {};
+  classes.forEach(cls => {
+    const safeCls = cls.replace(/[^a-zA-Z0-9]/g, '-');
+    const fillId    = dsId + '-fill-'    + safeCls;
+    const outlineId = dsId + '-outline-' + safeCls;
+    const color = getColor(cls);
+    const filter = ds.classProp ? ['==', ['get', ds.classProp], cls] : ['literal', true];
+
+    map.addLayer({ id:fillId, type:'fill', source:sourceId, filter, paint:{
+      'fill-color': color,
+      'fill-opacity': ['case', ['boolean',['feature-state','hover'],false], 0.75, ['boolean',['feature-state','selected'],false], 0.85, 0.45]
+    }});
+    map.addLayer({ id:outlineId, type:'line', source:sourceId, filter, paint:{
+      'line-color': ['case', ['boolean',['feature-state','hover'],false], '#FFFFFF', color],
+      'line-width': ['interpolate',['linear'],['zoom'], 12, ['case',['boolean',['feature-state','hover'],false],2,0.5], 16, ['case',['boolean',['feature-state','hover'],false],3,1.5]],
+      'line-opacity': ['case', ['boolean',['feature-state','hover'],false], 1, 0.7]
+    }});
+
+    ds.layerVisibility[cls] = { fillId, outlineId, sourceId, visible:true, color, count:ds.classCount[cls] };
+  });
+}
+
+function setActiveDataset(dsId) {
+  activeDatasetId = dsId;
+  const ds = datasets[dsId];
+  window._classProp = ds.classProp;
+  window._idProp    = ds.idProp;
+  window._mukimProp = ds.mukimProp;
+  window._addrProp  = ds.addrProp;
+  window._activeDsId = dsId;
+
+  if (ds.bounds) { map.fitBounds(ds.bounds, { padding:60, duration:1000 }); window._dataBounds = ds.bounds; }
+  updateStatsFromData(ds.features, ds.classCount);
+  updateLayerBadge(dsId, ds.layerVisibility);
+  updateOverviewCharts(ds.classCount, ds.mukimCount, ds.features.length, ds.name, ds.fileSize, ds.loadedAt);
+  updateTopbarInfo(ds.features.length, ds.name);
+  updateDatasetBadge();
+}
+
+function removeDataset(dsId) {
+  const ds = datasets[dsId]; if (!ds) return;
+  for (const [,info] of Object.entries(ds.layerVisibility)) {
+    try { map.removeLayer(info.fillId); } catch(e) {}
+    try { map.removeLayer(info.outlineId); } catch(e) {}
+  }
+  try { map.removeSource('geojson-' + dsId); } catch(e) {}
+  delete datasets[dsId];
+  updateDatasetBadge(); updateDatasetModalList();
+  const remaining = Object.keys(datasets);
+  if (remaining.length > 0) { setActiveDataset(remaining[remaining.length - 1]); showToast('🗑️ Dataset dihapuskan'); }
+  else { activeDatasetId = null; document.getElementById('no-data-state').classList.remove('hidden'); resetUI(); showToast('🗑️ Semua dataset dihapuskan'); }
+}
+
+function resetUI() {
+  document.getElementById('stat-total').textContent = '—';
+  document.getElementById('stat-selected').textContent = '—';
+  document.getElementById('overview-no-data').style.display = 'block';
+  document.getElementById('overview-charts').style.display = 'none';
+  document.getElementById('layer-badge').style.display = 'none';
+  document.getElementById('dataset-badge').style.display = 'none';
+  document.getElementById('btn-fly').style.display = 'none';
+  document.getElementById('btn-semula').style.display = 'none';
+}
+
+// ============================================================
+// UI UPDATES
+// ============================================================
+function updateStatsFromData(features, classCount) {
+  document.getElementById('stat-total').textContent = features.length.toLocaleString();
+  const pCount = countClass(classCount, ['Perumahan']);
+  const kCount = countClass(classCount, ['Perkampungan','Kampung']);
+  const nCount = countClass(classCount, ['Perniagaan','Industri','Niaga']);
+  if (pCount > 0) { document.getElementById('stat-perumahan').textContent = pCount.toLocaleString(); document.getElementById('sc-perumahan').style.display = 'flex'; }
+  if (kCount > 0) { document.getElementById('stat-kampung').textContent   = kCount.toLocaleString(); document.getElementById('sc-kampung').style.display = 'flex'; }
+  if (nCount > 0) { document.getElementById('stat-niaga').textContent     = nCount.toLocaleString(); document.getElementById('sc-niaga').style.display = 'flex'; }
+}
+function countClass(classCount, names) {
+  let t = 0;
+  for (const [k,v] of Object.entries(classCount)) {
+    if (names.some(n => k.toLowerCase().includes(n.toLowerCase()))) t += v;
+  }
+  return t;
+}
+
+function updateTopbarInfo(total, fileName) {
+  document.getElementById('page-title').textContent = 'Land Use Dashboard — ' + fileName.replace(/\.(geojsonn?|json)$/i, '');
+  document.getElementById('page-sub').textContent   = 'Geospatial AI (UZMA Berhad) · ' + total.toLocaleString() + ' lot · ' + Object.keys(datasets).length + ' dataset';
+  document.getElementById('panel-sub').textContent  = fileName + ' · ' + total.toLocaleString() + ' features';
+}
+
+// ============================================================
+// LAYER BADGE
+// ============================================================
+function updateLayerBadge(dsId, visibility) {
+  const container = document.getElementById('layer-items-container');
+  container.innerHTML = '';
+
+  if (uzmaSatActive) {
+    const uzmaDiv = document.createElement('div');
+    uzmaDiv.innerHTML = `<div style="font-size:8px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(66,66,66,0.3);margin-bottom:5px;padding-top:2px;display:flex;align-items:center;gap:5px;">🛰 UZMA-SAT AKTIF</div>`;
+    container.appendChild(uzmaDiv);
+  }
+
+  for (const [cls, info] of Object.entries(visibility)) {
+    const safeId = 'ltog-' + dsId + '-' + cls.replace(/[^a-z0-9]/gi, '_');
+    const div = document.createElement('div');
+    div.className = 'layer-item';
+    div.innerHTML = `
+      <div class="layer-dot" style="background:${info.color};"></div>
+      <div class="layer-name">${cls}</div>
+      <div class="layer-count">${info.count.toLocaleString()}</div>
+      <div class="layer-toggle on" id="${safeId}"></div>
+    `;
+    div.querySelector('.layer-toggle').addEventListener('click', () => toggleLayer(dsId, cls, div.querySelector('.layer-toggle')));
+    container.appendChild(div);
+  }
+}
+
+// ============================================================
+// DATASET BADGE
+// ============================================================
+function updateDatasetBadge() {
+  const dsCount = Object.keys(datasets).length;
+  const badge = document.getElementById('dataset-badge');
+  if (dsCount < 2) { badge.style.display = 'none'; return; }
+  badge.style.display = 'block';
+  const container = document.getElementById('dataset-items-container');
+  container.innerHTML = '';
+  for (const [dsId, ds] of Object.entries(datasets)) {
+    const isActive = dsId === activeDatasetId;
+    const shortName = ds.name.replace(/\.(geojsonn?|json)$/i, '');
+    const div = document.createElement('div');
+    div.className = 'dataset-item';
+    div.innerHTML = `<div class="dataset-radio ${isActive ? 'active' : ''}"></div><div class="dataset-name" title="${ds.name}">${shortName}</div><div class="dataset-count">${ds.features.length.toLocaleString()}</div>`;
+    div.querySelector('.dataset-radio').addEventListener('click', () => { setActiveDataset(dsId); updateDatasetBadge(); });
+    container.appendChild(div);
+  }
+}
+
+function updateDatasetModalList() {
+  const container = document.getElementById('datasets-modal-items');
+  const wrapper = document.getElementById('datasets-modal-list');
+  const dsCount = Object.keys(datasets).length;
+  if (!dsCount) { wrapper.style.display = 'none'; return; }
+  wrapper.style.display = 'block';
+  container.innerHTML = '';
+  for (const [dsId, ds] of Object.entries(datasets)) {
+    const isActive = dsId === activeDatasetId;
+    const shortName = ds.name.replace(/\.(geojsonn?|json)$/i, '');
+    const div = document.createElement('div');
+    div.className = 'dataset-modal-item';
+    div.innerHTML = `
+      <div><div class="dm-name">${shortName}</div><div class="dm-count">${ds.features.length.toLocaleString()} features · ${formatFileSize(ds.fileSize)}</div></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${isActive ? '<span class="dm-active">Aktif</span>' : ''}
+        <button class="dm-btn">Hapus</button>
+      </div>`;
+    div.querySelector('.dm-btn').addEventListener('click', () => removeDataset(dsId));
+    container.appendChild(div);
+  }
+}
+
+function updateOverviewCharts(classCount, mukimCount, total, fileName, fileSize, loadedAt) {
+  document.getElementById('overview-no-data').style.display = 'none';
+  document.getElementById('overview-charts').style.display = 'block';
+
+  const barContainer = document.getElementById('bar-chart-container');
+  barContainer.innerHTML = '';
+  const maxCount = Math.max(...Object.values(classCount));
+  for (const [cls, count] of Object.entries(classCount)) {
+    const pct = Math.max(4, (count / maxCount) * 100);
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = `<div class="bar" style="height:${pct}%;background:${getColor(cls)};"></div><div class="bar-label">${cls.length > 8 ? cls.substring(0,7) + '…' : cls}</div>`;
+    col.querySelector('.bar').addEventListener('click', () => filterToClass(cls));
+    barContainer.appendChild(col);
+  }
+
+  const luList = document.getElementById('lu-list');
+  luList.innerHTML = '';
+  const sorted = Object.entries(classCount).sort((a,b) => b[1] - a[1]);
+  sorted.forEach(([cls, count]) => {
+    const pct = ((count / total) * 100).toFixed(1);
+    const barW = Math.max(2, (count / sorted[0][1]) * 100);
+    luList.innerHTML += `<div class="lu-item"><div class="lu-dot" style="background:${getColor(cls)};"></div><div class="lu-name">${cls}</div><div class="lu-bar-wrap"><div class="lu-bar-fill" style="width:${barW}%;background:${getColor(cls)};"></div></div><div class="lu-count" style="margin-right:3px;">${count.toLocaleString()}</div><div class="lu-pct">${pct}%</div></div>`;
+  });
+
+  const mukimList = document.getElementById('mukim-list');
+  mukimList.innerHTML = '';
+  if (Object.keys(mukimCount).length > 0) {
+    Object.entries(mukimCount).sort((a,b) => b[1]-a[1]).slice(0,10).forEach(([mukim, count]) => {
+      mukimList.innerHTML += `<div class="lu-item"><div class="lu-dot" style="background:#424242;border-radius:50%;"></div><div class="lu-name">${mukim}</div><div class="lu-pct">${count.toLocaleString()}</div></div>`;
+    });
+  } else {
+    mukimList.innerHTML = '<div style="font-size:11.5px;color:rgba(66,66,66,0.38);text-align:center;padding:7px;">No sub-district data</div>';
+  }
+
+  document.getElementById('info-filename').textContent = fileName;
+  document.getElementById('info-total').textContent    = total.toLocaleString();
+  document.getElementById('info-filesize').textContent = formatFileSize(fileSize);
+  document.getElementById('info-loaded').textContent   = loadedAt.toLocaleString('ms-MY');
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(2) + ' MB';
+}
+
+// ============================================================
+// MAP INTERACTIONS
+// ============================================================
+function onMapClick(e) {
+  if (mapMode === 'plot') { addPlotMarker(e.lngLat); return; }
+  if (mapMode !== 'select') return;
+
+  const allFillLayers = [];
+  for (const [,ds] of Object.entries(datasets))
+    for (const [,info] of Object.entries(ds.layerVisibility))
+      allFillLayers.push(info.fillId);
+  if (!allFillLayers.length) return;
+
+  const features = map.queryRenderedFeatures(e.point, { layers: allFillLayers });
+  if (!features.length) return;
+
+  const feature = features[0];
+  showParcelInfo(feature, e.lngLat);
+  document.getElementById('stat-selected').textContent = '1';
+  selectedFeature = feature;
+
+  const pulse = document.getElementById('selection-pulse');
+  const rect  = document.getElementById('map').getBoundingClientRect();
+  pulse.style.left = (e.point.x + rect.left) + 'px';
+  pulse.style.top  = (e.point.y + rect.top)  + 'px';
+  pulse.style.display = 'block';
+  pulse.style.animation = 'none';
+  pulse.offsetHeight;
+  pulse.style.animation = 'ringExpand 0.8s cubic-bezier(0.25,0.46,0.45,0.94) forwards';
+  setTimeout(() => { pulse.style.display = 'none'; }, 850);
+}
+
+function onMapMouseMove(e) {
+  if (mapMode !== 'select') return;
+  const allFillLayers = [];
+  for (const [,ds] of Object.entries(datasets))
+    for (const [,info] of Object.entries(ds.layerVisibility))
+      if (info.visible) allFillLayers.push(info.fillId);
+  if (!allFillLayers.length) return;
+
+  const features = map.queryRenderedFeatures(e.point, { layers: allFillLayers });
+  if (hoveredFeatureId !== null && hoverDatasetId) {
+    try { map.setFeatureState({ source:'geojson-'+hoverDatasetId, id:hoveredFeatureId }, { hover:false }); } catch(ex) {}
+    hoveredFeatureId = null; hoverDatasetId = null;
+  }
+  if (features.length > 0) {
+    const f = features[0];
+    for (const [dsId, ds] of Object.entries(datasets)) {
+      for (const [,info] of Object.entries(ds.layerVisibility)) {
+        if (info.fillId === f.layer.id) {
+          hoveredFeatureId = f.id; hoverDatasetId = dsId;
+          try { map.setFeatureState({ source:'geojson-'+dsId, id:f.id }, { hover:true }); } catch(ex) {}
+          break;
+        }
+      }
+      if (hoveredFeatureId !== null) break;
+    }
+  }
+}
+
+function onMapMouseLeave() {
+  if (hoveredFeatureId !== null && hoverDatasetId) {
+    try { map.setFeatureState({ source:'geojson-'+hoverDatasetId, id:hoveredFeatureId }, { hover:false }); } catch(ex) {}
+    hoveredFeatureId = null; hoverDatasetId = null;
+  }
+}
+
+function showParcelInfo(feature, lngLat) {
+  if (currentPopup) currentPopup.remove();
+  const props  = feature.properties || {};
+  const cls    = window._classProp ? props[window._classProp] : 'Lot';
+  const lotId  = window._idProp    ? props[window._idProp]    : (feature.id || 'N/A');
+  const popupRows = Object.entries(props).slice(0,6).map(([k,v]) =>
+    `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`
+  ).join('');
+
+  currentPopup = new maplibregl.Popup({ offset:8 })
+    .setLngLat(lngLat)
+    .setHTML(`<div class="popup-header"><div class="popup-fc">${cls||'Feature'}</div><div class="popup-name">${lotId}</div></div><div class="popup-body">${popupRows}</div>`)
+    .addTo(map);
+
+  document.getElementById('parcel-id').textContent = lotId;
+  const propsContainer = document.getElementById('parcel-props-container');
+  let html = '<div class="pc-section-title">📋 Semua Properties</div>';
+  for (const [k,v] of Object.entries(props))
+    html += `<div class="pc-row"><span class="pc-k">${k}</span><span class="pc-v">${v ?? '—'}</span></div>`;
+  propsContainer.innerHTML = html;
+
+  const c = lngLat;
+  propsContainer.innerHTML += `
+    <div class="pc-section-title">📐 Koordinat Klik</div>
+    <div class="pc-row"><span class="pc-k">Latitud</span><span class="pc-v" id="p-lat" style="font-family:monospace;font-size:9.5px;">${c.lat.toFixed(7)}</span></div>
+    <div class="pc-row"><span class="pc-k">Longitud</span><span class="pc-v" id="p-lng" style="font-family:monospace;font-size:9.5px;">${c.lng.toFixed(7)}</span></div>`;
+
+  document.getElementById('no-parcel-msg').style.display  = 'none';
+  document.getElementById('parcel-detail').style.display  = 'block';
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById('tab-parcel').style.display = 'block';
+  document.querySelectorAll('.ptab').forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes('parcel')) t.classList.add('active');
+  });
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function handleSearch(val) {
+  clearTimeout(_searchTimeout);
+  clearTimeout(_geocodeTimeout);
+  const dd = document.getElementById('search-dropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  const localResults = getLocalSearchResults(val);
+  if (localResults.length > 0) {
+    renderSearchDropdown(localResults, []);
+    dd.style.display = 'block';
+  } else {
+    dd.innerHTML = `<div class="search-loading"><div class="search-spinner"></div> Search for an address...</div>`;
+    dd.style.display = 'block';
+  }
+  if (val.trim().length >= 3) {
+    _geocodeTimeout = setTimeout(() => runGeocode(val, localResults), 600);
+  }
+}
+
+function getLocalSearchResults(val) {
+  if (!activeDatasetId) return [];
+  const ds = datasets[activeDatasetId];
+  const q = val.toLowerCase();
+  return ds.features.filter(f =>
+    Object.values(f.properties || {}).some(v => String(v).toLowerCase().includes(q))
+  ).slice(0, 8);
+}
+
+async function runGeocode(query, localResults) {
+  const dd = document.getElementById('search-dropdown');
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Malaysia')}&format=json&limit=5&countrycodes=MY&viewbox=101.5,2.4,102.5,3.1&bounded=0`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'ms,en' } });
+    if (!res.ok) throw new Error('Geocode gagal');
+    const geocodeResults = await res.json();
+    renderSearchDropdown(localResults, geocodeResults);
+    if (!localResults.length && !geocodeResults.length)
+      dd.innerHTML = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">Tiada hasil ditemui</div>`;
+  } catch(e) {
+    renderSearchDropdown(localResults, []);
+    if (!localResults.length)
+      dd.innerHTML = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">Tiada hasil ditemui</div>`;
+  }
+  dd.style.display = 'block';
+}
+
+function renderSearchDropdown(localResults, geocodeResults) {
+  _searchResults = localResults;
+  const dd = document.getElementById('search-dropdown');
+  let html = '';
+  if (localResults.length > 0) {
+    html += `<div class="search-section-header">📂 Lot / Data Tempatan</div>`;
+    localResults.forEach((f, idx) => {
+      const ds = activeDatasetId ? datasets[activeDatasetId] : null;
+      const id  = (ds && ds.idProp)    ? (f.properties[ds.idProp]    || 'Feature') : 'Feature';
+      const cls = (ds && ds.classProp) ? (f.properties[ds.classProp] || '')        : '';
+      const addr = (ds && ds.addrProp) ? f.properties[ds.addrProp] : '';
+      const sub  = [cls, addr].filter(Boolean).join(' · ') || 'Data Geospatial';
+      html += `<div class="search-item local-result" data-idx="${idx}"><div class="search-item-icon">📌</div><div class="search-item-body"><div class="search-item-id">${id}</div><div class="search-item-cls">${sub}</div></div></div>`;
+    });
+  }
+  if (geocodeResults.length > 0) {
+    html += `<div class="search-section-header">🔍 Alamat / Lokasi</div>`;
+    geocodeResults.forEach((place) => {
+      const shortName = place.display_name.split(',').slice(0,3).join(', ');
+      const type = place.type ? place.type.replace(/_/g,' ') : place.class || '';
+      html += `<div class="search-item geocode-result" data-lat="${place.lat}" data-lng="${place.lon}" data-name="${shortName.replace(/"/g,'&quot;')}"><div class="search-item-icon">${getGeocodeIcon(place.class, place.type)}</div><div class="search-item-body"><div class="search-item-id">${shortName}</div><div class="search-item-cls">${type} · ${place.display_name.split(',').slice(2,4).join(',').trim()}</div></div></div>`;
+    });
+  }
+  if (!html) html = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">Tiada hasil ditemui</div>`;
+  dd.innerHTML = html;
+  dd.querySelectorAll('.local-result').forEach(el => {
+    el.addEventListener('click', () => selectSearchResult(parseInt(el.getAttribute('data-idx'))));
+  });
+  dd.querySelectorAll('.geocode-result').forEach(el => {
+    el.addEventListener('click', () => flyToGeocode(parseFloat(el.getAttribute('data-lat')), parseFloat(el.getAttribute('data-lng')), el.getAttribute('data-name')));
+  });
+}
+
+function getGeocodeIcon(cls, type) {
+  const t = (type||'').toLowerCase(), c = (cls||'').toLowerCase();
+  if (t.includes('school')||t.includes('university')) return '🏫';
+  if (t.includes('hospital')||t.includes('clinic')) return '🏥';
+  if (t.includes('mosque')||t.includes('religious')) return '🕌';
+  if (c==='highway'||t.includes('road')||t.includes('motorway')) return '🛣️';
+  if (c==='place'&&(t.includes('town')||t.includes('city')||t.includes('village'))) return '🏘️';
+  if (c==='amenity') return '🏢';
+  if (c==='boundary'||t.includes('district')||t.includes('state')) return '🗺️';
+  if (c==='natural'||t.includes('river')||t.includes('water')) return '💧';
+  return '📍';
+}
+
+function flyToGeocode(lat, lng, name) {
+  document.getElementById('search-dropdown').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  map.flyTo({ center:[lng, lat], zoom:16, duration:1200 });
+  if (window._geocodeMarker) window._geocodeMarker.remove();
+  const el = document.createElement('div');
+  el.style.cssText = 'pointer-events:none;';
+  el.innerHTML = `<svg width="32" height="40" viewBox="0 0 32 40" fill="none"><path d="M16 0C7.163 0 0 7.163 0 16c0 10.8 16 24 16 24s16-13.2 16-24C32 7.163 24.837 0 16 0z" fill="#1E88E5"/><circle cx="16" cy="16" r="6" fill="white"/></svg>`;
+  window._geocodeMarker = new maplibregl.Marker({ element:el, anchor:'bottom' }).setLngLat([lng, lat]).addTo(map);
+  setTimeout(() => {
+    new maplibregl.Popup({ offset:8, closeOnClick:true })
+      .setLngLat([lng, lat])
+      .setHTML(`<div class="popup-header" style="background:#1E88E5;"><div class="popup-fc">Alamat Ditemui</div><div class="popup-name" style="font-size:11px;line-height:1.4;">${name}</div></div><div class="popup-body"><div class="popup-row"><span class="popup-k">Latitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lat.toFixed(6)}</span></div><div class="popup-row"><span class="popup-k">Longitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lng.toFixed(6)}</span></div></div>`)
+      .addTo(map);
+  }, 800);
+  addActivityLog('Address searched: ' + name, lat.toFixed(5) + ', ' + lng.toFixed(5));
+}
+
+function selectSearchResult(idx) {
+  document.getElementById('search-dropdown').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  if (!activeDatasetId || !_searchResults[idx]) return;
+  const feature = _searchResults[idx];
+  const coords  = flattenCoords(feature.geometry);
+  if (!coords.length) return;
+  const avgLng = coords.reduce((s,[lng]) => s + lng, 0) / coords.length;
+  const avgLat = coords.reduce((s,[,lat]) => s + lat, 0) / coords.length;
+  map.flyTo({ center:[avgLng, avgLat], zoom:16, duration:1000 });
+  setTimeout(() => { showParcelInfo(feature, { lng:avgLng, lat:avgLat }); selectedFeature = feature; document.getElementById('stat-selected').textContent = '1'; }, 800);
+}
+
+// ============================================================
+// GEOSPATIAL CATEGORY TOGGLES
+// ============================================================
+const GEO_CAT_STATE = { topo:false, hydro:false, transport:false, admin:false, buildings:true, landuse:true, utility:false, gazetteer:false };
+const GEO_CAT_CLASS_MAP = {
+  buildings: ['Perumahan','Perkampungan','Kemudahan Awam','Industri','Perniagaan','Perniagaan/Industri'],
+  landuse:   ['Pertanian','Hutan','Tanah Lapang','Hidrografi','Lain-lain'],
+  hydro:     ['Hidrografi','Sungai','Tasik'],
+  admin:     ['Sempadan','Admin'],
+};
+
+function toggleGeoCat(cat, el) {
+  const isOn = el.classList.contains('on');
+  el.className = 'layer-toggle ' + (isOn ? 'off' : 'on');
+  GEO_CAT_STATE[cat] = !isOn;
+  const newState = !isOn;
+  if (!activeDatasetId) {
+    showToast(newState ? '⚠️ Tiada data aktif untuk kategori ini' : '');
+    if (newState) el.className = 'layer-toggle off';
+    return;
+  }
+  const ds = datasets[activeDatasetId];
+  const affectedClasses = GEO_CAT_CLASS_MAP[cat];
+  if (!affectedClasses) {
+    if (newState) { showToast(`ℹ️ ${getCatName(cat)}: Data belum diintegrasikan`); el.className = 'layer-toggle off'; GEO_CAT_STATE[cat] = false; }
+    return;
+  }
+  let toggled = 0;
+  for (const [cls, info] of Object.entries(ds.layerVisibility)) {
+    const matches = affectedClasses.some(kw => cls.toLowerCase().includes(kw.toLowerCase()));
+    if (matches) {
+      info.visible = newState;
+      const vis = newState ? 'visible' : 'none';
+      try { map.setLayoutProperty(info.fillId,    'visibility', vis); } catch(e) {}
+      try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
+      const badgeId = 'ltog-' + activeDatasetId + '-' + cls.replace(/[^a-z0-9]/gi, '_');
+      const tog = document.getElementById(badgeId);
+      if (tog) tog.className = 'layer-toggle ' + (newState ? 'on' : 'off');
+      toggled++;
+    }
+  }
+  if (toggled > 0) showToast(`${newState ? '✅' : '🔲'} ${getCatName(cat)} — ${toggled} kelas ${newState ? 'dipapar' : 'disembunyikan'}`);
+  else showToast(`ℹ️ ${getCatName(cat)}: Tiada kelas sepadan dalam dataset aktif`);
+}
+
+function getCatName(cat) {
+  const names = { topo:'Topografi', hydro:'Hidrografi', transport:'Pengangkutan', admin:'Sempadan Pentadbiran', buildings:'Bangunan & Struktur', landuse:'Guna Tanah', utility:'Utiliti', gazetteer:'Tempat/Gazetteer' };
+  return names[cat] || cat;
+}
+
+// ============================================================
+// PLOT MARKERS
+// ============================================================
+function setMarkerShape(shape, el) { markerShape = shape; document.querySelectorAll('.pt-shape').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function setMarkerColor(color, el) { markerColor = color; document.querySelectorAll('.pt-color').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+
+function addPlotMarker(lngLat) {
+  const markerEl = document.createElement('div');
+  markerEl.style.cssText = 'cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;';
+  markerEl.addEventListener('mouseenter', () => { markerEl.style.transform = 'scale(1.2)'; });
+  markerEl.addEventListener('mouseleave', () => { markerEl.style.transform = 'scale(1)'; });
+  const sz = markerSize;
+  if (markerShape === 'pin') markerEl.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${markerColor}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
+  else if (markerShape === 'circle') markerEl.innerHTML = `<div style="width:${sz*0.7}px;height:${sz*0.7}px;border-radius:50%;background:${markerColor};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`;
+  else if (markerShape === 'flag') markerEl.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${markerColor}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
+  else if (markerShape === 'star') markerEl.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${markerColor}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>`;
+  else if (markerShape === 'cross') markerEl.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${markerColor}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/></svg>`;
+
+  const marker = new maplibregl.Marker({ element:markerEl, anchor:'bottom' }).setLngLat(lngLat).addTo(map);
+  const idx = plotMarkers.length + 1;
+  const markerData = { marker, lngLat, shape:markerShape, color:markerColor, size:markerSize, idx };
+  plotMarkers.push(markerData);
+
+  markerEl.addEventListener('click', e => {
+    e.stopPropagation();
+    new maplibregl.Popup({ offset:10 }).setLngLat(lngLat).setHTML(`
+      <div class="popup-header" style="background:${markerColor};padding:9px 14px;"><div class="marker-popup-title">Marker #${markerData.idx}</div></div>
+      <div class="popup-body">
+        <div class="popup-row"><span class="popup-k">Latitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lngLat.lat.toFixed(7)}</span></div>
+        <div class="popup-row"><span class="popup-k">Longitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lngLat.lng.toFixed(7)}</span></div>
+        <div class="popup-row"><span class="popup-k">Bentuk</span><span class="popup-v">${markerData.shape}</span></div>
+        <div style="margin-top:9px;"><button id="del-marker-${markerData.idx}" style="width:100%;height:28px;border:1px solid rgba(229,57,53,0.3);background:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:#e53935;cursor:pointer;">🗑️ Hapus</button></div>
+      </div>`).addTo(map);
+    setTimeout(() => { const btn = document.getElementById('del-marker-' + markerData.idx); if (btn) btn.addEventListener('click', () => removeMarkerByIdx(markerData.idx)); }, 100);
+  });
+
+  updateMarkerCount();
+  addActivityLog(`Marker #${idx} diplot`, `${lngLat.lat.toFixed(5)}, ${lngLat.lng.toFixed(5)}`);
+}
+
+function removeMarkerByIdx(idx) {
+  const i = plotMarkers.findIndex(m => m.idx === idx);
+  if (i === -1) return;
+  plotMarkers[i].marker.remove();
+  plotMarkers.splice(i, 1);
+  updateMarkerCount();
+  showToast('🗑️ Marker dihapuskan');
+}
+
+function clearAllMarkers() { plotMarkers.forEach(m => m.marker.remove()); plotMarkers = []; updateMarkerCount(); showToast('🗑️ Semua marker dihapuskan'); }
+function updateMarkerCount() { const n = plotMarkers.length; document.getElementById('stat-markers').textContent = n; document.getElementById('marker-count-label').textContent = n + ' marker'; }
+
+// ============================================================
+// LAYER TOGGLE
+// ============================================================
+function toggleLayer(dsId, cls, el) {
+  const ds = datasets[dsId]; if (!ds) return;
+  const info = ds.layerVisibility[cls]; if (!info) return;
+  info.visible = !info.visible;
+  el.className = 'layer-toggle ' + (info.visible ? 'on' : 'off');
+  const vis = info.visible ? 'visible' : 'none';
+  try { map.setLayoutProperty(info.fillId,    'visibility', vis); } catch(e) {}
+  try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
+}
+
+function filterToClass(cls) {
+  if (!activeDatasetId) return;
+  const ds = datasets[activeDatasetId];
+  for (const [c, info] of Object.entries(ds.layerVisibility)) {
+    const makeVisible = (c === cls);
+    info.visible = makeVisible;
+    const vis = makeVisible ? 'visible' : 'none';
+    try { map.setLayoutProperty(info.fillId,    'visibility', vis); } catch(e) {}
+    try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
+    const badgeId = 'ltog-' + activeDatasetId + '-' + c.replace(/[^a-z0-9]/gi, '_');
+    const tog = document.getElementById(badgeId);
+    if (tog) tog.className = 'layer-toggle ' + (makeVisible ? 'on' : 'off');
+  }
+  showToast('🔍 Menapis: ' + cls);
+}
+
+// ============================================================
+// MAP MODE
+// ============================================================
+function setMapMode(mode, el) {
+  mapMode = mode;
+  const mapEl    = document.getElementById('map');
+  const cursor   = document.getElementById('custom-cursor');
+  const indicator = document.getElementById('mode-indicator');
+  const toolbar  = document.getElementById('plot-toolbar');
+
+  document.querySelectorAll('.map-ctrl-btn').forEach(b => {
+    if (b.id?.startsWith('mode-')) b.classList.remove('active','select-active','plot-active');
+  });
+  indicator.classList.remove('show','plot-mode');
+  toolbar.classList.remove('show');
+  mapEl.classList.remove('cursor-select-mode','cursor-plot-mode');
+  cursor.classList.remove('visible');
+
+  if (mode === 'select') {
+    el.classList.add('select-active');
+    mapEl.classList.add('cursor-select-mode');
+    cursor.classList.add('visible');
+    indicator.classList.add('show');
+    document.getElementById('mode-indicator-text').textContent = 'Mode Pilih Lot — Klik lot untuk maklumat';
+  } else if (mode === 'plot') {
+    el.classList.add('plot-active');
+    mapEl.classList.add('cursor-plot-mode');
+    indicator.classList.add('show','plot-mode');
+    document.getElementById('mode-indicator-text').textContent = 'Mode Plot Marker — Klik pada peta untuk letak marker';
+    toolbar.classList.add('show');
+  } else {
+    el.classList.add('active');
+    map.getCanvas().style.cursor = 'grab';
+  }
+}
+
+// ============================================================
+// BASEMAP — with UZMA-sat seremban_final/ support
+// ============================================================
+function toggleBasemapDropdown() {
+  const dd = document.getElementById('basemap-dropdown');
+  const uc = document.getElementById('uzmasat-controls');
+  if (uzmaSatActive) {
+    uc.classList.toggle('open');
+    dd.classList.remove('open');
+  } else {
+    dd.classList.toggle('open');
+    uc.classList.remove('open');
+  }
+}
+
+function switchBasemap(key, label, el) {
+  document.querySelectorAll('.basemap-option').forEach(o => o.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('basemap-label').textContent = label;
+  document.getElementById('basemap-dropdown').classList.remove('open');
+  document.getElementById('uzmasat-controls').classList.remove('open');
+  currentBasemap = key;
+
+  if (key === 'uzma-sat') {
+    if (!uzmaSatActive) {
+      uzmaSatActive = true;
+      document.getElementById('tog-uzmasat').className = 'layer-toggle on';
+      document.getElementById('uzmasat-layer-info').style.display = 'block';
+      document.getElementById('badge-uzmasat').textContent = 'Aktif';
+      document.getElementById('badge-uzmasat').classList.add('demo');
+      // Fly to seremban_final bounds
+      map.fitBounds(UZMASAT_COORDS.bounds, { padding: 40, duration: 1200 });
+      addActivityLog('UZMA-sat diaktifkan', 'seremban_final/ · TMS · scheme:tms');
+      showToast('🛰️ UZMA-sat dimuatkan · seremban_final/ · zoom 0–16');
+    }
+    try {
+      map.getSource('basemap')?.setTiles(['seremban_final/{z}/{x}/{y}.png']);
+    } catch(e) {
+      const center = map.getCenter(), zoom = map.getZoom();
+      map.setStyle(buildMapStyle('uzmasat-tiles'));
+      map.once('style.load', () => {
+        map.setCenter(center); map.setZoom(zoom);
+        for (const dsId of Object.keys(datasets)) addLayersForDataset(dsId);
+        loadUzmaSatLayer();
+      });
+    }
+    if (!map.getSource('uzmasat-source')) loadUzmaSatLayer();
+    setTimeout(() => { document.getElementById('uzmasat-controls').classList.add('open'); }, 50);
+    return;
+  }
+
+  // Standard basemap — disable uzma-sat if switching away
+  if (uzmaSatActive && key !== 'uzma-sat') {
+    removeUzmaSatLayer();
+    uzmaSatActive = false;
+    document.getElementById('tog-uzmasat').className = 'layer-toggle off';
+    document.getElementById('uzmasat-layer-info').style.display = 'none';
+    document.getElementById('badge-uzmasat').textContent = 'Tersedia';
+    document.getElementById('badge-uzmasat').classList.remove('demo');
+    if (!geoJsonOverlayVisible) {
+      geoJsonOverlayVisible = true;
+      document.getElementById('tog-overlay-on').className = 'layer-toggle on';
+      for (const [,ds] of Object.entries(datasets)) {
+        for (const [,info] of Object.entries(ds.layerVisibility)) {
+          if (info.visible) {
+            try { map.setLayoutProperty(info.fillId, 'visibility', 'visible'); } catch(e) {}
+            try { map.setLayoutProperty(info.outlineId, 'visibility', 'visible'); } catch(e) {}
+          }
+        }
+      }
+    }
+  }
+
+  const bm = BASEMAPS[key];
+  if (bm) {
+    try {
+      map.getSource('basemap')?.setTiles(bm.tiles);
+    } catch(e) {
+      const center = map.getCenter();
+      const zoom   = map.getZoom();
+      map.setStyle(buildMapStyle(key));
+      map.once('style.load', () => {
+        map.setCenter(center);
+        map.setZoom(zoom);
+        for (const dsId of Object.keys(datasets)) {
+          addLayersForDataset(dsId);
+        }
+      });
+    }
+  }
+}
+
+// ============================================================
+// UPLOAD
+// ============================================================
+function openUploadModal()  { document.getElementById('upload-overlay').classList.add('show'); updateDatasetModalList(); }
+function closeUploadModal() { document.getElementById('upload-overlay').classList.remove('show'); resetUploadUI(); }
+function resetUploadUI()    { document.getElementById('upload-progress').style.display = 'none'; document.getElementById('progress-fill').style.width = '0%'; document.getElementById('file-input').value = ''; }
+function handleDragOver(e)  { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function handleDrop(e)      { e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) processGeoJSONFile(f); }
+function handleFileSelect(e){ const f = e.target.files[0]; if (f) processGeoJSONFile(f); }
+
+function processGeoJSONFile(file) {
+  if (!file.name.match(/\.(geojsonn?|json)$/i)) { showToast('❌ Fail mesti berformat .geojson atau .json'); return; }
+  document.getElementById('upload-progress').style.display = 'block';
+  setProgress(10, 'Membaca fail...');
+  const reader = new FileReader();
+  reader.onprogress = e => { if (e.lengthComputable) setProgress(10 + (e.loaded/e.total)*40, 'Membaca fail...'); };
+  reader.onload = e => {
+    setProgress(55, 'Memproses GeoJSON...');
+    setTimeout(() => {
+      try {
+        const geojson = JSON.parse(e.target.result);
+        setProgress(80, 'Memuat ke peta...');
+        setTimeout(() => {
+          closeUploadModal();
+          showLoading('Memuatkan ' + file.name, 'Rendering ' + (geojson.features?.length||0).toLocaleString() + ' features...');
+          setTimeout(() => { addDataset(file.name, geojson, file.size); hideLoading(); }, 300);
+        }, 200);
+      } catch(err) { setProgress(0,''); showToast('❌ Fail GeoJSON tidak sah: ' + err.message); }
+    }, 100);
+  };
+  reader.onerror = () => showToast('❌ Gagal membaca fail');
+  reader.readAsText(file);
+}
+function setProgress(pct, text) { document.getElementById('progress-fill').style.width = pct + '%'; document.getElementById('progress-text').textContent = text; }
+
+// ============================================================
+// EXPORT
+// ============================================================
+function selectExportType(type, el) {
+  currentExportType = type;
+  document.querySelectorAll('.export-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function openExportModal() { document.getElementById('export-overlay').classList.add('show'); document.getElementById('export-progress').style.display = 'none'; }
+function closeExportModal() { document.getElementById('export-overlay').classList.remove('show'); }
+
+async function captureMapWithMarkers() {
+  const mapWrapper = document.getElementById('mapWrapper');
+  const canvas = await html2canvas(mapWrapper, {
+    useCORS: true, allowTaint: true, scale: 1.5, logging: false,
+    ignoreElements: (el) => el.classList?.contains('map-controls') || el.classList?.contains('mode-indicator') || el.classList?.contains('no-data-state') || el.classList?.contains('plot-toolbar') || el.id === 'selection-pulse'
+  });
+  return canvas;
+}
+
+async function runExport() {
+  const type         = currentExportType;
+  const title        = document.getElementById('exp-title-input').value || 'Laporan Geospatial';
+  const includeMap   = document.getElementById('exp-include-map').checked;
+  const includeMarkers = document.getElementById('exp-include-markers').checked;
+  const includeStats = document.getElementById('exp-include-stats').checked;
+  document.getElementById('export-progress').style.display = 'block';
+  document.getElementById('export-progress-text').textContent = 'Menyediakan eksport...';
+  try {
+    if (type === 'geojson') {
+      if (!activeDatasetId) { showToast('⚠️ Tiada dataset aktif'); return; }
+      const ds = datasets[activeDatasetId];
+      const blob = new Blob([JSON.stringify(ds.geojson, null, 2)], { type:'application/json' });
+      triggerDownload(blob, ds.name.replace(/\.(geojsonn?|json)$/i,'') + '-export.geojson');
+      closeExportModal(); showToast('✅ GeoJSON dieksport');
+    } else if (type === 'csv') {
+      if (!activeDatasetId) { showToast('⚠️ Tiada dataset aktif'); return; }
+      const ds = datasets[activeDatasetId];
+      const headers = new Set();
+      ds.features.forEach(f => Object.keys(f.properties||{}).forEach(k => headers.add(k)));
+      const cols = [...headers];
+      let csv = cols.map(c => '"' + c + '"').join(',') + '\n';
+      ds.features.forEach(f => { const p = f.properties || {}; csv += cols.map(c => { const v = p[c] ?? ''; return '"' + String(v).replace(/"/g,'""') + '"'; }).join(',') + '\n'; });
+      triggerDownload(new Blob([csv], { type:'text/csv' }), 'data-lot-' + new Date().toISOString().slice(0,10) + '.csv');
+      closeExportModal(); showToast('✅ CSV dieksport');
+    } else if (type === 'png') {
+      document.getElementById('export-progress-text').textContent = 'Menangkap peta + marker...';
+      const canvas = await captureMapWithMarkers();
+      canvas.toBlob(blob => { if (blob) { triggerDownload(blob, 'peta-' + new Date().toISOString().slice(0,10) + '.png'); closeExportModal(); showToast('✅ Imej peta dieksport'); } }, 'image/png');
+    } else if (type === 'pdf') {
+      await exportPDF(title, includeMap, includeMarkers, includeStats);
+    }
+  } catch(err) {
+    console.error('Export error:', err);
+    showToast('❌ Eksport gagal: ' + err.message);
+  } finally {
+    document.getElementById('export-progress').style.display = 'none';
+  }
+}
+
+async function exportPDF(title, includeMap, includeMarkers, includeStats) {
+  document.getElementById('export-progress-text').textContent = 'Menangkap peta + marker...';
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W=210, H=297, margin=15;
+  let y = margin;
+
+  pdf.setFillColor(46,46,46); pdf.rect(0,0,W,28,'F');
+  pdf.setTextColor(255,255,255); pdf.setFont('helvetica','bold'); pdf.setFontSize(14);
+  pdf.text(title, margin, 12);
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(200,200,200);
+  pdf.text('Platform: Geospatial AI (UZMA Berhad)    Tarikh: ' + new Date().toLocaleDateString('ms-MY') + '    Sistem: GDM2000', margin, 19);
+  pdf.setTextColor(222,145,81); pdf.setFont('helvetica','bold'); pdf.setFontSize(7);
+  pdf.text('GEOSPATIAL AI', W-margin-30, 12);
+  pdf.setFont('helvetica','normal'); pdf.setTextColor(180,130,80); pdf.setFontSize(6);
+  pdf.text('UZMA BERHAD', W-margin-22, 17);
+  y = 34;
+
+  if (uzmaSatActive) {
+    pdf.setFillColor(254,248,243); pdf.setDrawColor(222,145,81); pdf.setLineWidth(0.3);
+    pdf.rect(margin, y, W-margin*2, 7, 'FD');
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(192,114,64);
+    pdf.text('🛰 UZMA-sat AKTIF: seremban_final/ · TMS tiles · WGS84 · Kawasan Seremban, Negeri Sembilan', margin+3, y+4.5);
+    y += 10;
+  }
+
+  if (includeMap) {
+    document.getElementById('export-progress-text').textContent = 'Menangkap screenshot peta...';
+    try {
+      const canvas = await captureMapWithMarkers();
+      const imgData = canvas.toDataURL('image/jpeg', 0.88);
+      const mapW = W - margin*2;
+      const mapH = Math.min(Math.round(mapW * canvas.height / canvas.width), 90);
+      pdf.setDrawColor(220,220,220); pdf.setLineWidth(0.3);
+      pdf.rect(margin, y, mapW, mapH);
+      pdf.addImage(imgData, 'JPEG', margin, y, mapW, mapH);
+      y += mapH + 4;
+      pdf.setFontSize(7); pdf.setTextColor(150,150,150); pdf.setFont('helvetica','normal');
+      pdf.text('Rajah 1: Screenshot peta semasa' + (uzmaSatActive ? ' dengan overlay UZMA-sat (seremban_final/)' : '') + ' · Basemap: ' + document.getElementById('basemap-label').textContent + ' · ' + plotMarkers.length + ' marker', margin, y);
+      y += 7;
+    } catch(e) {
+      console.warn('Map capture failed:', e);
+      pdf.setFontSize(8); pdf.setTextColor(150,150,150);
+      pdf.text('[Peta tidak dapat dieksport]', margin, y + 5); y += 12;
+    }
+  }
+
+  if (includeMarkers && plotMarkers.length > 0) {
+    if (y > H - 50) { pdf.addPage(); y = margin; }
+    y += 2;
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(46,46,46);
+    pdf.text('Plot Marker (' + plotMarkers.length + ')', margin, y); y += 5;
+    const colW=[15,55,55,30,25], headers=['#','Latitud','Longitud','Bentuk','Warna'];
+    pdf.setFillColor(46,46,46); pdf.rect(margin,y,W-margin*2,6,'F');
+    pdf.setTextColor(255,255,255); pdf.setFontSize(7.5);
+    let cx = margin + 2;
+    headers.forEach((h,i) => { pdf.text(h, cx, y+4); cx += colW[i]; });
+    y += 6;
+    plotMarkers.slice(0,20).forEach((m,i) => {
+      pdf.setFillColor(i%2===0?250:255, i%2===0?248:255, i%2===0?243:255);
+      pdf.rect(margin,y,W-margin*2,5.5,'F');
+      pdf.setTextColor(66,66,66); pdf.setFontSize(7);
+      cx = margin + 2;
+      [m.idx, m.lngLat.lat.toFixed(6), m.lngLat.lng.toFixed(6), m.shape, m.color].forEach((v,j) => { pdf.text(String(v), cx, y+3.8); cx += colW[j]; });
+      y += 5.5;
+    });
+    if (plotMarkers.length > 20) { pdf.setFontSize(7); pdf.setTextColor(150,150,150); pdf.text('... dan ' + (plotMarkers.length-20) + ' lagi', margin, y+3); y += 6; }
+    y += 4;
+  }
+
+  if (includeStats && activeDatasetId) {
+    const ds = datasets[activeDatasetId];
+    if (y > H - 60) { pdf.addPage(); y = margin; }
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(46,46,46);
+    pdf.text('Statistik Dataset: ' + ds.name, margin, y); y += 5;
+    const boxes = [
+      { label:'Jumlah Lot', val: ds.features.length.toLocaleString() },
+      { label:'Kelas Gunatanah', val: Object.keys(ds.classCount).length },
+      { label:'Plot Marker', val: plotMarkers.length },
+    ];
+    const bw = (W - margin*2 - 8) / 3;
+    boxes.forEach((b, i) => {
+      const bx = margin + i*(bw+4);
+      pdf.setFillColor(254,248,243); pdf.setDrawColor(222,145,81); pdf.setLineWidth(0.5);
+      pdf.roundedRect(bx, y, bw, 14, 2, 2, 'FD');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(46,46,46);
+      pdf.text(String(b.val), bx+bw/2, y+7, { align:'center' });
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(150,150,150);
+      pdf.text(b.label, bx+bw/2, y+11.5, { align:'center' });
+    });
+    y += 18;
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(46,46,46);
+    pdf.text('Taburan Kelas Gunatanah', margin, y); y += 4;
+    const total = ds.features.length;
+    Object.entries(ds.classCount).sort((a,b) => b[1]-a[1]).slice(0,12).forEach(([cls,count],i) => {
+      if (y > H - 20) { pdf.addPage(); y = margin; }
+      pdf.setFillColor(i%2===0?250:255, i%2===0?248:255, i%2===0?243:255);
+      pdf.rect(margin, y, W-margin*2, 5.5, 'F');
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(66,66,66);
+      pdf.text(cls, margin+2, y+3.8);
+      pdf.text(count.toLocaleString(), margin+90, y+3.8);
+      pdf.text(((count/total)*100).toFixed(1)+'%', margin+115, y+3.8);
+      const barW = (count/total) * (W-margin*2-135);
+      pdf.setFillColor(222,145,81); pdf.rect(margin+130, y+1.5, barW, 2.5, 'F');
+      y += 5.5;
+    });
+    y += 5;
+  }
+
+  const totalPages = pdf.internal.getNumberOfPages();
+  for (let pg=1; pg<=totalPages; pg++) {
+    pdf.setPage(pg);
+    pdf.setFillColor(46,46,46); pdf.rect(0, H-10, W, 10, 'F');
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(200,200,200);
+    pdf.text('Geospatial AI — UZMA Berhad | Dijana pada ' + new Date().toLocaleString('ms-MY'), margin, H-4);
+    pdf.text('Halaman ' + pg + ' / ' + totalPages, W-margin, H-4, { align:'right' });
+  }
+
+  document.getElementById('export-progress-text').textContent = 'Muat turun PDF...';
+  pdf.save(title.replace(/\s+/g,'-').toLowerCase() + '-' + new Date().toISOString().slice(0,10) + '.pdf');
+  closeExportModal();
+  showToast('✅ PDF berjaya dieksport!');
+  addActivityLog('PDF dieksport', title);
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+function flyToData() {
+  if (uzmaSatActive) { map.fitBounds(UZMASAT_COORDS.bounds, { padding:40, duration:800 }); return; }
+  if (window._dataBounds) map.fitBounds(window._dataBounds, { padding:60, duration:800 });
+}
+
+function zoomToSelected() {
+  if (!selectedFeature) return;
+  const coords = flattenCoords(selectedFeature.geometry); if (!coords.length) return;
+  const avgLng = coords.reduce((s,[lng]) => s+lng, 0) / coords.length;
+  const avgLat = coords.reduce((s,[,lat]) => s+lat, 0) / coords.length;
+  map.flyTo({ center:[avgLng, avgLat], zoom:17 });
+}
+
+function copyCoords() {
+  const lat = document.getElementById('p-lat')?.textContent;
+  const lng = document.getElementById('p-lng')?.textContent;
+  if (lat && lng && lat !== '—') { navigator.clipboard.writeText(`${lat}, ${lng}`); showToast('📋 Koordinat disalin'); }
+}
+
+function switchTab(el, tabId) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById('tab-' + tabId).style.display = 'block';
+}
+
+function addActivityLog(title, sub) {
+  const list = document.getElementById('activity-list');
+  const now  = new Date().toLocaleTimeString('ms-MY');
+  const item = document.createElement('div');
+  item.className = 'activity-item';
+  item.innerHTML = `<div class="act-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div><div class="act-info"><div class="act-title">${title}</div><div class="act-time">${now} · ${sub}</div></div>`;
+  list.insertBefore(item, list.firstChild);
+}
+
+function showToast(msg, dur=3000) {
+  if (!msg) return;
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', dur);
+}
+function showLoading(text, sub) {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-sub').textContent  = sub;
+  document.getElementById('loading-overlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+</script>
+</body>
+</html>
