@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -148,16 +148,8 @@
   .basemap-option-thumb { width:30px; height:22px; border-radius:4px; flex-shrink:0; border:1px solid rgba(66,66,66,0.1); display:flex; align-items:center; justify-content:center; font-size:13px; }
   .uzmasat-badge { font-size:8.5px; background:linear-gradient(135deg,#DE9151,#C07240); color:white; padding:1px 6px; border-radius:10px; font-weight:700; letter-spacing:0.05em; white-space:nowrap; }
 
-  /* UZMA-sat opacity slider */
-  .uzmasat-controls { display:none; position:absolute; top:calc(100% + 5px); right:0; background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12); padding:13px 15px; min-width:230px; }
-  .uzmasat-controls.open { display:block; }
-  .uzmasat-ctrl-title { font-size:9px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-  .uzmasat-ctrl-title span { background:linear-gradient(135deg,#DE9151,#C07240); color:white; padding:1px 7px; border-radius:10px; font-size:8px; }
+  /* UZMA-sat inline sub-controls */
   .uzmasat-ctrl-row { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
-  .uzmasat-ctrl-row label { font-size:11.5px; color:var(--charcoal); flex:1; }
-  .uzmasat-ctrl-row input[type=range] { width:90px; accent-color:var(--orange); }
-  .uzmasat-ctrl-row .val-display { font-size:11px; color:rgba(66,66,66,0.5); min-width:30px; text-align:right; }
-  .uzmasat-info { font-size:10px; color:rgba(66,66,66,0.4); line-height:1.5; padding-top:8px; border-top:1px solid rgba(66,66,66,0.07); margin-top:4px; }
 
   /* PLOT TOOLBAR */
   .plot-toolbar { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:5; background:white; border:1px solid rgba(66,66,66,0.15); border-radius:12px; padding:10px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.12); align-items:center; animation:slideUp 0.25s ease; }
@@ -295,6 +287,34 @@
   .export-progress .ep-spinner { width:32px; height:32px; border:2px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 9px; }
   .export-progress .ep-text { font-size:12px; color:rgba(66,66,66,0.48); }
 
+  /* SELECT BY AREA MODAL */
+  .area-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center; }
+  .area-overlay.show { display:flex; }
+  .area-box { background:white; border-radius:18px; padding:32px; max-width:500px; width:90%; animation:slideIn 0.25s ease; max-height:85vh; display:flex; flex-direction:column; }
+  .area-box h2 { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--charcoal-dark); margin-bottom:5px; }
+  .area-box .area-sub { font-size:12px; color:rgba(66,66,66,0.45); margin-bottom:22px; line-height:1.5; }
+  .area-search { position:relative; margin-bottom:14px; }
+  .area-search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:13px; height:13px; color:rgba(66,66,66,0.35); pointer-events:none; }
+  .area-search input { width:100%; height:36px; border:1px solid rgba(66,66,66,0.15); border-radius:8px; padding:0 10px 0 32px; font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--charcoal); background:var(--cream); outline:none; transition:border-color 0.2s; }
+  .area-search input:focus { border-color:var(--orange); }
+  .area-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; overflow-y:auto; flex:1; padding-right:2px; }
+  .area-grid::-webkit-scrollbar { width:4px; }
+  .area-grid::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:4px; }
+  .area-card { border:1.5px solid rgba(66,66,66,0.10); border-radius:12px; padding:14px 13px; cursor:pointer; transition:all 0.18s; background:white; text-align:left; position:relative; overflow:visible; height: auto;  }
+  .area-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--orange); transform:scaleX(0); transition:transform 0.2s; transform-origin:left; }
+  .area-card:hover { border-color:var(--orange); box-shadow:0 3px 14px rgba(222,145,81,0.18); transform:translateY(-1px); }
+  .area-card:hover::before { transform:scaleX(1); }
+  .area-card-icon { font-size:22px; margin-bottom:8px; }
+  .area-card-name { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--charcoal-dark); margin-bottom:3px; }
+  .area-card-desc { font-size:10.5px; color:rgba(66,66,66,0.45); line-height:1.4; }
+  .area-card-meta { display:flex; align-items:center; gap:5px; margin-top:8px; flex-wrap:wrap; }
+  .area-card-tag { font-size:9px; padding:2px 7px; border-radius:20px; font-weight:600; background:rgba(222,145,81,0.1); color:var(--orange); }
+  .area-card-tag.green { background:rgba(76,175,80,0.1); color:#388E3C; }
+  .area-card-tag.blue { background:rgba(30,136,229,0.08); color:#1565C0; }
+  .area-card-empty { grid-column:1/-1; text-align:center; padding:30px; color:rgba(66,66,66,0.35); font-size:12.5px; }
+  .area-cancel { margin-top:16px; width:100%; height:38px; background:rgba(66,66,66,0.07); border:none; border-radius:9px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--charcoal); cursor:pointer; transition:background 0.15s; flex-shrink:0; }
+  .area-cancel:hover { background:rgba(66,66,66,0.12); }
+
   /* LOADING */
   .loading-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:3000; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
   .loading-overlay.show { display:flex; }
@@ -347,6 +367,99 @@
 
   @keyframes spin    { to{transform:rotate(360deg);} }
   @keyframes slideIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+  /* LOT LIST MODAL */
+  .lotlist-overlay { position:fixed; inset:0; background:rgba(46,46,46,0.45); backdrop-filter:blur(3px); z-index:1000; display:none; align-items:center; justify-content:center; }
+  .lotlist-overlay.show { display:flex; }
+  .lotlist-box { background:white; border-radius:16px; width:860px; max-width:96vw; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.2); overflow:hidden; }
+  .lotlist-header { padding:18px 22px 14px; border-bottom:1px solid rgba(66,66,66,0.08); display:flex; align-items:flex-start; justify-content:space-between; flex-shrink:0; gap:12px; }
+  .lotlist-header-left .ll-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--charcoal-dark); }
+  .lotlist-header-left .ll-sub { font-size:11px; color:rgba(66,66,66,0.38); margin-top:2px; }
+  .lotlist-close { width:30px; height:30px; border:none; background:rgba(66,66,66,0.06); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.15s; }
+  .lotlist-close:hover { background:rgba(66,66,66,0.12); }
+  .lotlist-close svg { width:14px; height:14px; color:var(--charcoal); }
+  .lotlist-toolbar { display:flex; align-items:center; gap:8px; padding:10px 22px; border-bottom:1px solid rgba(66,66,66,0.07); flex-shrink:0; flex-wrap:wrap; }
+  .ll-search { position:relative; flex:1; min-width:160px; }
+  .ll-search svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); width:13px; height:13px; color:rgba(66,66,66,0.35); pointer-events:none; }
+  .ll-search input { width:100%; height:32px; border:1px solid rgba(66,66,66,0.15); border-radius:7px; padding:0 10px 0 29px; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--charcoal); background:var(--cream); outline:none; transition:border-color 0.2s; }
+  .ll-search input:focus { border-color:var(--orange); }
+  .ll-filter-select { height:32px; padding:0 10px; border:1px solid rgba(66,66,66,0.15); border-radius:7px; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--charcoal); background:var(--cream); outline:none; cursor:pointer; }
+  .ll-sort-btn { height:32px; padding:0 11px; border:1px solid rgba(66,66,66,0.15); border-radius:7px; font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--charcoal); background:transparent; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s; white-space:nowrap; }
+  .ll-sort-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .ll-sort-btn.active { background:rgba(222,145,81,0.08); border-color:var(--orange); color:var(--orange); }
+  .ll-sort-btn svg { width:12px; height:12px; }
+  .lotlist-table-wrap { flex:1; overflow-y:auto; }
+  .lotlist-table-wrap::-webkit-scrollbar { width:4px; }
+  .lotlist-table-wrap::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:4px; }
+  .ll-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .ll-table thead { position:sticky; top:0; background:white; z-index:1; box-shadow:0 1px 0 rgba(66,66,66,0.08); }
+  .ll-table th { padding:9px 14px; text-align:left; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:rgba(66,66,66,0.4); white-space:nowrap; cursor:pointer; user-select:none; }
+  .ll-table th:hover { color:var(--orange); }
+  .ll-table th.sort-asc::after { content:' ▲'; font-size:8px; }
+  .ll-table th.sort-desc::after { content:' ▼'; font-size:8px; }
+  .ll-table td { padding:8px 14px; border-bottom:1px solid rgba(66,66,66,0.05); color:var(--charcoal); vertical-align:middle; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ll-table tr:hover td { background:rgba(222,145,81,0.04); }
+  .ll-table tr.ll-row-selected td { background:rgba(222,145,81,0.1); }
+  .ll-class-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; flex-shrink:0; }
+  .ll-action-btn { width:26px; height:26px; border:1px solid rgba(66,66,66,0.13); border-radius:6px; background:transparent; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s; margin-right:3px; }
+  .ll-action-btn:hover { border-color:var(--orange); background:rgba(222,145,81,0.08); color:var(--orange); }
+  .ll-action-btn svg { width:11px; height:11px; }
+  .ll-empty { text-align:center; padding:44px 20px; color:rgba(66,66,66,0.35); font-size:12.5px; }
+  .lotlist-footer { padding:10px 22px; border-top:1px solid rgba(66,66,66,0.07); display:flex; align-items:center; gap:10px; font-size:11px; color:rgba(66,66,66,0.4); flex-shrink:0; flex-wrap:wrap; }
+  .ll-pagination { display:flex; align-items:center; gap:4px; margin-left:auto; }
+  .ll-page-btn { width:28px; height:28px; border:1px solid rgba(66,66,66,0.13); border-radius:6px; background:transparent; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--charcoal); transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
+  .ll-page-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .ll-page-btn.active { background:var(--orange); border-color:var(--orange); color:white; }
+  .ll-page-btn:disabled { opacity:0.3; cursor:not-allowed; }
+  /* lotlist-table aliases (maps ll-table to lotlist-table class used by JS) */
+  .lotlist-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .lotlist-table thead { position:sticky; top:0; background:white; z-index:2; box-shadow:0 1px 0 rgba(66,66,66,0.08); }
+  .lotlist-table th { background:var(--cream); padding:9px 14px; text-align:left; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:rgba(66,66,66,0.42); border-bottom:1px solid rgba(66,66,66,0.1); white-space:nowrap; cursor:pointer; user-select:none; }
+  .lotlist-table th:hover { color:var(--orange); }
+  .lotlist-table th .sort-arrow { margin-left:4px; opacity:0.4; font-size:9px; }
+  .lotlist-table th.sorted { color:var(--orange); }
+  .lotlist-table th.sorted .sort-arrow { opacity:1; }
+  .lotlist-table td { padding:8px 14px; border-bottom:1px solid rgba(66,66,66,0.05); color:var(--charcoal); vertical-align:middle; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lotlist-table tr:hover td { background:rgba(222,145,81,0.04); }
+  .lot-class-badge { display:inline-block; font-size:9.5px; padding:2px 7px; border-radius:4px; font-weight:600; }
+  .lot-action-btn { height:24px; padding:0 9px; border:1px solid rgba(66,66,66,0.15); border-radius:5px; font-family:'DM Sans',sans-serif; font-size:10.5px; color:var(--charcoal); background:transparent; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+  .lot-action-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .lotlist-empty { text-align:center; padding:50px 20px; }
+  .lotlist-pagination { display:flex; align-items:center; justify-content:space-between; padding:10px 22px; border-top:1px solid rgba(66,66,66,0.08); flex-shrink:0; flex-wrap:wrap; gap:8px; }
+  .ll-page-info { font-size:11px; color:rgba(66,66,66,0.38); }
+  .ll-page-btns { display:flex; align-items:center; gap:4px; }
+
+  /* HISTORY ANALYSIS MODAL */
+  .history-overlay { position:fixed; inset:0; background:rgba(46,46,46,0.45); backdrop-filter:blur(3px); z-index:1000; display:none; align-items:center; justify-content:center; }
+  .history-overlay.show { display:flex; }
+  .history-box { background:white; border-radius:16px; width:600px; max-width:95vw; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.2); overflow:hidden; }
+  .history-header { padding:20px 22px 14px; border-bottom:1px solid rgba(66,66,66,0.08); display:flex; align-items:flex-start; justify-content:space-between; flex-shrink:0; }
+  .history-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--charcoal-dark); }
+  .history-sub { font-size:11px; color:rgba(66,66,66,0.38); margin-top:2px; }
+  .history-close { width:30px; height:30px; border:none; background:rgba(66,66,66,0.06); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.15s; }
+  .history-close:hover { background:rgba(66,66,66,0.12); }
+  .history-close svg { width:14px; height:14px; color:var(--charcoal); }
+  .history-filter-bar { display:flex; align-items:center; gap:5px; padding:10px 22px; border-bottom:1px solid rgba(66,66,66,0.07); flex-shrink:0; flex-wrap:wrap; }
+  .hfilt { height:27px; padding:0 10px; border:1px solid rgba(66,66,66,0.14); border-radius:100px; font-family:'DM Sans',sans-serif; font-size:11.5px; color:rgba(66,66,66,0.52); background:transparent; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+  .hfilt:hover { border-color:var(--orange); color:var(--orange); }
+  .hfilt.active { background:var(--orange); border-color:var(--orange); color:white; }
+  .history-timeline { flex:1; overflow-y:auto; padding:14px 22px; }
+  .history-timeline::-webkit-scrollbar { width:4px; }
+  .history-timeline::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:4px; }
+  .hist-item { display:flex; gap:12px; margin-bottom:16px; position:relative; }
+  .hist-item:not(:last-child)::before { content:''; position:absolute; left:14px; top:28px; bottom:-16px; width:1px; background:rgba(66,66,66,0.08); }
+  .hist-icon { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+  .hist-body { flex:1; padding-top:2px; }
+  .hist-title { font-size:13px; font-weight:500; color:var(--charcoal-dark); }
+  .hist-detail { font-size:11px; color:rgba(66,66,66,0.48); margin-top:2px; line-height:1.5; }
+  .hist-time { font-size:10px; color:rgba(66,66,66,0.3); margin-top:3px; }
+  .hist-tag { display:inline-block; font-size:9.5px; padding:1px 7px; border-radius:4px; font-weight:600; margin-right:4px; }
+  .tag-dataset { background:rgba(76,175,80,0.1); color:#388E3C; }
+  .tag-marker  { background:rgba(229,57,53,0.1); color:#c62828; }
+  .tag-export  { background:rgba(30,136,229,0.1); color:#1565C0; }
+  .tag-map     { background:rgba(156,39,176,0.1); color:#7B1FA2; }
+  .tag-system  { background:rgba(66,66,66,0.08); color:rgba(66,66,66,0.5); }
+  .history-empty { text-align:center; padding:40px 20px; }
+  .history-footer { padding:10px 22px; border-top:1px solid rgba(66,66,66,0.07); font-size:10.5px; color:rgba(66,66,66,0.35); display:flex; gap:8px; align-items:center; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -389,13 +502,13 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Lot List
     </a>
-    <a href="#" class="nav-item">
+    <a href="#" class="nav-item" onclick="openHistoryModal();return false;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       History Analysis
     </a>
   </div>
   <div class="sidebar-section">
-    <div class="section-label">Alatan</div>
+    <div class="section-label">Tools</div>
     <a href="#" class="nav-item" onclick="openUploadModal();return false;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Upload GeoJSON
@@ -403,6 +516,10 @@
     <a href="#" class="nav-item" onclick="openExportModal();return false;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Data Export
+    </a>
+    <a href="#" class="nav-item" onclick="openAreaModal();return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M3 14h7v7H3z"/><path d="M14 14h7v7h-7z"/></svg>
+      Select by Area
     </a>
   </div>
   <div class="sidebar-footer">
@@ -426,7 +543,7 @@
     <div class="topbar-spacer"></div>
     <div class="topbar-search" style="position:relative;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input id="search-input" type="text" placeholder="Search for address, sub-district, lot..." autocomplete="off"/>
+      <input id="search-input" type="text" placeholder="Search address, sub-district, lot..." autocomplete="off"/>
       <div id="search-dropdown" class="search-dd"></div>
     </div>
     <button class="topbar-btn upload-btn" onclick="openUploadModal()">
@@ -439,7 +556,7 @@
     </button>
     <button class="topbar-btn primary" onclick="flyToData()" id="btn-fly" style="display:none;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
-      Again
+      Recenter
     </button>
   </div>
 
@@ -448,7 +565,7 @@
     <div class="stats-strip">
       <div class="stat-card">
         <div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div>
-        <div class="stat-info"><div class="val" id="stat-total">—</div><div class="lbl">Total Lot</div></div>
+        <div class="stat-info"><div class="val" id="stat-total">—</div><div class="lbl">Total Lots</div></div>
       </div>
       <div class="stat-card" id="sc-perumahan" style="display:none;">
         <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
@@ -460,7 +577,7 @@
       </div>
       <div class="stat-card" id="sc-niaga" style="display:none;">
         <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
-        <div class="stat-info"><div class="val" id="stat-niaga">—</div><div class="lbl">Business</div></div>
+        <div class="stat-info"><div class="val" id="stat-niaga">—</div><div class="lbl">Commercial</div></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-10l6-3m0 16l5.447-2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m0 13V7"/></svg></div>
@@ -470,13 +587,13 @@
         <div class="stat-icon" style="background:rgba(229,57,53,0.1);color:#e53935;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="2.5"/></svg>
         </div>
-        <div class="stat-info"><div class="val" id="stat-markers">0</div><div class="lbl">Plot Marker</div></div>
+        <div class="stat-info"><div class="val" id="stat-markers">0</div><div class="lbl">Plot Markers</div></div>
       </div>
     </div>
 
     <!-- LAYER BADGE -->
     <div class="layer-badge" id="layer-badge" style="display:none;">
-      <div class="layer-badge-title">Map Layer</div>
+      <div class="layer-badge-title">Map Layers</div>
       <div id="layer-items-container"></div>
     </div>
 
@@ -503,15 +620,15 @@
           <div class="basemap-option-thumb">🛰️</div>
           <div><div style="font-size:12px;font-weight:500;">Google Satellite</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Aerial imagery</div></div>
         </div>
-        <div class="basemap-option" onclick="switchBasemap('google-hybrid','Google Hibrid',this)">
+        <div class="basemap-option" onclick="switchBasemap('google-hybrid','Google Hybrid',this)">
           <div class="basemap-option-thumb">🌍</div>
-          <div><div style="font-size:12px;font-weight:500;">Google Hibrid</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Satelit + label</div></div>
+          <div><div style="font-size:12px;font-weight:500;">Google Hybrid</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Satellite + labels</div></div>
         </div>
         <div class="basemap-option" onclick="switchBasemap('osm','OpenStreetMap',this)">
           <div class="basemap-option-thumb">🟦</div>
           <div><div style="font-size:12px;font-weight:500;">OpenStreetMap</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Community map</div></div>
         </div>
-        <div class="basemap-option" onclick="switchBasemap('uzma-sat','UZMA-sat',this)" style="border-top:2px solid rgba(222,145,81,0.2);">
+        <div class="basemap-option" id="basemap-opt-uzmasat" onclick="switchBasemap('uzma-sat','UZMA-sat',this)" style="border-top:2px solid rgba(222,145,81,0.2);">
           <div class="basemap-option-thumb" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-color:rgba(222,145,81,0.3);">
             <span style="font-size:11px;">🛰</span>
           </div>
@@ -523,29 +640,31 @@
             <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban_final/ · TMS · zoom 0–16</div>
           </div>
         </div>
+        <!-- UZMA-sat inline controls (shown when UZMA-sat is active) -->
+        <div class="uzmasat-controls" id="uzmasat-controls" style="display:none;padding:10px 13px 11px;border-top:1px solid rgba(222,145,81,0.15);background:rgba(222,145,81,0.04);">
+          <div class="uzmasat-ctrl-row">
+            <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Opacity</label>
+            <input type="range" id="uzmasat-opacity" min="10" max="100" value="100" oninput="updateUzmaSatOpacity(this.value)" style="width:80px;accent-color:var(--orange);"/>
+            <span id="opacity-val" style="font-size:11px;color:rgba(66,66,66,0.5);min-width:34px;text-align:right;">100%</span>
+          </div>
+          <div class="uzmasat-ctrl-row" style="margin-bottom:0;">
+            <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Show lot overlay</label>
+            <div class="layer-toggle on" id="tog-overlay-on" onclick="toggleGeoJsonOverlay(this)" style="flex-shrink:0;"></div>
+          </div>
+        </div>
       </div>
 
-      <div class="uzmasat-controls" id="uzmasat-controls">
-        <div class="uzmasat-ctrl-title">
-          🛰 UZMA-sat
-          <span>ACTIVE</span>
-        </div>
+      <!-- UZMA-sat inline sub-panel (shown inside dropdown when active) -->
+      <div class="uzmasat-controls" id="uzmasat-controls" style="display:none;padding:10px 13px 11px;border-top:1px solid rgba(222,145,81,0.15);background:rgba(222,145,81,0.04);">
         <div class="uzmasat-ctrl-row">
-          <label>Image opacity</label>
-          <input type="range" id="uzmasat-opacity" min="10" max="100" value="100" oninput="updateUzmaSatOpacity(this.value)"/>
-          <span class="val-display" id="opacity-val">100%</span>
+          <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Opacity</label>
+          <input type="range" id="uzmasat-opacity" min="10" max="100" value="100" oninput="updateUzmaSatOpacity(this.value)" style="width:80px;accent-color:var(--orange);"/>
+          <span class="val-display" id="opacity-val" style="font-size:11px;color:rgba(66,66,66,0.5);min-width:34px;text-align:right;">100%</span>
         </div>
-        <div class="uzmasat-ctrl-row">
-          <label>Overlay lot GeoJSON</label>
+        <div class="uzmasat-ctrl-row" style="margin-bottom:0;">
+          <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Show lot overlay</label>
           <div class="layer-toggle on" id="tog-overlay-on" onclick="toggleGeoJsonOverlay(this)" style="flex-shrink:0;"></div>
         </div>
-        <div class="uzmasat-info">
-          📐 Tiles: seremban_final/ · zoom 0–16<br>
-          📍 Area: Seremban, Negeri Sembilan<br>
-          📁 Source: seremban_final/ (TMS · gdal raster tile)<br>
-          🗓 Proprietary UZMA Berhad
-        </div>
-        <button onclick="switchBasemap('google-road','Google Maps',document.querySelector('.basemap-option'))" style="margin-top:9px;width:100%;height:28px;border:1px solid rgba(66,66,66,0.15);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(66,66,66,0.6);background:transparent;cursor:pointer;">← Back to standard basemap</button>
       </div>
     </div>
 
@@ -561,7 +680,7 @@
       <div class="no-data-state" id="no-data-state">
         <div class="no-data-icon">🗺️</div>
         <div class="no-data-title">No GeoJSON Data</div>
-        <div class="no-data-sub">Upload file <strong>GeoJSON</strong> lot to start geospatial analysis.</div>
+        <div class="no-data-sub">Upload a <strong>GeoJSON</strong> lot file to begin geospatial analysis.</div>
         <button class="no-data-btn" onclick="openUploadModal()">📂 Upload GeoJSON</button>
       </div>
 
@@ -569,10 +688,10 @@
       <div class="plot-toolbar" id="plot-toolbar">
         <span class="pt-label">Shape</span>
         <button class="pt-shape active" id="shape-pin"    onclick="setMarkerShape('pin',this)"    title="Pin">📍</button>
-        <button class="pt-shape"        id="shape-circle" onclick="setMarkerShape('circle',this)" title="Titik">⬤</button>
+        <button class="pt-shape"        id="shape-circle" onclick="setMarkerShape('circle',this)" title="Point">⬤</button>
         <button class="pt-shape"        id="shape-flag"   onclick="setMarkerShape('flag',this)"   title="Flag">🚩</button>
-        <button class="pt-shape"        id="shape-star"   onclick="setMarkerShape('star',this)"   title="Bintang">⭐</button>
-        <button class="pt-shape"        id="shape-cross"  onclick="setMarkerShape('cross',this)"  title="Silang">✚</button>
+        <button class="pt-shape"        id="shape-star"   onclick="setMarkerShape('star',this)"   title="Star">⭐</button>
+        <button class="pt-shape"        id="shape-cross"  onclick="setMarkerShape('cross',this)"  title="Cross">✚</button>
         <div class="pt-divider"></div>
         <span class="pt-label">Colour</span>
         <div class="pt-color active" style="background:#e53935;" onclick="setMarkerColor('#e53935',this)"></div>
@@ -587,21 +706,25 @@
         <select class="pt-size" id="marker-size-sel" onchange="markerSize=parseInt(this.value)">
           <option value="22">Small</option>
           <option value="30" selected>Medium</option>
-          <option value="40">Big</option>
+          <option value="40">Large</option>
         </select>
         <div class="pt-divider"></div>
-        <span class="pt-count" id="marker-count-label">0 marker</span>
-        <button class="pt-clear" onclick="clearAllMarkers()">🗑️ Remove All</button>
+        <span class="pt-count" id="marker-count-label">0 markers</span>
+        <button class="pt-clear" onclick="clearAllMarkers()">🗑️ Clear All</button>
+        <div class="pt-divider"></div>
+        <button onclick="setMapMode('navigate', document.getElementById('mode-navigate'))" title="Close Plot Mode" style="width:28px;height:28px;border:1px solid rgba(66,66,66,0.15);border-radius:6px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;" onmouseenter="this.style.background='rgba(229,57,53,0.08)';this.style.borderColor='#e53935';this.style.color='#e53935';" onmouseleave="this.style.background='transparent';this.style.borderColor='rgba(66,66,66,0.15)';this.style.color='inherit';">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
 
       <div class="map-controls">
         <button class="map-ctrl-btn active" id="mode-navigate" onclick="setMapMode('navigate',this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-          Navigation
+          Navigate
         </button>
         <button class="map-ctrl-btn" id="mode-select" onclick="setMapMode('select',this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Choose Lot
+          Select Lot
         </button>
         <button class="map-ctrl-btn" id="mode-plot" onclick="setMapMode('plot',this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="2"/></svg>
@@ -617,7 +740,7 @@
         </button>
         <button class="map-ctrl-btn" onclick="flyToData()" id="btn-semula" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
-          Again
+          Recenter
         </button>
       </div>
     </div>
@@ -626,12 +749,12 @@
     <div class="right-panel">
       <div class="panel-header">
         <div class="ph-title">Analysis Panel</div>
-        <div class="ph-sub" id="panel-sub">No data · Upload GeoJSON to start</div>
+        <div class="ph-sub" id="panel-sub">No data · Upload GeoJSON to begin</div>
       </div>
       <div class="panel-tabs">
         <div class="ptab active" onclick="switchTab(this,'overview')">Summary</div>
-        <div class="ptab" onclick="switchTab(this,'parcel')">Info Lot</div>
-        <div class="ptab" onclick="switchTab(this,'layers')">Layer</div>
+        <div class="ptab" onclick="switchTab(this,'parcel')">Lot Info</div>
+        <div class="ptab" onclick="switchTab(this,'layers')">Layers</div>
         <div class="ptab" onclick="switchTab(this,'activity')">Activity</div>
       </div>
       <div class="panel-body">
@@ -641,14 +764,14 @@
           <div id="overview-no-data" style="text-align:center;padding:36px 18px;">
             <div style="font-size:30px;margin-bottom:10px;">📊</div>
             <div style="font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;color:var(--charcoal-dark);margin-bottom:5px;">No Data</div>
-            <div style="font-size:11.5px;color:rgba(66,66,66,0.38);line-height:1.6;">Upload a GeoJSON file to view statistics and analysis of land use distribution.</div>
-            <button onclick="openUploadModal()" style="margin-top:14px;height:34px;padding:0 18px;background:var(--orange);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:white;cursor:pointer;">Upload Sekarang</button>
+            <div style="font-size:11.5px;color:rgba(66,66,66,0.38);line-height:1.6;">Upload a GeoJSON file to view statistics and land use distribution analysis.</div>
+            <button onclick="openUploadModal()" style="margin-top:14px;height:34px;padding:0 18px;background:var(--orange);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:white;cursor:pointer;">Upload Now</button>
           </div>
           <div id="overview-charts" style="display:none;">
             <div class="chart-block">
               <div class="cb-title">Land Use Class Distribution</div>
               <div class="bar-chart" id="bar-chart-container"></div>
-              <div style="font-size:9.5px;color:rgba(66,66,66,0.32);text-align:center;">Click the bar to filter map layers.</div>
+              <div style="font-size:9.5px;color:rgba(66,66,66,0.32);text-align:center;">Click a bar to filter map layers.</div>
             </div>
             <div class="chart-block">
               <div class="cb-title">Distribution by Class</div>
@@ -661,11 +784,11 @@
             <div class="chart-block">
               <div class="cb-title">Data Source Information</div>
               <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Active File</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filename">—</div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Total Feature</div><div class="lu-pct" style="font-size:10.5px;" id="info-total">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Total Features</div><div class="lu-pct" style="font-size:10.5px;" id="info-total">—</div></div>
               <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">File Size</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filesize">—</div></div>
               <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Platform</div><div class="lu-pct" style="font-size:10.5px;"><span class="pc-badge badge-geo">Geospatial AI</span></div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Referral System</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);">GDM2000</div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Upload</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-loaded">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Reference System</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);">GDM2000</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Loaded At</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-loaded">—</div></div>
             </div>
           </div>
         </div>
@@ -675,7 +798,7 @@
           <div id="no-parcel-msg" style="text-align:center;padding:36px 18px;">
             <div style="font-size:30px;margin-bottom:10px;">🗺️</div>
             <div style="font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;color:var(--charcoal-dark);margin-bottom:5px;">No Lot Selected</div>
-            <div style="font-size:11.5px;color:rgba(66,66,66,0.38);line-height:1.6;">Activate <strong>Lot Select Mode</strong> then click any lot on the map.</div>
+            <div style="font-size:11.5px;color:rgba(66,66,66,0.38);line-height:1.6;">Activate <strong>Select Lot Mode</strong> then click any lot on the map.</div>
           </div>
           <div id="parcel-detail" style="display:none;">
             <div class="parcel-card">
@@ -684,10 +807,10 @@
               <div id="parcel-props-container"></div>
             </div>
             <div class="chart-block">
-              <div class="cb-title">Action</div>
+              <div class="cb-title">Actions</div>
               <div style="display:flex;flex-direction:column;gap:7px;">
                 <button onclick="zoomToSelected()" style="height:33px;background:transparent;border:1px solid rgba(66,66,66,0.18);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--charcoal);cursor:pointer;">🔍 Zoom to Lot</button>
-                <button onclick="copyCoords()" style="height:33px;background:transparent;border:1px solid rgba(66,66,66,0.18);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--charcoal);cursor:pointer;">📋 Salin Koordinat</button>
+                <button onclick="copyCoords()" style="height:33px;background:transparent;border:1px solid rgba(66,66,66,0.18);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--charcoal);cursor:pointer;">📋 Copy Coordinates</button>
               </div>
             </div>
           </div>
@@ -706,11 +829,11 @@
               <div class="geo-cat-info">
                 <div class="geo-cat-name" style="display:flex;align-items:center;gap:6px;">
                   UZMA-sat
-                  <span class="uzmasat-badge" style="font-size:8px;">PROPRIETARI</span>
+                  <span class="uzmasat-badge" style="font-size:8px;">PROPRIETARY</span>
                 </div>
                 <div class="geo-cat-desc">Raster tiles (seremban_final/) · zoom 0–16 — Seremban</div>
               </div>
-              <span class="geo-cat-badge demo" id="badge-uzmasat">Tersedia</span>
+              <span class="geo-cat-badge demo" id="badge-uzmasat">Available</span>
               <div class="layer-toggle off" id="tog-uzmasat" onclick="activateUzmaSat(this)" style="margin-left:6px;"></div>
             </div>
             <div id="uzmasat-layer-info" style="display:none;padding:0 12px 11px;font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;border-top:1px solid rgba(66,66,66,0.06);margin-top:0;padding-top:9px;">
@@ -724,39 +847,39 @@
           <div class="geo-cat-item" id="gcat-topo">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(101,115,85,0.12);">🏔️</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Topografi</div><div class="geo-cat-desc">Bukit, cerun, kontur, ketinggian</div></div>
-              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="geo-cat-info"><div class="geo-cat-name">Topography</div><div class="geo-cat-desc">Hills, slopes, contours, elevation</div></div>
+              <span class="geo-cat-badge">Data Inactive</span>
               <div class="layer-toggle off" id="tog-topo" onclick="toggleGeoCat('topo',this)" style="margin-left:6px;"></div>
             </div>
           </div>
           <div class="geo-cat-item" id="gcat-hydro">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(30,136,229,0.12);">💧</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Hydrography</div><div class="geo-cat-desc">Sungai, tasik, lembangan air</div></div>
-              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="geo-cat-info"><div class="geo-cat-name">Hydrography</div><div class="geo-cat-desc">Rivers, lakes, water basins</div></div>
+              <span class="geo-cat-badge">Data Inactive</span>
               <div class="layer-toggle off" id="tog-hydro" onclick="toggleGeoCat('hydro',this)" style="margin-left:6px;"></div>
             </div>
           </div>
           <div class="geo-cat-item" id="gcat-transport">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(66,66,66,0.08);">🛣️</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Transportation</div><div class="geo-cat-desc">Jalan raya, rel, lebuh raya</div></div>
-              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="geo-cat-info"><div class="geo-cat-name">Transportation</div><div class="geo-cat-desc">Roads, rail, highways</div></div>
+              <span class="geo-cat-badge">Data Inactive</span>
               <div class="layer-toggle off" id="tog-transport" onclick="toggleGeoCat('transport',this)" style="margin-left:6px;"></div>
             </div>
           </div>
           <div class="geo-cat-item" id="gcat-admin">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(156,39,176,0.10);">🏛️</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Administrative Boundaries</div><div class="geo-cat-desc">State, district, sub-district, sub-district lot</div></div>
-              <span class="geo-cat-badge">Inactive Data</span>
+              <div class="geo-cat-info"><div class="geo-cat-name">Administrative Boundaries</div><div class="geo-cat-desc">State, district, sub-district, lot boundaries</div></div>
+              <span class="geo-cat-badge">Data Inactive</span>
               <div class="layer-toggle off" id="tog-admin" onclick="toggleGeoCat('admin',this)" style="margin-left:6px;"></div>
             </div>
           </div>
           <div class="geo-cat-item" id="gcat-buildings" style="border-color:rgba(222,145,81,0.25);">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(222,145,81,0.15);">🏢</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Building &amp; Structure</div><div class="geo-cat-desc">Home, commercial, public facilities</div></div>
+              <div class="geo-cat-info"><div class="geo-cat-name">Buildings &amp; Structures</div><div class="geo-cat-desc">Residential, commercial, public facilities</div></div>
               <span class="geo-cat-badge demo" id="badge-buildings">Active</span>
               <div class="layer-toggle on" id="tog-buildings" onclick="toggleGeoCat('buildings',this)" style="margin-left:6px;"></div>
             </div>
@@ -772,16 +895,16 @@
           <div class="geo-cat-item" id="gcat-utility">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(253,216,53,0.18);">⚡</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Utiliti</div><div class="geo-cat-desc">Electricity, plumbing, telecommunications</div></div>
-              <span class="geo-cat-badge">Data Tidak Aktif</span>
+              <div class="geo-cat-info"><div class="geo-cat-name">Utilities</div><div class="geo-cat-desc">Electricity, water supply, telecommunications</div></div>
+              <span class="geo-cat-badge">Data Inactive</span>
               <div class="layer-toggle off" id="tog-utility" onclick="toggleGeoCat('utility',this)" style="margin-left:6px;"></div>
             </div>
           </div>
           <div class="geo-cat-item" id="gcat-gazetteer">
             <div class="geo-cat-header">
               <div class="geo-cat-icon" style="background:rgba(0,188,212,0.10);">📍</div>
-              <div class="geo-cat-info"><div class="geo-cat-name">Tempat / Gazetteer</div><div class="geo-cat-desc">City, village, mountain, location name</div></div>
-              <span class="geo-cat-badge">Data Tidak Aktif</span>
+              <div class="geo-cat-info"><div class="geo-cat-name">Places / Gazetteer</div><div class="geo-cat-desc">Cities, villages, mountains, named locations</div></div>
+              <span class="geo-cat-badge">Data Inactive</span>
               <div class="layer-toggle off" id="tog-gazetteer" onclick="toggleGeoCat('gazetteer',this)" style="margin-left:6px;"></div>
             </div>
           </div>
@@ -789,7 +912,7 @@
           <div style="margin-top:14px;padding:12px;background:rgba(222,145,81,0.06);border-radius:9px;border:1px dashed rgba(222,145,81,0.3);">
             <div style="font-size:10px;font-weight:600;color:var(--orange);margin-bottom:4px;">💡 Platform Note</div>
             <div style="font-size:10.5px;color:rgba(66,66,66,0.52);line-height:1.6;">
-              Marked categories <strong>Active</strong> using the loaded GeoJSON data. <strong>UZMA-sat</strong> is a proprietary image of UZMA Berhad which can be displayed as a basemap.
+              Categories marked <strong>Active</strong> use the loaded GeoJSON data. <strong>UZMA-sat</strong> is a proprietary UZMA Berhad satellite image that can be displayed as a basemap overlay.
             </div>
           </div>
         </div>
@@ -801,7 +924,7 @@
             <div id="activity-list">
               <div class="activity-item">
                 <div class="act-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
-                <div class="act-info"><div class="act-title">Dashboard uploaded</div><div class="act-time">Ready to receive GeoJSON data</div></div>
+                <div class="act-info"><div class="act-title">Dashboard initialised</div><div class="act-time">Ready to receive GeoJSON data</div></div>
               </div>
             </div>
           </div>
@@ -816,13 +939,13 @@
 <div class="upload-overlay" id="upload-overlay">
   <div class="upload-box">
     <h2>📂 Upload GeoJSON</h2>
-    <p>Upload GeoJSON files. Can load multiple datasets simultaneously.</p>
+    <p>Upload GeoJSON files. Multiple datasets can be loaded simultaneously.</p>
     <div class="drop-zone" id="drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
       <input type="file" accept=".geojson,.geojsonn,.json" onchange="handleFileSelect(event)" id="file-input"/>
       <div class="drop-zone-icon">🗂️</div>
       <div class="drop-zone-text">
-        <strong>Click to select a file</strong> or drag &amp; leave here<br>
-        <span style="font-size:10.5px;margin-top:3px;display:block;">.geojson or .json · Large file sizes are also possible</span>
+        <strong>Click to select a file</strong> or drag &amp; drop here<br>
+        <span style="font-size:10.5px;margin-top:3px;display:block;">.geojson or .json · Large files supported</span>
       </div>
     </div>
     <div class="upload-progress" id="upload-progress">
@@ -830,7 +953,7 @@
       <div class="progress-text" id="progress-text">Processing...</div>
     </div>
     <div class="dataset-list-modal" id="datasets-modal-list" style="display:none;">
-      <div class="dataset-list-modal-title">Dataset Uploaded</div>
+      <div class="dataset-list-modal-title">Uploaded Datasets</div>
       <div id="datasets-modal-items"></div>
     </div>
     <button class="upload-cancel" onclick="closeUploadModal()">Close</button>
@@ -846,7 +969,7 @@
       <button class="export-opt selected" id="exp-pdf" onclick="selectExportType('pdf',this)">
         <div class="export-opt-icon">📋</div>
         <div class="export-opt-name">PDF Report</div>
-        <div class="export-opt-desc">Map screenshots (with markers) + statistics in one PDF report</div>
+        <div class="export-opt-desc">Map screenshot (with markers) + statistics in one PDF report</div>
       </button>
       <button class="export-opt" id="exp-png" onclick="selectExportType('png',this)">
         <div class="export-opt-icon">🖼️</div>
@@ -858,38 +981,129 @@
         <div class="export-opt-name">GeoJSON</div>
         <div class="export-opt-desc">Re-export the active dataset as a GeoJSON file</div>
       </button>
-      <button class="export-opt" id="exp-csv" onclick="selectExportType('csv',this)">
-        <div class="export-opt-icon">📊</div>
-        <div class="export-opt-name">CSV</div>
-        <div class="export-opt-desc">Lot data table in CSV format for Excel</div>
-      </button>
     </div>
     <div class="export-settings">
       <div class="export-settings-title">Export Settings</div>
-      <div class="export-field">
+      <div class="export-field" id="exp-setting-title">
         <label class="export-field-label">Report Title</label>
-        <input type="text" id="exp-title-input" value="Analysis Geospatial Report" style="width:200px;"/>
+        <input type="text" id="exp-title-input" value="Geospatial Analysis Report" style="width:200px;"/>
       </div>
-      <div class="export-field">
-        <label class="export-field-label">Include a map (screenshot)</label>
+      <div class="export-field" id="exp-setting-map">
+        <label class="export-field-label">Include map screenshot</label>
         <input type="checkbox" id="exp-include-map" checked/>
       </div>
-      <div class="export-field">
+      <div class="export-field" id="exp-setting-markers">
         <label class="export-field-label">Include plot markers</label>
         <input type="checkbox" id="exp-include-markers" checked/>
       </div>
-      <div class="export-field">
+      <div class="export-field" id="exp-setting-stats">
         <label class="export-field-label">Include statistics</label>
         <input type="checkbox" id="exp-include-stats" checked/>
       </div>
     </div>
     <div class="export-progress" id="export-progress">
       <div class="ep-spinner"></div>
-      <div class="ep-text" id="export-progress-text">Generate reports...</div>
+      <div class="ep-text" id="export-progress-text">Generating report...</div>
     </div>
     <div class="export-actions">
       <button class="export-btn cancel" onclick="closeExportModal()">Cancel</button>
-      <button class="export-btn go" onclick="runExport()">Continue</button>
+      <button class="export-btn go" onclick="runExport()">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- SELECT BY AREA MODAL -->
+<div class="area-overlay" id="area-overlay">
+  <div class="area-box">
+    <h2>📍 Select by Area</h2>
+    <div class="area-sub">Choose a Seremban area or dataset to jump to on the map. Click any card to fly there instantly.</div>
+    <div class="area-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="area-search-input" placeholder="Search areas..." oninput="filterAreaCards(this.value)" autocomplete="off"/>
+    </div>
+    <div class="area-grid" id="area-grid">
+      <!-- Cards rendered by JS -->
+    </div>
+    <button class="area-cancel" onclick="closeAreaModal()">Close</button>
+  </div>
+</div>
+
+<!-- LOT LIST MODAL -->
+<div class="lotlist-overlay" id="lotlist-overlay" onclick="if(event.target===this)closeLotListModal()">
+  <div class="lotlist-box">
+    <div class="lotlist-header">
+      <div class="lotlist-header-left">
+        <div class="lotlist-title">Lot List</div>
+        <div class="lotlist-sub" id="lotlist-sub">No dataset loaded</div>
+      </div>
+      <button class="lotlist-export-btn" onclick="exportLotListCSV()" title="Export as CSV">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+      <button class="lotlist-close" onclick="closeLotListModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="lotlist-toolbar">
+      <div class="lotlist-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="lotlist-search-input" type="text" placeholder="Search lot ID, address, class..." oninput="lotListSearch(this.value)" autocomplete="off"/>
+      </div>
+      <select class="lotlist-filter-sel" id="lotlist-class-filter" onchange="lotListFilterClass(this.value)">
+        <option value="">All Classes</option>
+      </select>
+      <span class="lotlist-count-badge" id="lotlist-count-badge">0 lots</span>
+    </div>
+    <div class="lotlist-table-wrap">
+      <div class="lotlist-empty" id="lotlist-no-data">
+        <div style="font-size:32px;margin-bottom:10px;">📋</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--charcoal-dark);margin-bottom:5px;">No Data</div>
+        <div style="font-size:11.5px;color:rgba(66,66,66,0.38);">Upload a GeoJSON file first to view lot list.</div>
+      </div>
+      <table class="lotlist-table" id="lotlist-table" style="display:none;">
+        <thead id="lotlist-thead"></thead>
+        <tbody id="lotlist-tbody"></tbody>
+      </table>
+    </div>
+    <div class="lotlist-pagination" id="lotlist-pagination" style="display:none;">
+      <span class="ll-page-info" id="ll-page-info">Showing 1–50 of 0</span>
+      <div class="ll-page-btns" id="ll-page-btns"></div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY ANALYSIS MODAL -->
+<!-- HISTORY ANALYSIS MODAL -->
+<div class="history-overlay" id="history-overlay" onclick="if(event.target===this)closeHistoryModal()">
+  <div class="history-box">
+    <div class="history-header">
+      <div>
+        <div class="history-title">History Analysis</div>
+        <div class="history-sub" id="history-count-sub">Session activity timeline</div>
+      </div>
+      <button class="history-close" onclick="closeHistoryModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="history-filter-bar">
+      <button class="hfilt active" onclick="filterHistory('all',this)">All</button>
+      <button class="hfilt" onclick="filterHistory('dataset',this)">📂 Datasets</button>
+      <button class="hfilt" onclick="filterHistory('marker',this)">📍 Markers</button>
+      <button class="hfilt" onclick="filterHistory('export',this)">📄 Exports</button>
+      <button class="hfilt" onclick="filterHistory('map',this)">🗺️ Map</button>
+      <div style="flex:1;"></div>
+      <button class="hfilt" onclick="clearHistoryLog()" style="color:#e53935;border-color:rgba(229,57,53,0.3);">🗑️ Clear</button>
+    </div>
+    <div class="history-timeline" id="history-timeline">
+      <div class="history-empty" id="history-empty" style="display:none;">
+        <div style="font-size:28px;margin-bottom:8px;">📋</div>
+        <div style="font-size:12.5px;color:rgba(66,66,66,0.38);">No activity recorded yet</div>
+      </div>
+    </div>
+    <div class="history-footer">
+      <span id="history-footer-count">0 events</span>
+      <span style="color:rgba(66,66,66,0.25);">·</span>
+      <span>Current session only</span>
     </div>
   </div>
 </div>
@@ -933,18 +1147,212 @@ let geoJsonOverlayVisible = true;
 const SEREMBAN_FILE = 'serembangeo.geojsonn';
 
 // ============================================================
-// UZMA-SAT — seremban_final/ TMS tiles
-// Bounds from gdal raster tile output (seremban_final/)
-// Leaflet leaflet.html fitBounds: SW=[2.6743, 101.8776], NE=[2.7830, 101.9857]
-// Center from leaflet.html: [2.7287, 101.9317]
+// SELECT BY AREA — Seremban area definitions
+// ============================================================
+const SEREMBAN_AREAS = [
+  {
+    id: 'seremban-main',
+    name: 'Seremban Town',
+    desc: 'Central business district and main urban core',
+    icon: '🏙️',
+    tags: ['Urban', 'Commercial', 'CBD'],
+    center: [101.9424, 2.7297],
+    zoom: 14,
+    bounds: null,
+  },
+  {
+    id: 'rasah-jaya',
+    name: 'Rasah Jaya',
+    desc: 'Residential township, south-west of Seremban',
+    icon: '🏘️',
+    tags: ['Residential', 'Township'],
+    center: [101.9207, 2.7015],
+    zoom: 14,
+    bounds: null,
+  },
+  {
+    id: 'nilai',
+    name: 'Nilai',
+    desc: 'Industrial and commercial hub, Seremban district',
+    icon: '🏭',
+    tags: ['Industrial', 'Commercial'],
+    center: [101.7986, 2.8193],
+    zoom: 13,
+    bounds: null,
+  },
+  {
+    id: 'bahau',
+    name: 'Bahau',
+    desc: 'Agricultural and rural area, Jempol district',
+    icon: '🌾',
+    tags: ['Agriculture', 'Rural'],
+    center: [102.4263, 2.8013],
+    zoom: 13,
+    bounds: null,
+  },
+  {
+    id: 'tampin',
+    name: 'Tampin',
+    desc: 'Southern Negeri Sembilan, near Melaka border',
+    icon: '🌳',
+    tags: ['Rural', 'Border'],
+    center: [102.2298, 2.4699],
+    zoom: 13,
+    bounds: null,
+  },
+  {
+    id: 'port-dickson',
+    name: 'Port Dickson',
+    desc: 'Coastal resort town with beaches and tourism',
+    icon: '🏖️',
+    tags: ['Coastal', 'Tourism'],
+    center: [101.7974, 2.5222],
+    zoom: 13,
+    bounds: null,
+  },
+  {
+    id: 'mantin',
+    name: 'Mantin',
+    desc: 'Small town between Seremban and Nilai',
+    icon: '🏡',
+    tags: ['Residential', 'Town'],
+    center: [101.8777, 2.7896],
+    zoom: 14,
+    bounds: null,
+  },
+  {
+    id: 'senawang',
+    name: 'Senawang',
+    desc: 'Industrial estate and mixed development area',
+    icon: '⚙️',
+    tags: ['Industrial', 'Mixed'],
+    center: [101.9511, 2.6799],
+    zoom: 14,
+    bounds: null,
+  },
+  {
+    id: 'paroi',
+    name: 'Paroi',
+    desc: 'Residential and light industrial zone',
+    icon: '🏗️',
+    tags: ['Residential', 'Industrial'],
+    center: [101.9677, 2.7539],
+    zoom: 14,
+    bounds: null,
+  },
+  {
+    id: 'full-extent',
+    name: 'Full Seremban Extent',
+    desc: 'Fly to full loaded GeoJSON / UZMA-sat coverage area',
+    icon: '🗺️',
+    tags: ['Dataset', 'Overview'],
+    center: [101.9317, 2.7287],
+    zoom: 11,
+    bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
+    isDataset: true,
+  },
+];
+
+let _allAreaCards = [...SEREMBAN_AREAS];
+
+function openAreaModal() {
+  document.getElementById('area-overlay').classList.add('show');
+  document.getElementById('area-search-input').value = '';
+  renderAreaCards(SEREMBAN_AREAS);
+  // Inject loaded datasets as cards too
+  setTimeout(() => {
+    const dsCards = buildDatasetAreaCards();
+    if (dsCards.length) {
+      _allAreaCards = [...dsCards, ...SEREMBAN_AREAS];
+    } else {
+      _allAreaCards = [...SEREMBAN_AREAS];
+    }
+    renderAreaCards(_allAreaCards);
+  }, 50);
+}
+
+function buildDatasetAreaCards() {
+  const cards = [];
+  for (const [dsId, ds] of Object.entries(datasets)) {
+    if (!ds.bounds) continue;
+    const shortName = ds.name.replace(/\.(geojsonn?|json)$/i, '');
+    cards.push({
+      id: 'ds-' + dsId,
+      name: shortName,
+      desc: ds.features.length.toLocaleString() + ' features loaded · ' + formatFileSize(ds.fileSize),
+      icon: '📂',
+      tags: ['Dataset', 'GeoJSON'],
+      center: null,
+      zoom: null,
+      bounds: ds.bounds,
+      dsId,
+      isDataset: true,
+    });
+  }
+  return cards;
+}
+
+function renderAreaCards(areas) {
+  const grid = document.getElementById('area-grid');
+  if (!areas.length) {
+    grid.innerHTML = '<div class="area-card-empty">No areas found.</div>';
+    return;
+  }
+  grid.innerHTML = areas.map(a => {
+    const tagColors = { Dataset:'blue', GeoJSON:'blue', Urban:'', Commercial:'', CBD:'', Residential:'', Township:'', Industrial:'', Rural:'', Agriculture:'green', Coastal:'blue', Tourism:'', Mixed:'', Overview:'' };
+    const tagsHtml = a.tags.map(t => `<span class="area-card-tag ${tagColors[t]||''}">${t}</span>`).join('');
+    return `<button class="area-card" onclick="flyToArea('${a.id}')" data-name="${a.name.toLowerCase()} ${a.desc.toLowerCase()} ${a.tags.join(' ').toLowerCase()}">
+      <div class="area-card-icon">${a.icon}</div>
+      <div class="area-card-name">${a.name}</div>
+      <div class="area-card-desc">${a.desc}</div>
+      <div class="area-card-meta">${tagsHtml}</div>
+    </button>`;
+  }).join('');
+}
+
+function filterAreaCards(val) {
+  if (!val.trim()) { renderAreaCards(_allAreaCards); return; }
+  const q = val.toLowerCase();
+  const filtered = _allAreaCards.filter(a =>
+    a.name.toLowerCase().includes(q) ||
+    a.desc.toLowerCase().includes(q) ||
+    a.tags.some(t => t.toLowerCase().includes(q))
+  );
+  renderAreaCards(filtered);
+}
+
+function flyToArea(areaId) {
+  const area = _allAreaCards.find(a => a.id === areaId);
+  if (!area) return;
+  closeAreaModal();
+
+  if (area.bounds) {
+    map.fitBounds(area.bounds, { padding: 50, duration: 1200 });
+  } else if (area.dsId && datasets[area.dsId]?.bounds) {
+    map.fitBounds(datasets[area.dsId].bounds, { padding: 50, duration: 1200 });
+    setActiveDataset(area.dsId);
+    updateDatasetBadge();
+  } else if (area.center) {
+    map.flyTo({ center: area.center, zoom: area.zoom || 13, duration: 1200 });
+  }
+
+  showToast('📍 Flying to ' + area.name);
+  addActivityLog('Area selected: ' + area.name, area.desc);
+}
+
+function closeAreaModal() {
+  document.getElementById('area-overlay').classList.remove('show');
+}
+
+// ============================================================
+// UZMA-SAT
 // ============================================================
 const UZMASAT_COORDS = {
-  // MapLibre image source corners: [topLeft, topRight, bottomRight, bottomLeft]
   coordinates: [
-    [101.87766085815322, 2.7830234586744691],  // top-left  (NW)
-    [101.98574632250876, 2.7830234586744691],  // top-right (NE)
-    [101.98574632250876, 2.6743293354532471],  // bottom-right (SE)
-    [101.87766085815322, 2.6743293354532471],  // bottom-left  (SW)
+    [101.87766085815322, 2.7830234586744691],
+    [101.98574632250876, 2.7830234586744691],
+    [101.98574632250876, 2.6743293354532471],
+    [101.87766085815322, 2.6743293354532471],
   ],
   bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
   center: [101.93170359033098, 2.7286763970638583],
@@ -1032,20 +1440,13 @@ const BASEMAPS = {
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
-  // seremban_final/ — gdal raster tile output, TMS scheme (Y-axis flipped)
-  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:9, scheme:'tms' },
+  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:16, scheme:'tms' },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
-  const src = {
-    type: 'raster',
-    tiles: bm.tiles,
-    tileSize: bm.tileSize,
-    minzoom: bm.minzoom || 0,
-    maxzoom: bm.maxzoom || 19,
-  };
+  const src = { type:'raster', tiles:bm.tiles, tileSize:bm.tileSize, minzoom:bm.minzoom||0, maxzoom:bm.maxzoom||19 };
   if (bm.scheme) src.scheme = bm.scheme;
-  return { version:8, sources:{ basemap: src }, layers:[{ id:'basemap', type:'raster', source:'basemap' }] };
+  return { version:8, sources:{ basemap:src }, layers:[{ id:'basemap', type:'raster', source:'basemap' }] };
 }
 
 // ============================================================
@@ -1082,13 +1483,15 @@ window.addEventListener('load', () => {
     if (!e.target.closest('.topbar-search')) document.getElementById('search-dropdown').style.display = 'none';
     if (!e.target.closest('.basemap-switcher')) {
       document.getElementById('basemap-dropdown').classList.remove('open');
-      document.getElementById('uzmasat-controls').classList.remove('open');
+    }
+    if (!e.target.closest('.area-overlay') && e.target.classList.contains('area-overlay')) {
+      closeAreaModal();
     }
   });
 });
 
 async function autoLoadGeoJSON() {
-  showLoading('Memuatkan ' + SEREMBAN_FILE + '...', 'Sila tunggu sebentar');
+  showLoading('Loading ' + SEREMBAN_FILE + '...', 'Please wait a moment');
   try {
     const res = await fetch(SEREMBAN_FILE);
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1098,14 +1501,12 @@ async function autoLoadGeoJSON() {
     addDataset(SEREMBAN_FILE, geojson, size, true);
   } catch (err) {
     hideLoading();
-    console.warn('Auto-load gagal:', err.message);
+    console.warn('Auto-load failed:', err.message);
   }
 }
 
 // ============================================================
-// UZMA-SAT — seremban_final/ TMS tiles
-// gdal raster tile output uses TMS (Y-axis flipped) — scheme:'tms' is required
-// Outside the tile bounds, MapLibre returns 404 which shows transparent/empty
+// UZMA-SAT LAYER
 // ============================================================
 function loadUzmaSatLayer() {
   removeUzmaSatLayer();
@@ -1116,23 +1517,19 @@ function loadUzmaSatLayer() {
       tileSize: 256,
       minzoom: 0,
       maxzoom: 16,
-      scheme: 'tms',          // ← required: gdal raster tile flips Y-axis
+      scheme: 'tms',
       attribution: '© UZMA Berhad',
-      // bounds tell MapLibre not to request tiles outside the raster extent
       bounds: [101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691],
     });
     map.addLayer({
       id: 'uzmasat-layer',
       type: 'raster',
       source: 'uzmasat-source',
-      paint: {
-        'raster-opacity': uzmaSatOpacity,
-        'raster-fade-duration': 300
-      }
+      paint: { 'raster-opacity': uzmaSatOpacity, 'raster-fade-duration': 300 }
     }, getFirstGeoJsonLayerId());
   } catch(e) {
     console.error('UZMA-sat load error:', e);
-    showToast('⚠️ Tiles tidak dapat dimuatkan. Semak folder seremban_final/');
+    showToast('⚠️ Tiles could not be loaded. Check the seremban_final/ folder');
   }
 }
 
@@ -1167,7 +1564,7 @@ function toggleGeoJsonOverlay(el) {
       try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
     }
   }
-  showToast(geoJsonOverlayVisible ? '✅ Overlay lot GeoJSON dipapar' : '🔲 Overlay lot GeoJSON disembunyikan');
+  showToast(geoJsonOverlayVisible ? '✅ GeoJSON lot overlay shown' : '🔲 GeoJSON lot overlay hidden');
 }
 
 function activateUzmaSat(el) {
@@ -1175,23 +1572,23 @@ function activateUzmaSat(el) {
   if (!isOn) {
     el.className = 'layer-toggle on';
     document.getElementById('uzmasat-layer-info').style.display = 'block';
-    document.getElementById('badge-uzmasat').textContent = 'Aktif';
+    document.getElementById('badge-uzmasat').textContent = 'Active';
     document.getElementById('badge-uzmasat').classList.add('demo');
     loadUzmaSatLayer();
     switchBasemap('uzma-sat', 'UZMA-sat', null);
     uzmaSatActive = true;
-    addActivityLog('UZMA-sat diaktifkan', 'seremban_final/ · TMS · scheme:tms');
-    showToast('🛰️ UZMA-sat dimuatkan — seremban_final/ · TMS tiles');
+    addActivityLog('UZMA-sat activated', 'seremban_final/ · TMS · scheme:tms');
+    showToast('🛰️ UZMA-sat loaded — seremban_final/ · TMS tiles');
   } else {
     el.className = 'layer-toggle off';
     document.getElementById('uzmasat-layer-info').style.display = 'none';
-    document.getElementById('badge-uzmasat').textContent = 'Tersedia';
+    document.getElementById('badge-uzmasat').textContent = 'Available';
     document.getElementById('badge-uzmasat').classList.remove('demo');
     removeUzmaSatLayer();
     uzmaSatActive = false;
     const firstOpt = document.querySelector('.basemap-option');
     switchBasemap('google-road', 'Google Maps', firstOpt);
-    showToast('🔲 UZMA-sat dimatikan');
+    showToast('🔲 UZMA-sat deactivated');
   }
 }
 
@@ -1201,7 +1598,7 @@ function activateUzmaSat(el) {
 function generateDatasetId() { return 'ds_' + (++datasetCounter); }
 
 function addDataset(fileName, geojson, fileSize, isDefault=false) {
-  if (!geojson.features || !geojson.features.length) { showToast('⚠️ GeoJSON tiada features'); return; }
+  if (!geojson.features || !geojson.features.length) { showToast('⚠️ GeoJSON has no features'); return; }
 
   const sampleCoord = flattenRaw(geojson.features[0].geometry)[0];
   let processedGeoJSON = geojson;
@@ -1219,13 +1616,13 @@ function addDataset(fileName, geojson, fileSize, isDefault=false) {
 
   const classCount = {};
   features.forEach(f => {
-    const cls = classProp ? (f.properties[classProp] || 'Lain-lain') : 'Data';
+    const cls = classProp ? (f.properties[classProp] || 'Other') : 'Data';
     classCount[cls] = (classCount[cls] || 0) + 1;
   });
 
   const mukimCount = {};
   if (mukimProp) features.forEach(f => {
-    const m = f.properties[mukimProp] || 'Tidak diketahui';
+    const m = f.properties[mukimProp] || 'Unknown';
     mukimCount[m] = (mukimCount[m] || 0) + 1;
   });
 
@@ -1253,8 +1650,8 @@ function addDataset(fileName, geojson, fileSize, isDefault=false) {
 
   addLayersForDataset(dsId);
   setActiveDataset(dsId);
-  addActivityLog('Dataset dimuatkan — ' + features.length.toLocaleString() + ' features', fileName);
-  showToast('✅ ' + features.length.toLocaleString() + ' lot dimuatkan · ' + fileName);
+  addActivityLog('Dataset loaded — ' + features.length.toLocaleString() + ' features', fileName);
+  showToast('✅ ' + features.length.toLocaleString() + ' lots loaded · ' + fileName);
   updateDatasetBadge();
   updateDatasetModalList();
   document.getElementById('no-data-state').classList.add('hidden');
@@ -1318,8 +1715,8 @@ function removeDataset(dsId) {
   delete datasets[dsId];
   updateDatasetBadge(); updateDatasetModalList();
   const remaining = Object.keys(datasets);
-  if (remaining.length > 0) { setActiveDataset(remaining[remaining.length - 1]); showToast('🗑️ Dataset dihapuskan'); }
-  else { activeDatasetId = null; document.getElementById('no-data-state').classList.remove('hidden'); resetUI(); showToast('🗑️ Semua dataset dihapuskan'); }
+  if (remaining.length > 0) { setActiveDataset(remaining[remaining.length - 1]); showToast('🗑️ Dataset removed'); }
+  else { activeDatasetId = null; document.getElementById('no-data-state').classList.remove('hidden'); resetUI(); showToast('🗑️ All datasets removed'); }
 }
 
 function resetUI() {
@@ -1355,7 +1752,7 @@ function countClass(classCount, names) {
 
 function updateTopbarInfo(total, fileName) {
   document.getElementById('page-title').textContent = 'Land Use Dashboard — ' + fileName.replace(/\.(geojsonn?|json)$/i, '');
-  document.getElementById('page-sub').textContent   = 'Geospatial AI (UZMA Berhad) · ' + total.toLocaleString() + ' lot · ' + Object.keys(datasets).length + ' dataset';
+  document.getElementById('page-sub').textContent   = 'Geospatial AI (UZMA Berhad) · ' + total.toLocaleString() + ' lots · ' + Object.keys(datasets).length + ' dataset(s)';
   document.getElementById('panel-sub').textContent  = fileName + ' · ' + total.toLocaleString() + ' features';
 }
 
@@ -1368,7 +1765,7 @@ function updateLayerBadge(dsId, visibility) {
 
   if (uzmaSatActive) {
     const uzmaDiv = document.createElement('div');
-    uzmaDiv.innerHTML = `<div style="font-size:8px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(66,66,66,0.3);margin-bottom:5px;padding-top:2px;display:flex;align-items:center;gap:5px;">🛰 UZMA-SAT AKTIF</div>`;
+    uzmaDiv.innerHTML = `<div style="font-size:8px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(66,66,66,0.3);margin-bottom:5px;padding-top:2px;display:flex;align-items:center;gap:5px;">🛰 UZMA-SAT ACTIVE</div>`;
     container.appendChild(uzmaDiv);
   }
 
@@ -1423,8 +1820,8 @@ function updateDatasetModalList() {
     div.innerHTML = `
       <div><div class="dm-name">${shortName}</div><div class="dm-count">${ds.features.length.toLocaleString()} features · ${formatFileSize(ds.fileSize)}</div></div>
       <div style="display:flex;align-items:center;gap:6px;">
-        ${isActive ? '<span class="dm-active">Aktif</span>' : ''}
-        <button class="dm-btn">Hapus</button>
+        ${isActive ? '<span class="dm-active">Active</span>' : ''}
+        <button class="dm-btn">Remove</button>
       </div>`;
     div.querySelector('.dm-btn').addEventListener('click', () => removeDataset(dsId));
     container.appendChild(div);
@@ -1469,7 +1866,7 @@ function updateOverviewCharts(classCount, mukimCount, total, fileName, fileSize,
   document.getElementById('info-filename').textContent = fileName;
   document.getElementById('info-total').textContent    = total.toLocaleString();
   document.getElementById('info-filesize').textContent = formatFileSize(fileSize);
-  document.getElementById('info-loaded').textContent   = loadedAt.toLocaleString('ms-MY');
+  document.getElementById('info-loaded').textContent   = loadedAt.toLocaleString('en-MY');
 }
 
 function formatFileSize(bytes) {
@@ -1562,16 +1959,16 @@ function showParcelInfo(feature, lngLat) {
 
   document.getElementById('parcel-id').textContent = lotId;
   const propsContainer = document.getElementById('parcel-props-container');
-  let html = '<div class="pc-section-title">📋 Semua Properties</div>';
+  let html = '<div class="pc-section-title">📋 All Properties</div>';
   for (const [k,v] of Object.entries(props))
     html += `<div class="pc-row"><span class="pc-k">${k}</span><span class="pc-v">${v ?? '—'}</span></div>`;
   propsContainer.innerHTML = html;
 
   const c = lngLat;
   propsContainer.innerHTML += `
-    <div class="pc-section-title">📐 Koordinat Klik</div>
-    <div class="pc-row"><span class="pc-k">Latitud</span><span class="pc-v" id="p-lat" style="font-family:monospace;font-size:9.5px;">${c.lat.toFixed(7)}</span></div>
-    <div class="pc-row"><span class="pc-k">Longitud</span><span class="pc-v" id="p-lng" style="font-family:monospace;font-size:9.5px;">${c.lng.toFixed(7)}</span></div>`;
+    <div class="pc-section-title">📐 Click Coordinates</div>
+    <div class="pc-row"><span class="pc-k">Latitude</span><span class="pc-v" id="p-lat" style="font-family:monospace;font-size:9.5px;">${c.lat.toFixed(7)}</span></div>
+    <div class="pc-row"><span class="pc-k">Longitude</span><span class="pc-v" id="p-lng" style="font-family:monospace;font-size:9.5px;">${c.lng.toFixed(7)}</span></div>`;
 
   document.getElementById('no-parcel-msg').style.display  = 'none';
   document.getElementById('parcel-detail').style.display  = 'block';
@@ -1596,7 +1993,7 @@ function handleSearch(val) {
     renderSearchDropdown(localResults, []);
     dd.style.display = 'block';
   } else {
-    dd.innerHTML = `<div class="search-loading"><div class="search-spinner"></div> Search for an address...</div>`;
+    dd.innerHTML = `<div class="search-loading"><div class="search-spinner"></div> Searching for address...</div>`;
     dd.style.display = 'block';
   }
   if (val.trim().length >= 3) {
@@ -1617,16 +2014,16 @@ async function runGeocode(query, localResults) {
   const dd = document.getElementById('search-dropdown');
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Malaysia')}&format=json&limit=5&countrycodes=MY&viewbox=101.5,2.4,102.5,3.1&bounded=0`;
-    const res = await fetch(url, { headers: { 'Accept-Language': 'ms,en' } });
-    if (!res.ok) throw new Error('Geocode gagal');
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) throw new Error('Geocode failed');
     const geocodeResults = await res.json();
     renderSearchDropdown(localResults, geocodeResults);
     if (!localResults.length && !geocodeResults.length)
-      dd.innerHTML = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">Tiada hasil ditemui</div>`;
+      dd.innerHTML = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">No results found</div>`;
   } catch(e) {
     renderSearchDropdown(localResults, []);
     if (!localResults.length)
-      dd.innerHTML = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">Tiada hasil ditemui</div>`;
+      dd.innerHTML = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">No results found</div>`;
   }
   dd.style.display = 'block';
 }
@@ -1636,25 +2033,25 @@ function renderSearchDropdown(localResults, geocodeResults) {
   const dd = document.getElementById('search-dropdown');
   let html = '';
   if (localResults.length > 0) {
-    html += `<div class="search-section-header">📂 Lot / Data Tempatan</div>`;
+    html += `<div class="search-section-header">📂 Lots / Local Data</div>`;
     localResults.forEach((f, idx) => {
       const ds = activeDatasetId ? datasets[activeDatasetId] : null;
       const id  = (ds && ds.idProp)    ? (f.properties[ds.idProp]    || 'Feature') : 'Feature';
       const cls = (ds && ds.classProp) ? (f.properties[ds.classProp] || '')        : '';
       const addr = (ds && ds.addrProp) ? f.properties[ds.addrProp] : '';
-      const sub  = [cls, addr].filter(Boolean).join(' · ') || 'Data Geospatial';
+      const sub  = [cls, addr].filter(Boolean).join(' · ') || 'Geospatial Data';
       html += `<div class="search-item local-result" data-idx="${idx}"><div class="search-item-icon">📌</div><div class="search-item-body"><div class="search-item-id">${id}</div><div class="search-item-cls">${sub}</div></div></div>`;
     });
   }
   if (geocodeResults.length > 0) {
-    html += `<div class="search-section-header">🔍 Alamat / Lokasi</div>`;
+    html += `<div class="search-section-header">🔍 Address / Location</div>`;
     geocodeResults.forEach((place) => {
       const shortName = place.display_name.split(',').slice(0,3).join(', ');
       const type = place.type ? place.type.replace(/_/g,' ') : place.class || '';
       html += `<div class="search-item geocode-result" data-lat="${place.lat}" data-lng="${place.lon}" data-name="${shortName.replace(/"/g,'&quot;')}"><div class="search-item-icon">${getGeocodeIcon(place.class, place.type)}</div><div class="search-item-body"><div class="search-item-id">${shortName}</div><div class="search-item-cls">${type} · ${place.display_name.split(',').slice(2,4).join(',').trim()}</div></div></div>`;
     });
   }
-  if (!html) html = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">Tiada hasil ditemui</div>`;
+  if (!html) html = `<div style="padding:12px 13px;font-size:12px;color:rgba(66,66,66,0.4);">No results found</div>`;
   dd.innerHTML = html;
   dd.querySelectorAll('.local-result').forEach(el => {
     el.addEventListener('click', () => selectSearchResult(parseInt(el.getAttribute('data-idx'))));
@@ -1689,7 +2086,7 @@ function flyToGeocode(lat, lng, name) {
   setTimeout(() => {
     new maplibregl.Popup({ offset:8, closeOnClick:true })
       .setLngLat([lng, lat])
-      .setHTML(`<div class="popup-header" style="background:#1E88E5;"><div class="popup-fc">Alamat Ditemui</div><div class="popup-name" style="font-size:11px;line-height:1.4;">${name}</div></div><div class="popup-body"><div class="popup-row"><span class="popup-k">Latitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lat.toFixed(6)}</span></div><div class="popup-row"><span class="popup-k">Longitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lng.toFixed(6)}</span></div></div>`)
+      .setHTML(`<div class="popup-header" style="background:#1E88E5;"><div class="popup-fc">Address Found</div><div class="popup-name" style="font-size:11px;line-height:1.4;">${name}</div></div><div class="popup-body"><div class="popup-row"><span class="popup-k">Latitude</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lat.toFixed(6)}</span></div><div class="popup-row"><span class="popup-k">Longitude</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lng.toFixed(6)}</span></div></div>`)
       .addTo(map);
   }, 800);
   addActivityLog('Address searched: ' + name, lat.toFixed(5) + ', ' + lng.toFixed(5));
@@ -1725,14 +2122,14 @@ function toggleGeoCat(cat, el) {
   GEO_CAT_STATE[cat] = !isOn;
   const newState = !isOn;
   if (!activeDatasetId) {
-    showToast(newState ? '⚠️ Tiada data aktif untuk kategori ini' : '');
+    showToast(newState ? '⚠️ No active data for this category' : '');
     if (newState) el.className = 'layer-toggle off';
     return;
   }
   const ds = datasets[activeDatasetId];
   const affectedClasses = GEO_CAT_CLASS_MAP[cat];
   if (!affectedClasses) {
-    if (newState) { showToast(`ℹ️ ${getCatName(cat)}: Data belum diintegrasikan`); el.className = 'layer-toggle off'; GEO_CAT_STATE[cat] = false; }
+    if (newState) { showToast(`ℹ️ ${getCatName(cat)}: Data not yet integrated`); el.className = 'layer-toggle off'; GEO_CAT_STATE[cat] = false; }
     return;
   }
   let toggled = 0;
@@ -1749,12 +2146,12 @@ function toggleGeoCat(cat, el) {
       toggled++;
     }
   }
-  if (toggled > 0) showToast(`${newState ? '✅' : '🔲'} ${getCatName(cat)} — ${toggled} kelas ${newState ? 'dipapar' : 'disembunyikan'}`);
-  else showToast(`ℹ️ ${getCatName(cat)}: Tiada kelas sepadan dalam dataset aktif`);
+  if (toggled > 0) showToast(`${newState ? '✅' : '🔲'} ${getCatName(cat)} — ${toggled} class(es) ${newState ? 'shown' : 'hidden'}`);
+  else showToast(`ℹ️ ${getCatName(cat)}: No matching classes in active dataset`);
 }
 
 function getCatName(cat) {
-  const names = { topo:'Topografi', hydro:'Hidrografi', transport:'Pengangkutan', admin:'Sempadan Pentadbiran', buildings:'Bangunan & Struktur', landuse:'Guna Tanah', utility:'Utiliti', gazetteer:'Tempat/Gazetteer' };
+  const names = { topo:'Topography', hydro:'Hydrography', transport:'Transportation', admin:'Administrative Boundaries', buildings:'Buildings & Structures', landuse:'Land Use', utility:'Utilities', gazetteer:'Places/Gazetteer' };
   return names[cat] || cat;
 }
 
@@ -1766,9 +2163,7 @@ function setMarkerColor(color, el) { markerColor = color; document.querySelector
 
 function addPlotMarker(lngLat) {
   const markerEl = document.createElement('div');
-  markerEl.style.cssText = 'cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;';
-  markerEl.addEventListener('mouseenter', () => { markerEl.style.transform = 'scale(1.2)'; });
-  markerEl.addEventListener('mouseleave', () => { markerEl.style.transform = 'scale(1)'; });
+  markerEl.style.cssText = 'cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;';
   const sz = markerSize;
   if (markerShape === 'pin') markerEl.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${markerColor}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
   else if (markerShape === 'circle') markerEl.innerHTML = `<div style="width:${sz*0.7}px;height:${sz*0.7}px;border-radius:50%;background:${markerColor};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`;
@@ -1786,16 +2181,16 @@ function addPlotMarker(lngLat) {
     new maplibregl.Popup({ offset:10 }).setLngLat(lngLat).setHTML(`
       <div class="popup-header" style="background:${markerColor};padding:9px 14px;"><div class="marker-popup-title">Marker #${markerData.idx}</div></div>
       <div class="popup-body">
-        <div class="popup-row"><span class="popup-k">Latitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lngLat.lat.toFixed(7)}</span></div>
-        <div class="popup-row"><span class="popup-k">Longitud</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lngLat.lng.toFixed(7)}</span></div>
-        <div class="popup-row"><span class="popup-k">Bentuk</span><span class="popup-v">${markerData.shape}</span></div>
-        <div style="margin-top:9px;"><button id="del-marker-${markerData.idx}" style="width:100%;height:28px;border:1px solid rgba(229,57,53,0.3);background:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:#e53935;cursor:pointer;">🗑️ Hapus</button></div>
+        <div class="popup-row"><span class="popup-k">Latitude</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lngLat.lat.toFixed(7)}</span></div>
+        <div class="popup-row"><span class="popup-k">Longitude</span><span class="popup-v" style="font-family:monospace;font-size:10px;">${lngLat.lng.toFixed(7)}</span></div>
+        <div class="popup-row"><span class="popup-k">Shape</span><span class="popup-v">${markerData.shape}</span></div>
+        <div style="margin-top:9px;"><button id="del-marker-${markerData.idx}" style="width:100%;height:28px;border:1px solid rgba(229,57,53,0.3);background:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:#e53935;cursor:pointer;">🗑️ Remove</button></div>
       </div>`).addTo(map);
     setTimeout(() => { const btn = document.getElementById('del-marker-' + markerData.idx); if (btn) btn.addEventListener('click', () => removeMarkerByIdx(markerData.idx)); }, 100);
   });
 
   updateMarkerCount();
-  addActivityLog(`Marker #${idx} diplot`, `${lngLat.lat.toFixed(5)}, ${lngLat.lng.toFixed(5)}`);
+  addActivityLog(`Marker #${idx} plotted`, `${lngLat.lat.toFixed(5)}, ${lngLat.lng.toFixed(5)}`);
 }
 
 function removeMarkerByIdx(idx) {
@@ -1804,11 +2199,11 @@ function removeMarkerByIdx(idx) {
   plotMarkers[i].marker.remove();
   plotMarkers.splice(i, 1);
   updateMarkerCount();
-  showToast('🗑️ Marker dihapuskan');
+  showToast('🗑️ Marker removed');
 }
 
-function clearAllMarkers() { plotMarkers.forEach(m => m.marker.remove()); plotMarkers = []; updateMarkerCount(); showToast('🗑️ Semua marker dihapuskan'); }
-function updateMarkerCount() { const n = plotMarkers.length; document.getElementById('stat-markers').textContent = n; document.getElementById('marker-count-label').textContent = n + ' marker'; }
+function clearAllMarkers() { plotMarkers.forEach(m => m.marker.remove()); plotMarkers = []; updateMarkerCount(); showToast('🗑️ All markers removed'); }
+function updateMarkerCount() { const n = plotMarkers.length; document.getElementById('stat-markers').textContent = n; document.getElementById('marker-count-label').textContent = n + ' marker' + (n !== 1 ? 's' : ''); }
 
 // ============================================================
 // LAYER TOGGLE
@@ -1836,7 +2231,7 @@ function filterToClass(cls) {
     const tog = document.getElementById(badgeId);
     if (tog) tog.className = 'layer-toggle ' + (makeVisible ? 'on' : 'off');
   }
-  showToast('🔍 Menapis: ' + cls);
+  showToast('🔍 Filtering: ' + cls);
 }
 
 // ============================================================
@@ -1862,12 +2257,12 @@ function setMapMode(mode, el) {
     mapEl.classList.add('cursor-select-mode');
     cursor.classList.add('visible');
     indicator.classList.add('show');
-    document.getElementById('mode-indicator-text').textContent = 'Mode Pilih Lot — Klik lot untuk maklumat';
+    document.getElementById('mode-indicator-text').textContent = 'Lot Select Mode — Click a lot for information';
   } else if (mode === 'plot') {
     el.classList.add('plot-active');
     mapEl.classList.add('cursor-plot-mode');
     indicator.classList.add('show','plot-mode');
-    document.getElementById('mode-indicator-text').textContent = 'Mode Plot Marker — Klik pada peta untuk letak marker';
+    document.getElementById('mode-indicator-text').textContent = 'Plot Marker Mode — Click on the map to place a marker';
     toolbar.classList.add('show');
   } else {
     el.classList.add('active');
@@ -1876,39 +2271,33 @@ function setMapMode(mode, el) {
 }
 
 // ============================================================
-// BASEMAP — with UZMA-sat seremban_final/ support
+// BASEMAP
 // ============================================================
 function toggleBasemapDropdown() {
   const dd = document.getElementById('basemap-dropdown');
-  const uc = document.getElementById('uzmasat-controls');
-  if (uzmaSatActive) {
-    uc.classList.toggle('open');
-    dd.classList.remove('open');
-  } else {
-    dd.classList.toggle('open');
-    uc.classList.remove('open');
-  }
+  dd.classList.toggle('open');
 }
 
 function switchBasemap(key, label, el) {
   document.querySelectorAll('.basemap-option').forEach(o => o.classList.remove('active'));
   if (el) el.classList.add('active');
   document.getElementById('basemap-label').textContent = label;
-  document.getElementById('basemap-dropdown').classList.remove('open');
-  document.getElementById('uzmasat-controls').classList.remove('open');
+  // Keep dropdown open so user can see UZMA controls; close only when switching away
   currentBasemap = key;
 
+  const uzmaControls = document.getElementById('uzmasat-controls');
+
   if (key === 'uzma-sat') {
+    uzmaControls.style.display = 'block';
     if (!uzmaSatActive) {
       uzmaSatActive = true;
       document.getElementById('tog-uzmasat').className = 'layer-toggle on';
       document.getElementById('uzmasat-layer-info').style.display = 'block';
-      document.getElementById('badge-uzmasat').textContent = 'Aktif';
+      document.getElementById('badge-uzmasat').textContent = 'Active';
       document.getElementById('badge-uzmasat').classList.add('demo');
-      // Fly to seremban_final bounds
       map.fitBounds(UZMASAT_COORDS.bounds, { padding: 40, duration: 1200 });
-      addActivityLog('UZMA-sat diaktifkan', 'seremban_final/ · TMS · scheme:tms');
-      showToast('🛰️ UZMA-sat dimuatkan · seremban_final/ · zoom 0–16');
+      addActivityLog('UZMA-sat activated', 'seremban_final/ · TMS · scheme:tms');
+      showToast('🛰️ UZMA-sat loaded · seremban_final/ · zoom 0–16');
     }
     try {
       map.getSource('basemap')?.setTiles(['seremban_final/{z}/{x}/{y}.png']);
@@ -1922,17 +2311,19 @@ function switchBasemap(key, label, el) {
       });
     }
     if (!map.getSource('uzmasat-source')) loadUzmaSatLayer();
-    setTimeout(() => { document.getElementById('uzmasat-controls').classList.add('open'); }, 50);
     return;
   }
 
-  // Standard basemap — disable uzma-sat if switching away
+  // Switching to non-UZMA basemap — close dropdown
+  document.getElementById('basemap-dropdown').classList.remove('open');
+  uzmaControls.style.display = 'none';
+
   if (uzmaSatActive && key !== 'uzma-sat') {
     removeUzmaSatLayer();
     uzmaSatActive = false;
     document.getElementById('tog-uzmasat').className = 'layer-toggle off';
     document.getElementById('uzmasat-layer-info').style.display = 'none';
-    document.getElementById('badge-uzmasat').textContent = 'Tersedia';
+    document.getElementById('badge-uzmasat').textContent = 'Available';
     document.getElementById('badge-uzmasat').classList.remove('demo');
     if (!geoJsonOverlayVisible) {
       geoJsonOverlayVisible = true;
@@ -1979,26 +2370,26 @@ function handleDrop(e)      { e.preventDefault(); document.getElementById('drop-
 function handleFileSelect(e){ const f = e.target.files[0]; if (f) processGeoJSONFile(f); }
 
 function processGeoJSONFile(file) {
-  if (!file.name.match(/\.(geojsonn?|json)$/i)) { showToast('❌ Fail mesti berformat .geojson atau .json'); return; }
+  if (!file.name.match(/\.(geojsonn?|json)$/i)) { showToast('❌ File must be .geojson or .json format'); return; }
   document.getElementById('upload-progress').style.display = 'block';
-  setProgress(10, 'Membaca fail...');
+  setProgress(10, 'Reading file...');
   const reader = new FileReader();
-  reader.onprogress = e => { if (e.lengthComputable) setProgress(10 + (e.loaded/e.total)*40, 'Membaca fail...'); };
+  reader.onprogress = e => { if (e.lengthComputable) setProgress(10 + (e.loaded/e.total)*40, 'Reading file...'); };
   reader.onload = e => {
-    setProgress(55, 'Memproses GeoJSON...');
+    setProgress(55, 'Processing GeoJSON...');
     setTimeout(() => {
       try {
         const geojson = JSON.parse(e.target.result);
-        setProgress(80, 'Memuat ke peta...');
+        setProgress(80, 'Loading to map...');
         setTimeout(() => {
           closeUploadModal();
-          showLoading('Memuatkan ' + file.name, 'Rendering ' + (geojson.features?.length||0).toLocaleString() + ' features...');
+          showLoading('Loading ' + file.name, 'Rendering ' + (geojson.features?.length||0).toLocaleString() + ' features...');
           setTimeout(() => { addDataset(file.name, geojson, file.size); hideLoading(); }, 300);
         }, 200);
-      } catch(err) { setProgress(0,''); showToast('❌ Fail GeoJSON tidak sah: ' + err.message); }
+      } catch(err) { setProgress(0,''); showToast('❌ Invalid GeoJSON file: ' + err.message); }
     }, 100);
   };
-  reader.onerror = () => showToast('❌ Gagal membaca fail');
+  reader.onerror = () => showToast('❌ Failed to read file');
   reader.readAsText(file);
 }
 function setProgress(pct, text) { document.getElementById('progress-fill').style.width = pct + '%'; document.getElementById('progress-text').textContent = text; }
@@ -2010,6 +2401,15 @@ function selectExportType(type, el) {
   currentExportType = type;
   document.querySelectorAll('.export-opt').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
+  // Show/hide settings based on type
+  const showTitle   = type === 'pdf';
+  const showMap     = type === 'pdf';
+  const showMarkers = type === 'pdf' || type === 'png';
+  const showStats   = type === 'pdf';
+  document.getElementById('exp-setting-title').style.display   = showTitle   ? 'flex' : 'none';
+  document.getElementById('exp-setting-map').style.display     = showMap     ? 'flex' : 'none';
+  document.getElementById('exp-setting-markers').style.display = showMarkers ? 'flex' : 'none';
+  document.getElementById('exp-setting-stats').style.display   = showStats   ? 'flex' : 'none';
 }
 function openExportModal() { document.getElementById('export-overlay').classList.add('show'); document.getElementById('export-progress').style.display = 'none'; }
 function closeExportModal() { document.getElementById('export-overlay').classList.remove('show'); }
@@ -2025,46 +2425,46 @@ async function captureMapWithMarkers() {
 
 async function runExport() {
   const type         = currentExportType;
-  const title        = document.getElementById('exp-title-input').value || 'Laporan Geospatial';
+  const title        = document.getElementById('exp-title-input').value || 'Geospatial Report';
   const includeMap   = document.getElementById('exp-include-map').checked;
   const includeMarkers = document.getElementById('exp-include-markers').checked;
   const includeStats = document.getElementById('exp-include-stats').checked;
   document.getElementById('export-progress').style.display = 'block';
-  document.getElementById('export-progress-text').textContent = 'Menyediakan eksport...';
+  document.getElementById('export-progress-text').textContent = 'Preparing export...';
   try {
     if (type === 'geojson') {
-      if (!activeDatasetId) { showToast('⚠️ Tiada dataset aktif'); return; }
+      if (!activeDatasetId) { showToast('⚠️ No active dataset'); return; }
       const ds = datasets[activeDatasetId];
       const blob = new Blob([JSON.stringify(ds.geojson, null, 2)], { type:'application/json' });
       triggerDownload(blob, ds.name.replace(/\.(geojsonn?|json)$/i,'') + '-export.geojson');
-      closeExportModal(); showToast('✅ GeoJSON dieksport');
+      closeExportModal(); showToast('✅ GeoJSON exported');
     } else if (type === 'csv') {
-      if (!activeDatasetId) { showToast('⚠️ Tiada dataset aktif'); return; }
+      if (!activeDatasetId) { showToast('⚠️ No active dataset'); return; }
       const ds = datasets[activeDatasetId];
       const headers = new Set();
       ds.features.forEach(f => Object.keys(f.properties||{}).forEach(k => headers.add(k)));
       const cols = [...headers];
       let csv = cols.map(c => '"' + c + '"').join(',') + '\n';
       ds.features.forEach(f => { const p = f.properties || {}; csv += cols.map(c => { const v = p[c] ?? ''; return '"' + String(v).replace(/"/g,'""') + '"'; }).join(',') + '\n'; });
-      triggerDownload(new Blob([csv], { type:'text/csv' }), 'data-lot-' + new Date().toISOString().slice(0,10) + '.csv');
-      closeExportModal(); showToast('✅ CSV dieksport');
+      triggerDownload(new Blob([csv], { type:'text/csv' }), 'lot-data-' + new Date().toISOString().slice(0,10) + '.csv');
+      closeExportModal(); showToast('✅ CSV exported');
     } else if (type === 'png') {
-      document.getElementById('export-progress-text').textContent = 'Menangkap peta + marker...';
+      document.getElementById('export-progress-text').textContent = 'Capturing map + markers...';
       const canvas = await captureMapWithMarkers();
-      canvas.toBlob(blob => { if (blob) { triggerDownload(blob, 'peta-' + new Date().toISOString().slice(0,10) + '.png'); closeExportModal(); showToast('✅ Imej peta dieksport'); } }, 'image/png');
+      canvas.toBlob(blob => { if (blob) { triggerDownload(blob, 'map-' + new Date().toISOString().slice(0,10) + '.png'); closeExportModal(); showToast('✅ Map image exported'); } }, 'image/png');
     } else if (type === 'pdf') {
       await exportPDF(title, includeMap, includeMarkers, includeStats);
     }
   } catch(err) {
     console.error('Export error:', err);
-    showToast('❌ Eksport gagal: ' + err.message);
+    showToast('❌ Export failed: ' + err.message);
   } finally {
     document.getElementById('export-progress').style.display = 'none';
   }
 }
 
 async function exportPDF(title, includeMap, includeMarkers, includeStats) {
-  document.getElementById('export-progress-text').textContent = 'Menangkap peta + marker...';
+  document.getElementById('export-progress-text').textContent = 'Capturing map + markers...';
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const W=210, H=297, margin=15;
@@ -2074,7 +2474,7 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
   pdf.setTextColor(255,255,255); pdf.setFont('helvetica','bold'); pdf.setFontSize(14);
   pdf.text(title, margin, 12);
   pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(200,200,200);
-  pdf.text('Platform: Geospatial AI (UZMA Berhad)    Tarikh: ' + new Date().toLocaleDateString('ms-MY') + '    Sistem: GDM2000', margin, 19);
+  pdf.text('Platform: Geospatial AI (UZMA Berhad)    Date: ' + new Date().toLocaleDateString('en-MY') + '    System: GDM2000', margin, 19);
   pdf.setTextColor(222,145,81); pdf.setFont('helvetica','bold'); pdf.setFontSize(7);
   pdf.text('GEOSPATIAL AI', W-margin-30, 12);
   pdf.setFont('helvetica','normal'); pdf.setTextColor(180,130,80); pdf.setFontSize(6);
@@ -2085,12 +2485,12 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
     pdf.setFillColor(254,248,243); pdf.setDrawColor(222,145,81); pdf.setLineWidth(0.3);
     pdf.rect(margin, y, W-margin*2, 7, 'FD');
     pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(192,114,64);
-    pdf.text('🛰 UZMA-sat AKTIF: seremban_final/ · TMS tiles · WGS84 · Kawasan Seremban, Negeri Sembilan', margin+3, y+4.5);
+    pdf.text('🛰 UZMA-sat ACTIVE: seremban_final/ · TMS tiles · WGS84 · Seremban Area, Negeri Sembilan', margin+3, y+4.5);
     y += 10;
   }
 
   if (includeMap) {
-    document.getElementById('export-progress-text').textContent = 'Menangkap screenshot peta...';
+    document.getElementById('export-progress-text').textContent = 'Capturing map screenshot...';
     try {
       const canvas = await captureMapWithMarkers();
       const imgData = canvas.toDataURL('image/jpeg', 0.88);
@@ -2101,12 +2501,12 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
       pdf.addImage(imgData, 'JPEG', margin, y, mapW, mapH);
       y += mapH + 4;
       pdf.setFontSize(7); pdf.setTextColor(150,150,150); pdf.setFont('helvetica','normal');
-      pdf.text('Rajah 1: Screenshot peta semasa' + (uzmaSatActive ? ' dengan overlay UZMA-sat (seremban_final/)' : '') + ' · Basemap: ' + document.getElementById('basemap-label').textContent + ' · ' + plotMarkers.length + ' marker', margin, y);
+      pdf.text('Figure 1: Current map screenshot' + (uzmaSatActive ? ' with UZMA-sat overlay (seremban_final/)' : '') + ' · Basemap: ' + document.getElementById('basemap-label').textContent + ' · ' + plotMarkers.length + ' marker(s)', margin, y);
       y += 7;
     } catch(e) {
       console.warn('Map capture failed:', e);
       pdf.setFontSize(8); pdf.setTextColor(150,150,150);
-      pdf.text('[Peta tidak dapat dieksport]', margin, y + 5); y += 12;
+      pdf.text('[Map could not be exported]', margin, y + 5); y += 12;
     }
   }
 
@@ -2114,8 +2514,8 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
     if (y > H - 50) { pdf.addPage(); y = margin; }
     y += 2;
     pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(46,46,46);
-    pdf.text('Plot Marker (' + plotMarkers.length + ')', margin, y); y += 5;
-    const colW=[15,55,55,30,25], headers=['#','Latitud','Longitud','Bentuk','Warna'];
+    pdf.text('Plot Markers (' + plotMarkers.length + ')', margin, y); y += 5;
+    const colW=[15,55,55,30,25], headers=['#','Latitude','Longitude','Shape','Colour'];
     pdf.setFillColor(46,46,46); pdf.rect(margin,y,W-margin*2,6,'F');
     pdf.setTextColor(255,255,255); pdf.setFontSize(7.5);
     let cx = margin + 2;
@@ -2129,7 +2529,7 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
       [m.idx, m.lngLat.lat.toFixed(6), m.lngLat.lng.toFixed(6), m.shape, m.color].forEach((v,j) => { pdf.text(String(v), cx, y+3.8); cx += colW[j]; });
       y += 5.5;
     });
-    if (plotMarkers.length > 20) { pdf.setFontSize(7); pdf.setTextColor(150,150,150); pdf.text('... dan ' + (plotMarkers.length-20) + ' lagi', margin, y+3); y += 6; }
+    if (plotMarkers.length > 20) { pdf.setFontSize(7); pdf.setTextColor(150,150,150); pdf.text('... and ' + (plotMarkers.length-20) + ' more', margin, y+3); y += 6; }
     y += 4;
   }
 
@@ -2137,11 +2537,11 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
     const ds = datasets[activeDatasetId];
     if (y > H - 60) { pdf.addPage(); y = margin; }
     pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(46,46,46);
-    pdf.text('Statistik Dataset: ' + ds.name, margin, y); y += 5;
+    pdf.text('Dataset Statistics: ' + ds.name, margin, y); y += 5;
     const boxes = [
-      { label:'Jumlah Lot', val: ds.features.length.toLocaleString() },
-      { label:'Kelas Gunatanah', val: Object.keys(ds.classCount).length },
-      { label:'Plot Marker', val: plotMarkers.length },
+      { label:'Total Lots', val: ds.features.length.toLocaleString() },
+      { label:'Land Use Classes', val: Object.keys(ds.classCount).length },
+      { label:'Plot Markers', val: plotMarkers.length },
     ];
     const bw = (W - margin*2 - 8) / 3;
     boxes.forEach((b, i) => {
@@ -2155,7 +2555,7 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
     });
     y += 18;
     pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(46,46,46);
-    pdf.text('Taburan Kelas Gunatanah', margin, y); y += 4;
+    pdf.text('Land Use Class Distribution', margin, y); y += 4;
     const total = ds.features.length;
     Object.entries(ds.classCount).sort((a,b) => b[1]-a[1]).slice(0,12).forEach(([cls,count],i) => {
       if (y > H - 20) { pdf.addPage(); y = margin; }
@@ -2177,15 +2577,15 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
     pdf.setPage(pg);
     pdf.setFillColor(46,46,46); pdf.rect(0, H-10, W, 10, 'F');
     pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(200,200,200);
-    pdf.text('Geospatial AI — UZMA Berhad | Dijana pada ' + new Date().toLocaleString('ms-MY'), margin, H-4);
-    pdf.text('Halaman ' + pg + ' / ' + totalPages, W-margin, H-4, { align:'right' });
+    pdf.text('Geospatial AI — UZMA Berhad | Generated on ' + new Date().toLocaleString('en-MY'), margin, H-4);
+    pdf.text('Page ' + pg + ' / ' + totalPages, W-margin, H-4, { align:'right' });
   }
 
-  document.getElementById('export-progress-text').textContent = 'Muat turun PDF...';
+  document.getElementById('export-progress-text').textContent = 'Downloading PDF...';
   pdf.save(title.replace(/\s+/g,'-').toLowerCase() + '-' + new Date().toISOString().slice(0,10) + '.pdf');
   closeExportModal();
-  showToast('✅ PDF berjaya dieksport!');
-  addActivityLog('PDF dieksport', title);
+  showToast('✅ PDF exported successfully!');
+  addActivityLog('PDF exported', title);
 }
 
 function triggerDownload(blob, filename) {
@@ -2214,7 +2614,7 @@ function zoomToSelected() {
 function copyCoords() {
   const lat = document.getElementById('p-lat')?.textContent;
   const lng = document.getElementById('p-lng')?.textContent;
-  if (lat && lng && lat !== '—') { navigator.clipboard.writeText(`${lat}, ${lng}`); showToast('📋 Koordinat disalin'); }
+  if (lat && lng && lat !== '—') { navigator.clipboard.writeText(`${lat}, ${lng}`); showToast('📋 Coordinates copied'); }
 }
 
 function switchTab(el, tabId) {
@@ -2224,13 +2624,285 @@ function switchTab(el, tabId) {
   document.getElementById('tab-' + tabId).style.display = 'block';
 }
 
+// ============================================================
+// LOT LIST
+// ============================================================
+let llAllRows = [];
+let llFilteredRows = [];
+let llPage = 1;
+const LL_PAGE_SIZE = 50;
+let llSortCol = null;
+let llSortDir = 1; // 1=asc, -1=desc
+let llColumns = [];
+
+function openLotListModal() {
+  document.getElementById('lotlist-overlay').classList.add('show');
+  buildLotList();
+}
+function closeLotListModal() {
+  document.getElementById('lotlist-overlay').classList.remove('show');
+}
+
+function buildLotList() {
+  if (!activeDatasetId || !datasets[activeDatasetId]) {
+    document.getElementById('lotlist-no-data').style.display = 'block';
+    document.getElementById('lotlist-table').style.display = 'none';
+    document.getElementById('lotlist-pagination').style.display = 'none';
+    document.getElementById('lotlist-sub').textContent = 'No dataset loaded';
+    document.getElementById('lotlist-count-badge').textContent = '0 lots';
+    return;
+  }
+  const ds = datasets[activeDatasetId];
+  const features = ds.features;
+
+  // Collect all unique property keys (up to 8 most common)
+  const keyCounts = {};
+  features.forEach(f => { Object.keys(f.properties || {}).forEach(k => { keyCounts[k] = (keyCounts[k]||0)+1; }); });
+  llColumns = Object.entries(keyCounts).sort((a,b) => b[1]-a[1]).slice(0,8).map(([k]) => k);
+
+  // Build row data
+  llAllRows = features.map((f, i) => ({ _idx: i, _feature: f, ...f.properties }));
+  llSortCol = null;
+
+  // Update class filter dropdown
+  const classSel = document.getElementById('lotlist-class-filter');
+  classSel.innerHTML = '<option value="">All Classes</option>';
+  Object.keys(ds.classCount).sort().forEach(cls => {
+    classSel.innerHTML += `<option value="${cls}">${cls} (${ds.classCount[cls].toLocaleString()})</option>`;
+  });
+
+  document.getElementById('lotlist-no-data').style.display = 'none';
+  document.getElementById('lotlist-table').style.display = 'table';
+  document.getElementById('lotlist-sub').textContent = ds.name + ' · ' + features.length.toLocaleString() + ' lots';
+  document.getElementById('lotlist-search-input').value = '';
+
+  llFilteredRows = [...llAllRows];
+  llPage = 1;
+  renderLotListTable();
+}
+
+function renderLotListTable() {
+  const ds = activeDatasetId ? datasets[activeDatasetId] : null;
+  // Build header
+  const thead = document.getElementById('lotlist-thead');
+  thead.innerHTML = `<tr>
+    <th style="width:40px;">#</th>
+    ${llColumns.map(col => `<th onclick="lotListSort('${col}')" class="${llSortCol===col?'sorted':''}">
+      ${col}<span class="sort-arrow">${llSortCol===col ? (llSortDir===1?'▲':'▼') : '⇅'}</span>
+    </th>`).join('')}
+    <th style="width:80px;">Action</th>
+  </tr>`;
+
+  // Pagination
+  const total = llFilteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / LL_PAGE_SIZE));
+  llPage = Math.min(llPage, totalPages);
+  const start = (llPage - 1) * LL_PAGE_SIZE;
+  const end   = Math.min(start + LL_PAGE_SIZE, total);
+  const pageRows = llFilteredRows.slice(start, end);
+
+  // Build body
+  const tbody = document.getElementById('lotlist-tbody');
+  if (!pageRows.length) {
+    tbody.innerHTML = `<tr><td colspan="${llColumns.length + 2}" style="text-align:center;padding:36px;color:rgba(66,66,66,0.38);font-size:12px;">No lots match your search</td></tr>`;
+  } else {
+    tbody.innerHTML = pageRows.map((row, i) => {
+      const cls = ds && ds.classProp ? (row[ds.classProp] || '') : '';
+      const color = cls ? getColor(cls) : 'rgba(66,66,66,0.15)';
+      const cells = llColumns.map(col => {
+        const val = row[col] ?? '—';
+        if (col === ds?.classProp) return `<td><span class="lot-class-badge" style="background:${color}22;color:${color};">${val}</span></td>`;
+        return `<td title="${val}">${val}</td>`;
+      }).join('');
+      return `<tr>
+        <td style="color:rgba(66,66,66,0.35);font-size:10px;">${start + i + 1}</td>
+        ${cells}
+        <td><button class="lot-action-btn" onclick="lotListZoomTo(${row._idx})">🔍 Zoom</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Pagination controls
+  document.getElementById('lotlist-pagination').style.display = total > 0 ? 'flex' : 'none';
+  document.getElementById('ll-page-info').textContent = total > 0 ? `Showing ${start+1}–${end} of ${total.toLocaleString()}` : 'No results';
+  document.getElementById('lotlist-count-badge').textContent = total.toLocaleString() + ' lot' + (total !== 1 ? 's' : '');
+
+  // Page buttons — show at most 7
+  const paginEl = document.getElementById('ll-page-btns');
+  let pageBtns = '';
+  pageBtns += `<button class="ll-page-btn" onclick="llGoPage(${llPage-1})" ${llPage===1?'disabled':''}>‹</button>`;
+  const range = buildPageRange(llPage, totalPages, 5);
+  range.forEach(p => {
+    if (p === '…') pageBtns += `<button class="ll-page-btn" disabled style="border:none;background:none;">…</button>`;
+    else pageBtns += `<button class="ll-page-btn ${p===llPage?'active':''}" onclick="llGoPage(${p})">${p}</button>`;
+  });
+  pageBtns += `<button class="ll-page-btn" onclick="llGoPage(${llPage+1})" ${llPage===totalPages?'disabled':''}>›</button>`;
+  paginEl.innerHTML = pageBtns;
+}
+
+function buildPageRange(current, total, delta) {
+  const range = [];
+  for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) range.push(i);
+  if (range[0] > 1) { if (range[0] > 2) range.unshift('…'); range.unshift(1); }
+  if (range[range.length-1] < total) { if (range[range.length-1] < total-1) range.push('…'); range.push(total); }
+  return range;
+}
+
+function llGoPage(p) {
+  const total = llFilteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / LL_PAGE_SIZE));
+  llPage = Math.max(1, Math.min(p, totalPages));
+  renderLotListTable();
+  document.querySelector('.lotlist-table-wrap').scrollTop = 0;
+}
+
+function lotListSearch(val) {
+  const q = val.toLowerCase().trim();
+  const classFilter = document.getElementById('lotlist-class-filter').value;
+  const ds = activeDatasetId ? datasets[activeDatasetId] : null;
+  llFilteredRows = llAllRows.filter(row => {
+    const classMatch = !classFilter || (ds && row[ds.classProp] === classFilter);
+    const textMatch  = !q || llColumns.some(col => String(row[col]||'').toLowerCase().includes(q));
+    return classMatch && textMatch;
+  });
+  llPage = 1;
+  renderLotListTable();
+}
+
+function lotListFilterClass(cls) {
+  const q = document.getElementById('lotlist-search-input').value.toLowerCase().trim();
+  const ds = activeDatasetId ? datasets[activeDatasetId] : null;
+  llFilteredRows = llAllRows.filter(row => {
+    const classMatch = !cls || (ds && row[ds.classProp] === cls);
+    const textMatch  = !q || llColumns.some(col => String(row[col]||'').toLowerCase().includes(q));
+    return classMatch && textMatch;
+  });
+  llPage = 1;
+  renderLotListTable();
+}
+
+function lotListSort(col) {
+  if (llSortCol === col) llSortDir *= -1;
+  else { llSortCol = col; llSortDir = 1; }
+  llFilteredRows.sort((a, b) => {
+    const av = a[col] ?? '', bv = b[col] ?? '';
+    if (!isNaN(av) && !isNaN(bv)) return (parseFloat(av) - parseFloat(bv)) * llSortDir;
+    return String(av).localeCompare(String(bv)) * llSortDir;
+  });
+  llPage = 1;
+  renderLotListTable();
+}
+
+function lotListZoomTo(featureIdx) {
+  if (!activeDatasetId) return;
+  const ds = datasets[activeDatasetId];
+  const feature = ds.features[featureIdx];
+  if (!feature) return;
+  const coords = flattenCoords(feature.geometry);
+  if (!coords.length) return;
+  const avgLng = coords.reduce((s,[lng]) => s+lng, 0) / coords.length;
+  const avgLat = coords.reduce((s,[,lat]) => s+lat, 0) / coords.length;
+  map.flyTo({ center:[avgLng, avgLat], zoom:17 });
+  closeLotListModal();
+  showToast('🔍 Zoomed to lot');
+}
+
+function exportLotListCSV() {
+  if (!activeDatasetId) { showToast('⚠️ No dataset loaded'); return; }
+  const ds = datasets[activeDatasetId];
+  const rows = llFilteredRows.length > 0 ? llFilteredRows : llAllRows;
+  const header = llColumns.join(',');
+  const body = rows.map(row => llColumns.map(col => {
+    const val = row[col] ?? '';
+    return typeof val === 'string' && (val.includes(',') || val.includes('"')) ? `"${val.replace(/"/g,'""')}"` : val;
+  }).join(',')).join('\n');
+  const blob = new Blob([header + '\n' + body], { type:'text/csv' });
+  triggerDownload(blob, ds.name.replace(/\.[^.]+$/,'') + '-lotlist.csv');
+  showToast('✅ CSV exported · ' + rows.length.toLocaleString() + ' rows');
+  addActivityLog('Lot list exported (CSV)', rows.length.toLocaleString() + ' rows · ' + ds.name);
+}
+
+// ============================================================
+// HISTORY ANALYSIS
+// ============================================================
+// HISTORY ANALYSIS
+// ============================================================
+const historyLog = [
+  { title: 'Dashboard initialised', detail: 'Ready to receive GeoJSON data', time: new Date().toLocaleTimeString('en-MY'), category: 'system', icon: '🚀' }
+];
+let historyFilter = 'all';
+
 function addActivityLog(title, sub) {
+  const now  = new Date().toLocaleTimeString('en-MY');
+  // Simple activity panel update
   const list = document.getElementById('activity-list');
-  const now  = new Date().toLocaleTimeString('ms-MY');
   const item = document.createElement('div');
   item.className = 'activity-item';
   item.innerHTML = `<div class="act-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div><div class="act-info"><div class="act-title">${title}</div><div class="act-time">${now} · ${sub}</div></div>`;
   list.insertBefore(item, list.firstChild);
+
+  // Categorise
+  let category = 'system', icon = '⚙️';
+  const t = title.toLowerCase();
+  if (t.includes('dataset') || t.includes('loaded') || t.includes('upload')) { category = 'dataset'; icon = '📂'; }
+  else if (t.includes('marker') || t.includes('plotted') || t.includes('removed')) { category = 'marker'; icon = '📍'; }
+  else if (t.includes('export') || t.includes('pdf') || t.includes('png') || t.includes('geojson export')) { category = 'export'; icon = '📄'; }
+  else if (t.includes('basemap') || t.includes('uzma-sat') || t.includes('zoom') || t.includes('filter')) { category = 'map'; icon = '🗺️'; }
+
+  historyLog.unshift({ title, detail: sub, time: now, category, icon });
+  renderHistoryTimeline();
+}
+
+function openHistoryModal() {
+  renderHistoryTimeline();
+  document.getElementById('history-overlay').classList.add('show');
+}
+
+function closeHistoryModal() {
+  document.getElementById('history-overlay').classList.remove('show');
+}
+
+function filterHistory(cat, el) {
+  historyFilter = cat;
+  document.querySelectorAll('.hfilt').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderHistoryTimeline();
+}
+
+function clearHistoryLog() {
+  historyLog.length = 0;
+  historyLog.push({ title: 'Log cleared', detail: 'History reset by user', time: new Date().toLocaleTimeString('en-MY'), category: 'system', icon: '🗑️' });
+  document.getElementById('activity-list').innerHTML = '';
+  renderHistoryTimeline();
+}
+
+function renderHistoryTimeline() {
+  const timeline = document.getElementById('history-timeline');
+  const filtered = historyFilter === 'all' ? historyLog : historyLog.filter(e => e.category === historyFilter);
+
+  document.getElementById('history-footer-count').textContent = filtered.length + ' event' + (filtered.length !== 1 ? 's' : '');
+  document.getElementById('history-count-sub').textContent = historyLog.length + ' total events · ' + (historyFilter === 'all' ? 'All categories' : historyFilter);
+
+  if (!filtered.length) {
+    timeline.innerHTML = '<div class="history-empty"><div style="font-size:28px;margin-bottom:8px;">📋</div><div style="font-size:12.5px;color:rgba(66,66,66,0.38);">No activity in this category</div></div>';
+    return;
+  }
+
+  const tagClass = { dataset:'tag-dataset', marker:'tag-marker', export:'tag-export', map:'tag-map', system:'tag-system' };
+  const iconBg   = { dataset:'rgba(76,175,80,0.12)', marker:'rgba(229,57,53,0.1)', export:'rgba(30,136,229,0.1)', map:'rgba(156,39,176,0.1)', system:'rgba(66,66,66,0.08)' };
+
+  timeline.innerHTML = filtered.map((e, i) => `
+    <div class="hist-item">
+      <div class="hist-icon" style="background:${iconBg[e.category]||'rgba(66,66,66,0.08)'};">${e.icon}</div>
+      <div class="hist-body">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span class="hist-title">${e.title}</span>
+          <span class="hist-tag ${tagClass[e.category]||'tag-system'}">${e.category}</span>
+        </div>
+        <div class="hist-detail">${e.detail}</div>
+        <div class="hist-time">${e.time}</div>
+      </div>
+    </div>`).join('');
 }
 
 function showToast(msg, dur=3000) {
