@@ -405,6 +405,7 @@
 
   @keyframes spin    { to{transform:rotate(360deg);} }
   @keyframes slideIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+
   /* LOT LIST MODAL */
   .lotlist-overlay { position:fixed; inset:0; background:rgba(46,46,46,0.45); backdrop-filter:blur(3px); z-index:1000; display:none; align-items:center; justify-content:center; }
   .lotlist-overlay.show { display:flex; }
@@ -448,7 +449,6 @@
   .ll-page-btn:hover { border-color:var(--orange); color:var(--orange); }
   .ll-page-btn.active { background:var(--orange); border-color:var(--orange); color:white; }
   .ll-page-btn:disabled { opacity:0.3; cursor:not-allowed; }
-  /* lotlist-table aliases (maps ll-table to lotlist-table class used by JS) */
   .lotlist-table { width:100%; border-collapse:collapse; font-size:12px; }
   .lotlist-table thead { position:sticky; top:0; background:white; z-index:2; box-shadow:0 1px 0 rgba(66,66,66,0.08); }
   .lotlist-table th { background:var(--cream); padding:9px 14px; text-align:left; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:rgba(66,66,66,0.42); border-bottom:1px solid rgba(66,66,66,0.1); white-space:nowrap; cursor:pointer; user-select:none; }
@@ -576,7 +576,7 @@
   <div class="topbar">
     <div>
       <div class="topbar-title" id="page-title">Land Use Dashboard</div>
-      <div class="topbar-sub" id="page-sub">No data loaded · Please upload GeoJSON file</div>
+      <div class="topbar-sub" id="page-sub">No data loaded · Please upload a GeoJSON file</div>
     </div>
     <div class="topbar-spacer"></div>
     <div class="topbar-search" style="position:relative;">
@@ -599,7 +599,7 @@
   </div>
 
   <div class="content-area">
-    <!-- STATS -->
+    <!-- STATS STRIP -->
     <div class="stats-strip">
       <div class="stat-card">
         <div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div>
@@ -689,19 +689,6 @@
             <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Show lot overlay</label>
             <div class="layer-toggle on" id="tog-overlay-on" onclick="toggleGeoJsonOverlay(this)" style="flex-shrink:0;"></div>
           </div>
-        </div>
-      </div>
-
-      <!-- UZMA-sat inline sub-panel (shown inside dropdown when active) -->
-      <div class="uzmasat-controls" id="uzmasat-controls" style="display:none;padding:10px 13px 11px;border-top:1px solid rgba(222,145,81,0.15);background:rgba(222,145,81,0.04);">
-        <div class="uzmasat-ctrl-row">
-          <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Opacity</label>
-          <input type="range" id="uzmasat-opacity" min="10" max="100" value="100" oninput="updateUzmaSatOpacity(this.value)" style="width:80px;accent-color:var(--orange);"/>
-          <span class="val-display" id="opacity-val" style="font-size:11px;color:rgba(66,66,66,0.5);min-width:34px;text-align:right;">100%</span>
-        </div>
-        <div class="uzmasat-ctrl-row" style="margin-bottom:0;">
-          <label style="font-size:11.5px;color:var(--charcoal);flex:1;">Show lot overlay</label>
-          <div class="layer-toggle on" id="tog-overlay-on" onclick="toggleGeoJsonOverlay(this)" style="flex-shrink:0;"></div>
         </div>
       </div>
     </div>
@@ -809,9 +796,9 @@
           <div id="overview-charts" style="display:none;">
             <!-- HERO TOTAL -->
             <div class="summary-hero">
-              <div class="summary-hero-label">📍 Jumlah Lot — Seremban</div>
+              <div class="summary-hero-label">📍 Total Lots — Seremban</div>
               <div class="summary-hero-val" id="summary-total-val">—</div>
-              <div class="summary-hero-sub" id="summary-hero-sub">Memuatkan data...</div>
+              <div class="summary-hero-sub" id="summary-hero-sub">Loading data...</div>
             </div>
 
             <!-- KPI GRID -->
@@ -819,53 +806,53 @@
               <div class="summary-kpi">
                 <div class="summary-kpi-label">📮 Postcode</div>
                 <div class="summary-kpi-val" id="kpi-postcodes">—</div>
-                <div class="summary-kpi-sub">kawasan berbeza</div>
+                <div class="summary-kpi-sub">unique areas</div>
               </div>
               <div class="summary-kpi">
                 <div class="summary-kpi-label">✅ Geocoded</div>
                 <div class="summary-kpi-val" id="kpi-geocoded">—</div>
-                <div class="summary-kpi-sub">ada koordinat</div>
+                <div class="summary-kpi-sub">with coordinates</div>
               </div>
               <div class="summary-kpi">
-                <div class="summary-kpi-label">🏘️ Kelas Data</div>
+                <div class="summary-kpi-label">🏘️ Data Classes</div>
                 <div class="summary-kpi-val" id="kpi-classes">—</div>
-                <div class="summary-kpi-sub">jenis lot</div>
+                <div class="summary-kpi-sub">lot types</div>
               </div>
               <div class="summary-kpi">
-                <div class="summary-kpi-label">🚦 Lampu Isyarat</div>
+                <div class="summary-kpi-label">🚦 Traffic Lights</div>
                 <div class="summary-kpi-val">3,287</div>
-                <div class="summary-kpi-sub">titik trafik</div>
+                <div class="summary-kpi-sub">traffic points</div>
               </div>
             </div>
 
             <!-- POSTCODE DISTRIBUTION -->
             <div class="summary-postcode-bar">
-              <div class="summary-postcode-title">📮 Agihan Mengikut Poskod</div>
+              <div class="summary-postcode-title">📮 Distribution by Postcode</div>
               <div id="postcode-distribution"></div>
             </div>
 
             <!-- LAND USE CHART -->
             <div class="chart-block">
-              <div class="cb-title">Agihan Kelas Guna Tanah</div>
+              <div class="cb-title">Land Use Class Distribution</div>
               <div class="bar-chart" id="bar-chart-container"></div>
-              <div style="font-size:9.5px;color:rgba(66,66,66,0.32);text-align:center;margin-top:4px;">Klik bar untuk tapis lapisan peta.</div>
+              <div style="font-size:9.5px;color:rgba(66,66,66,0.32);text-align:center;margin-top:4px;">Click a bar to filter the map layer.</div>
             </div>
             <div class="chart-block">
-              <div class="cb-title">Senarai Mengikut Kelas</div>
+              <div class="cb-title">List by Class</div>
               <div id="lu-list"></div>
             </div>
             <div class="chart-block">
-              <div class="cb-title">Sub-daerah / Kawasan</div>
+              <div class="cb-title">Sub-district / Area</div>
               <div id="mukim-list"></div>
             </div>
             <div class="chart-block">
-              <div class="cb-title">Maklumat Sumber Data</div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Fail Aktif</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filename">—</div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Jumlah Ciri</div><div class="lu-pct" style="font-size:10.5px;" id="info-total">—</div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Saiz Fail</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filesize">—</div></div>
+              <div class="cb-title">Data Source Information</div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Active File</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filename">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Total Features</div><div class="lu-pct" style="font-size:10.5px;" id="info-total">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">File Size</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-filesize">—</div></div>
               <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Platform</div><div class="lu-pct" style="font-size:10.5px;"><span class="pc-badge badge-geo">Geospatial AI</span></div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Sistem Rujukan</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);">GDM2000</div></div>
-              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Dimuatkan</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-loaded">—</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Reference System</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);">GDM2000</div></div>
+              <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Loaded At</div><div class="lu-pct" style="font-size:10.5px;color:var(--charcoal-light);" id="info-loaded">—</div></div>
             </div>
           </div>
         </div>
@@ -997,13 +984,13 @@
         <!-- ROAD DATA TAB -->
         <div id="tab-roaddata" style="display:none;">
           <div style="font-size:11px;color:rgba(66,66,66,0.42);margin-bottom:12px;line-height:1.6;padding:2px 0;">
-            Data jalan raya dan infrastruktur trafik kawasan Seremban daripada sumber OSM.
+            Road and traffic infrastructure data for the Seremban area sourced from OSM.
           </div>
           <div class="road-layer-card" id="road-tl-card" style="border-color:rgba(253,216,53,0.4);background:linear-gradient(135deg,rgba(253,216,53,0.04),white);">
             <div class="road-layer-header">
               <div class="road-layer-icon" style="background:rgba(253,216,53,0.15);">🚦</div>
               <div class="road-layer-info">
-                <div class="road-layer-name">Lampu Isyarat Trafik</div>
+                <div class="road-layer-name">Traffic Signals</div>
                 <div class="road-layer-desc">OSM traffic signals · gis_osm_traffic_free_1.shp</div>
               </div>
               <span class="road-layer-count" id="tl-count-badge">3,287 pts</span>
@@ -1011,38 +998,28 @@
             </div>
             <div id="tl-detail-panel" style="display:none;padding:0 12px 11px;border-top:1px solid rgba(253,216,53,0.2);padding-top:9px;">
               <div style="font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;">
-                📁 Sumber: gis_osm_traffic_free_1.shp<br>
+                📁 Source: gis_osm_traffic_free_1.shp<br>
                 📐 Format: Point (EPSG:4326)<br>
-                🗺️ Kawasan: Seremban (~3,287 titik)<br>
-                🔢 Jumlah: <strong>3,287</strong> titik isyarat
+                🗺️ Area: Seremban (~3,287 points)<br>
+                🔢 Total: <strong>3,287</strong> signal points
               </div>
               <div style="margin-top:8px;display:flex;align-items:center;gap:7px;">
-                <label style="font-size:11px;color:var(--charcoal);flex:1;">Saiz Emoji</label>
+                <label style="font-size:11px;color:var(--charcoal);flex:1;">Emoji Size</label>
                 <input type="range" min="12" max="32" value="18" id="tl-size-slider" oninput="updateTLSize(this.value)" style="width:70px;accent-color:#FDD835;"/>
                 <span id="tl-size-val" style="font-size:10.5px;color:rgba(66,66,66,0.5);min-width:25px;">18px</span>
               </div>
             </div>
           </div>
-          <div class="road-layer-card">
-            <div class="road-layer-header">
-              <div class="road-layer-icon" style="background:rgba(66,66,66,0.08);">🛣️</div>
-              <div class="road-layer-info">
-                <div class="road-layer-name">Rangkaian Jalan Raya</div>
-                <div class="road-layer-desc">Jalan utama, sekunder &amp; lokal — OSM Seremban</div>
-              </div>
-              <span class="road-layer-count" style="background:rgba(66,66,66,0.07);color:rgba(66,66,66,0.4);">OSM</span>
-              <div class="layer-toggle off" id="tog-road-network" onclick="toggleRoadNetwork(this)" style="margin-left:6px;flex-shrink:0;"></div>
-            </div>
-          </div>
+
           <!-- WATER LAYER CARD -->
           <div class="road-layer-card" id="road-water-card" style="border-color:rgba(33,150,243,0.4);background:linear-gradient(135deg,rgba(33,150,243,0.04),white);">
             <div class="road-layer-header">
               <div class="road-layer-icon" style="background:rgba(33,150,243,0.15);">💧</div>
               <div class="road-layer-info">
-                <div class="road-layer-name">Kawasan Air / Hidrografi</div>
+                <div class="road-layer-name">Water Bodies / Hydrography</div>
                 <div class="road-layer-desc">OSM water bodies · water.geojson</div>
               </div>
-              <span class="road-layer-count" style="background:rgba(33,150,243,0.1);color:#1565C0;" id="water-count-badge">602 kawasan</span>
+              <span class="road-layer-count" style="background:rgba(33,150,243,0.1);color:#1565C0;" id="water-count-badge">602 areas</span>
               <div class="layer-toggle off" id="tog-water-layer" onclick="toggleWaterLayer(this)" style="margin-left:6px;flex-shrink:0;"></div>
             </div>
           </div>
@@ -1052,10 +1029,10 @@
             <div class="road-layer-header">
               <div class="road-layer-icon" style="background:rgba(255,87,34,0.15);">🚆</div>
               <div class="road-layer-info">
-                <div class="road-layer-name">Laluan Kereta Api</div>
+                <div class="road-layer-name">Railway Lines</div>
                 <div class="road-layer-desc">Rail, monorail, subway · railways.geojson</div>
               </div>
-              <span class="road-layer-count" style="background:rgba(255,87,34,0.1);color:#BF360C;" id="railway-count-badge">316 segmen</span>
+              <span class="road-layer-count" style="background:rgba(255,87,34,0.1);color:#BF360C;" id="railway-count-badge">316 segments</span>
               <div class="layer-toggle off" id="tog-railway-layer" onclick="toggleRailwayLayer(this)" style="margin-left:6px;flex-shrink:0;"></div>
             </div>
             <div style="padding:7px 12px 9px;font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;border-top:1px solid rgba(255,87,34,0.1);display:flex;gap:12px;flex-wrap:wrap;">
@@ -1068,18 +1045,18 @@
             <div class="road-layer-header">
               <div class="road-layer-icon" style="background:rgba(76,175,80,0.15);">🏛️</div>
               <div class="road-layer-info">
-                <div class="road-layer-name">Tempat Awam / POI</div>
-                <div class="road-layer-desc">Sekolah, hospital, taman, pusat beli-belah & lebih — pois_a.geojson</div>
+                <div class="road-layer-name">Public Places / POI</div>
+                <div class="road-layer-desc">Schools, hospitals, parks, shopping malls & more — pois_a.geojson</div>
               </div>
               <span class="road-layer-count" style="background:rgba(76,175,80,0.1);color:#2E7D32;" id="pois-count-badge">62,370 pts</span>
               <div class="layer-toggle off" id="tog-pois-layer" onclick="togglePoisLayer(this)" style="margin-left:6px;flex-shrink:0;"></div>
             </div>
             <div id="pois-detail-panel" style="display:none;padding:0 12px 11px;border-top:1px solid rgba(76,175,80,0.2);padding-top:9px;">
               <div style="font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;margin-bottom:8px;">
-                📁 Sumber: pois_a.geojson · 62,370 lokasi<br>
-                🗂️ Kelas: 128 jenis (sekolah, hospital, taman, dll)
+                📁 Source: pois_a.geojson · 62,370 locations<br>
+                🗂️ Classes: 128 types (schools, hospitals, parks, etc.)
               </div>
-              <div style="font-size:10px;font-weight:600;color:var(--charcoal);margin-bottom:6px;">Tapis Mengikut Kategori:</div>
+              <div style="font-size:10px;font-weight:600;color:var(--charcoal);margin-bottom:6px;">Filter by Category:</div>
               <div id="pois-filter-grid" style="display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow-y:auto;"></div>
             </div>
           </div>
@@ -1089,34 +1066,31 @@
             <div class="road-layer-header">
               <div class="road-layer-icon" style="background:rgba(33,150,243,0.15);">🚌</div>
               <div class="road-layer-info">
-                <div class="road-layer-name">Pengangkutan Awam</div>
-                <div class="road-layer-desc">Bas, feri, helipad, lapangan terbang & lebih — transport_a.geojson</div>
+                <div class="road-layer-name">Public Transport</div>
+                <div class="road-layer-desc">Bus, ferry, helipad, airport & more — transport_a.geojson</div>
               </div>
               <span class="road-layer-count" style="background:rgba(33,150,243,0.1);color:#1565C0;" id="transport-count-badge">1,435 pts</span>
               <div class="layer-toggle off" id="tog-transport-layer" onclick="toggleTransportLayer(this)" style="margin-left:6px;flex-shrink:0;"></div>
             </div>
             <div id="transport-detail-panel" style="display:none;padding:0 12px 11px;border-top:1px solid rgba(33,150,243,0.2);padding-top:9px;">
               <div style="font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;margin-bottom:8px;">
-                📁 Sumber: transport_a.geojson · 1,435 lokasi
+                📁 Source: transport_a.geojson · 1,435 locations
               </div>
               <div id="transport-type-list" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
             </div>
           </div>
 
           <div class="chart-block" style="margin-top:4px;">
-            <div class="cb-title">📊 Statistik Trafik</div>
-            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Lampu isyarat dimuatkan</div><div class="lu-pct" style="font-size:10.5px;" id="tl-stat-count">3,287 titik</div></div>
-            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Sumber data</div><div class="lu-pct" style="font-size:10.5px;">OSM (OpenStreetMap)</div></div>
-            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Format asal</div><div class="lu-pct" style="font-size:10.5px;">Shapefile (.shp)</div></div>
-            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Ditukar kepada</div><div class="lu-pct" style="font-size:10.5px;"><span class="pc-badge badge-geo">GeoJSON JS</span></div></div>
-            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">POI dimuat</div><div class="lu-pct" style="font-size:10.5px;">62,370 titik (128 kelas)</div></div>
-            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Pengangkutan dimuat</div><div class="lu-pct" style="font-size:10.5px;">1,435 lokasi (10 kelas)</div></div>
+            <div class="cb-title">📊 Traffic Statistics</div>
+            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Traffic signals loaded</div><div class="lu-pct" style="font-size:10.5px;" id="tl-stat-count">3,287 points</div></div>
+            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Data source</div><div class="lu-pct" style="font-size:10.5px;">OSM (OpenStreetMap)</div></div>
+            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Original format</div><div class="lu-pct" style="font-size:10.5px;">Shapefile (.shp)</div></div>
+            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Converted to</div><div class="lu-pct" style="font-size:10.5px;"><span class="pc-badge badge-geo">GeoJSON JS</span></div></div>
+            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">POIs loaded</div><div class="lu-pct" style="font-size:10.5px;">62,370 points (128 classes)</div></div>
+            <div class="lu-item"><div class="lu-name" style="font-size:10.5px;color:rgba(66,66,66,0.48);">Transport loaded</div><div class="lu-pct" style="font-size:10.5px;">1,435 locations (10 classes)</div></div>
           </div>
-          <div style="padding:10px 12px;background:rgba(253,216,53,0.06);border-radius:9px;border:1px dashed rgba(253,216,53,0.5);">
-            <div style="font-size:10px;font-weight:600;color:#b8860b;margin-bottom:3px;">💡 Nota Teknikal</div>
-            <div style="font-size:10px;color:rgba(66,66,66,0.52);line-height:1.6;">Fail SHP telah ditukar kepada format JavaScript GeoJSON embed — tidak memerlukan server backend, terus dimuatkan dalam HTML.</div>
-          </div>
-        </div>
+
+    
 
         <!-- ACTIVITY TAB -->
         <div id="tab-activity" style="display:none;">
