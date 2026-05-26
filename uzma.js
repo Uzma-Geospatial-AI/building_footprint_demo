@@ -1,4 +1,3 @@
-
 // ============================================================
 // STATE
 // ============================================================
@@ -50,6 +49,9 @@ let uzmaSatOpacity = 1.0;
 let geoJsonOverlayVisible = true;
 
 const SEREMBAN_FILE = 'serembangeo.geojsonn';
+
+// ── FIX: Full absolute URL for PMTiles ──
+const PMTILES_FULL_URL = 'pmtiles://https://uzma-geospatial-ai.github.io/building_footprint_demo/seremban.pmtiles';
 
 // ============================================================
 // SELECT BY AREA — Seremban area definitions
@@ -260,11 +262,10 @@ const UZMASAT_COORDS = {
   ],
   bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
   center: [101.93170359033098, 2.7286763970638583],
-  // ── UPDATED: point directly at the PMTiles file ──
   tifPath: 'seremban.pmtiles',
   resolution: 'PMTiles · zoom 0-16',
   crs: 'WGS84',
-  size: 'pmtiles://https://uzma-geospatial-ai.github.io/building_footprint_demo/seremban.pmtiles',
+  size: PMTILES_FULL_URL,
 };
 
 // ============================================================
@@ -345,14 +346,13 @@ const BASEMAPS = {
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
-  // ── UPDATED: PMTiles — no localhost needed ──
-  'uzmasat-tiles':    { pmtiles: true, url: 'pmtiles://seremban.pmtiles', tileSize:256 },
+  // ── FIX: PMTiles uses full absolute URL ──
+  'uzmasat-tiles':    { pmtiles: true, url: PMTILES_FULL_URL, tileSize:256 },
 };
 
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
-  // PMTiles raster source uses 'url', not 'tiles'
-  if (bm.pmtiles) {
+  if (bm && bm.pmtiles) {
     return {
       version: 8,
       sources: { basemap: { type: 'raster', url: bm.url, tileSize: bm.tileSize } },
@@ -368,11 +368,15 @@ function buildMapStyle(key) {
 // MAP INIT
 // ============================================================
 window.addEventListener('load', () => {
-  // ── UPDATED: Register PMTiles protocol BEFORE map init ──
+  // ── FIX: Register PMTiles protocol BEFORE map init, with null check ──
   if (window.pmtiles) {
-    const protocol = new pmtiles.Protocol();
-    maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
-    console.log('✅ PMTiles protocol registered');
+    try {
+      const protocol = new pmtiles.Protocol();
+      maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
+      console.log('✅ PMTiles protocol registered');
+    } catch(e) {
+      console.error('❌ PMTiles protocol registration failed:', e);
+    }
   } else {
     console.warn('⚠️ pmtiles.js not loaded — UZMA-sat layer will not work');
   }
@@ -705,15 +709,16 @@ function toggleRoadNetwork(el) {
 }
 
 // ============================================================
-// UZMA-SAT LAYER  ── FULLY UPDATED FOR PMTILES ──
+// UZMA-SAT LAYER  ── FIXED: guard checks + absolute PMTiles URL ──
 // ============================================================
 function loadUzmaSatLayer() {
+  // ── FIX 1: Always remove cleanly before re-adding ──
   removeUzmaSatLayer();
   try {
-    // ── Use PMTiles url protocol instead of localhost tiles ──
+    // ── FIX 2: Use full absolute URL — relative paths cause "wrong magic number" ──
     map.addSource('uzmasat-source', {
       type: 'raster',
-      url: 'pmtiles://seremban.pmtiles',
+      url: PMTILES_FULL_URL,
       tileSize: 256,
       attribution: '© UZMA Berhad',
     });
@@ -730,9 +735,10 @@ function loadUzmaSatLayer() {
   }
 }
 
+// ── FIX: Guard checks before removing layer/source ──
 function removeUzmaSatLayer() {
-  try { map.removeLayer('uzmasat-layer'); } catch(e) {}
-  try { map.removeSource('uzmasat-source'); } catch(e) {}
+  try { if (map.getLayer('uzmasat-layer')) map.removeLayer('uzmasat-layer'); } catch(e) {}
+  try { if (map.getSource('uzmasat-source')) map.removeSource('uzmasat-source'); } catch(e) {}
 }
 
 function getFirstGeoJsonLayerId() {
@@ -1753,7 +1759,7 @@ function setMapMode(mode, el) {
 }
 
 // ============================================================
-// BASEMAP  ── UPDATED switchBasemap for PMTiles ──
+// BASEMAP  ── FIXED: switchBasemap with guarded removeUzmaSatLayer ──
 // ============================================================
 function toggleBasemapDropdown() {
   const dd = document.getElementById('basemap-dropdown');
@@ -1780,16 +1786,17 @@ function switchBasemap(key, label, el) {
       addActivityLog('UZMA-sat activated', 'seremban.pmtiles · PMTiles · zoom 0–16');
       showToast('🛰️ UZMA-sat loaded · seremban.pmtiles · zoom 0–16');
     }
-    // ── Load PMTiles layer if not already loaded ──
+    // ── FIX: Check source doesn't already exist before loading ──
     if (!map.getSource('uzmasat-source')) loadUzmaSatLayer();
     return;
   }
 
-  // Switching to non-UZMA basemap — close dropdown
+  // Switching away from UZMA-sat
   document.getElementById('basemap-dropdown').classList.remove('open');
   uzmaControls.style.display = 'none';
 
   if (uzmaSatActive && key !== 'uzma-sat') {
+    // ── FIX: removeUzmaSatLayer is now guarded, safe to call ──
     removeUzmaSatLayer();
     uzmaSatActive = false;
     document.getElementById('tog-uzmasat').className = 'layer-toggle off';
