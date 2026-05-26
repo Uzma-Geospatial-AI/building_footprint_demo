@@ -1585,10 +1585,10 @@ const UZMASAT_COORDS = {
   ],
   bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
   center: [101.93170359033098, 2.7286763970638583],
-  tifPath: 'seremban_final/',
+  tifPath: 'http://localhost:8080/data/seremban/',
   resolution: 'TMS tiles · zoom 0-16',
   crs: 'WGS84 (gdal raster tile output)',
-  size: 'seremban_final/{z}/{x}/{y}.png',
+  size: 'http://localhost:8080/data/seremban/{z}/{x}/{y}.png',
 };
 
 // ============================================================
@@ -1669,7 +1669,7 @@ const BASEMAPS = {
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
-  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:16, scheme:'tms' },
+  'uzmasat-tiles':    { tiles:['http://localhost:8080/data/seremban/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:16, scheme:'tms' },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
@@ -2028,7 +2028,7 @@ function loadUzmaSatLayer() {
   try {
     map.addSource('uzmasat-source', {
       type: 'raster',
-      tiles: ['seremban_final/{z}/{x}/{y}.png'],
+      tiles: ['http://localhost:8080/data/seremban/{z}/{x}/{y}.png'],
       tileSize: 256,
       minzoom: 0,
       maxzoom: 16,
@@ -3109,7 +3109,7 @@ function switchBasemap(key, label, el) {
       showToast('🛰️ UZMA-sat loaded · seremban_final/ · zoom 0–16');
     }
     try {
-      map.getSource('basemap')?.setTiles(['seremban_final/{z}/{x}/{y}.png']);
+      map.getSource('basemap')?.setTiles(['http://localhost:8080/data/seremban/{z}/{x}/{y}.png']);
     } catch(e) {
       const center = map.getCenter(), zoom = map.getZoom();
       map.setStyle(buildMapStyle('uzmasat-tiles'));
