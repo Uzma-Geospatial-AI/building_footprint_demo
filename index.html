@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -32,7 +37,6 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'DM Sans',sans-serif; background:var(--cream); height:100vh; overflow:hidden; display:flex; }
 
-  /* CURSOR */
   .cursor-select-mode { cursor: none !important; }
   .cursor-plot-mode   { cursor: crosshair !important; }
   #custom-cursor { position:fixed; pointer-events:none; z-index:9999; top:0; left:0; transform:translate(-50%,-50%); transition:transform 0.05s linear; display:none; }
@@ -40,7 +44,6 @@
   #custom-cursor svg { filter:drop-shadow(0 2px 6px rgba(222,145,81,0.6)); animation:cursorPulse 2s ease-in-out infinite; }
   @keyframes cursorPulse { 0%,100%{filter:drop-shadow(0 2px 6px rgba(222,145,81,0.5));}50%{filter:drop-shadow(0 2px 12px rgba(222,145,81,0.95));} }
 
-  /* SIDEBAR */
   .sidebar { width:var(--sidebar-w); background:var(--charcoal-dark); height:100vh; display:flex; flex-direction:column; flex-shrink:0; z-index:10; }
   .sidebar-brand { padding:0; border-bottom:1px solid rgba(255,255,255,0.06); height:72px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
   .brand-logo-img { max-width:170px; max-height:56px; object-fit:contain; display:block; }
@@ -62,7 +65,6 @@
   .user-info .name { font-size:12px; color:rgba(255,255,255,0.8); font-weight:500; }
   .user-info .role { font-size:10px; color:rgba(255,255,255,0.28); }
 
-  /* MAIN */
   .main-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
   .topbar { height:var(--topbar-h); background:white; border-bottom:1px solid rgba(66,66,66,0.1); display:flex; align-items:center; padding:0 20px; gap:10px; flex-shrink:0; z-index:5; }
   .topbar-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--charcoal-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:340px; }
@@ -81,7 +83,6 @@
   .topbar-btn.upload-btn:hover { background:var(--orange); color:white; }
   .content-area { flex:1; display:flex; overflow:hidden; position:relative; }
 
-  /* STATS */
   .stats-strip { position:absolute; top:10px; left:14px; display:flex; gap:7px; z-index:4; flex-wrap:wrap; max-width:calc(100% - var(--panel-w) - 28px); }
   .stat-card { background:white; border-radius:9px; padding:8px 12px; border:1px solid rgba(66,66,66,0.1); box-shadow:0 1px 3px rgba(0,0,0,0.06); display:flex; align-items:center; gap:9px; transition:all 0.3s; }
   .stat-icon { width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -94,7 +95,6 @@
   .stat-info .val { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--charcoal-dark); line-height:1; }
   .stat-info .lbl { font-size:9.5px; color:rgba(66,66,66,0.42); margin-top:2px; }
 
-  /* MAP */
   .map-wrapper { position:relative; flex:1; background:#e8e0d8; }
   #map { width:100%; height:100%; }
 
@@ -116,7 +116,6 @@
   @keyframes ringExpand { 0%{width:10px;height:10px;opacity:1;}100%{width:60px;height:60px;opacity:0;} }
   .selection-pulse { position:absolute; pointer-events:none; z-index:6; border-radius:50%; width:20px; height:20px; background:rgba(222,145,81,0.4); border:2px solid var(--orange); transform:translate(-50%,-50%); animation:ringExpand 0.8s cubic-bezier(0.25,0.46,0.45,0.94) forwards; display:none; }
 
-  /* LAYER BADGE */
   .layer-badge { position:absolute; top:82px; left:14px; background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; padding:11px 14px; z-index:4; min-width:200px; box-shadow:0 1px 3px rgba(0,0,0,0.08); max-height:calc(100vh - 200px); overflow-y:auto; }
   .layer-badge::-webkit-scrollbar { width:3px; }
   .layer-badge::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:3px; }
@@ -134,7 +133,6 @@
   .layer-toggle.on::after  { left:13px; }
   .layer-toggle.off::after { left:2px; }
 
-  /* BASEMAP */
   .basemap-switcher { position:absolute; top:10px; right:calc(var(--panel-w) + 60px); z-index:4; }
   .basemap-btn { background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; padding:7px 13px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--charcoal); cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.08); transition:all 0.2s; white-space:nowrap; }
   .basemap-btn:hover { border-color:var(--orange); color:var(--orange); }
@@ -147,11 +145,8 @@
   .basemap-option.active { background:rgba(222,145,81,0.1); color:var(--orange); font-weight:500; }
   .basemap-option-thumb { width:30px; height:22px; border-radius:4px; flex-shrink:0; border:1px solid rgba(66,66,66,0.1); display:flex; align-items:center; justify-content:center; font-size:13px; }
   .uzmasat-badge { font-size:8.5px; background:linear-gradient(135deg,#DE9151,#C07240); color:white; padding:1px 6px; border-radius:10px; font-weight:700; letter-spacing:0.05em; white-space:nowrap; }
-
-  /* UZMA-sat inline sub-controls */
   .uzmasat-ctrl-row { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
 
-  /* PLOT TOOLBAR */
   .plot-toolbar { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:5; background:white; border:1px solid rgba(66,66,66,0.15); border-radius:12px; padding:10px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.12); align-items:center; animation:slideUp 0.25s ease; }
   .plot-toolbar.show { display:flex; }
   @keyframes slideUp { from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%) translateY(0);} }
@@ -168,7 +163,6 @@
   .pt-clear:hover { background:rgba(229,57,53,0.08); }
   .pt-count { font-size:10.5px; color:rgba(66,66,66,0.48); min-width:55px; }
 
-  /* RIGHT PANEL */
   .right-panel { width:var(--panel-w); background:var(--cream); border-left:1px solid rgba(66,66,66,0.1); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; }
   .panel-header { padding:16px 18px 12px; border-bottom:1px solid rgba(66,66,66,0.08); }
   .panel-header .ph-title { font-family:'Syne',sans-serif; font-size:13.5px; font-weight:700; color:var(--charcoal-dark); }
@@ -180,7 +174,6 @@
   .panel-body::-webkit-scrollbar { width:4px; }
   .panel-body::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:4px; }
 
-  /* PARCEL CARD */
   .parcel-card { background:var(--charcoal-dark); border-radius:11px; padding:15px; margin-bottom:11px; }
   .parcel-card .pc-label { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.32); margin-bottom:3px; }
   .parcel-card .pc-id { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; color:white; margin-bottom:12px; word-break:break-word; }
@@ -206,7 +199,6 @@
   .lu-bar-wrap { width:44px; height:3px; background:rgba(66,66,66,0.07); border-radius:2px; overflow:hidden; }
   .lu-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
 
-  /* POPUP */
   .maplibregl-popup-content { font-family:'DM Sans',sans-serif; border-radius:11px; padding:0; box-shadow:0 4px 24px rgba(0,0,0,0.18); min-width:230px; overflow:hidden; }
   .maplibregl-popup-close-button { font-size:17px; right:7px; top:5px; color:rgba(255,255,255,0.65); z-index:1; }
   .popup-header { background:var(--charcoal-dark); padding:11px 15px; }
@@ -218,7 +210,6 @@
   .popup-v { font-size:10.5px; color:var(--charcoal); font-weight:500; }
   .marker-popup-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; color:white; }
 
-  /* SEARCH DROPDOWN */
   .search-dd { display:none; position:absolute; top:40px; left:0; right:0; background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:999; overflow:hidden; max-height:300px; overflow-y:auto; }
   .search-section-header { padding:6px 13px 4px; font-size:9px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(66,66,66,0.38); background:rgba(66,66,66,0.03); border-bottom:1px solid rgba(66,66,66,0.06); }
   .search-item { padding:9px 13px; cursor:pointer; border-bottom:1px solid rgba(66,66,66,0.05); font-size:12px; color:var(--charcoal); display:flex; align-items:flex-start; gap:8px; }
@@ -230,7 +221,6 @@
   .search-loading { padding:12px 13px; font-size:12px; color:rgba(66,66,66,0.4); display:flex; align-items:center; gap:8px; }
   .search-spinner { width:14px; height:14px; border:2px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
 
-  /* UPLOAD MODAL */
   .upload-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
   .upload-overlay.show { display:flex; }
   .upload-box { background:white; border-radius:18px; padding:36px; max-width:460px; width:90%; text-align:center; animation:slideIn 0.25s ease; }
@@ -257,7 +247,6 @@
   .dataset-modal-item .dm-btn { background:none; border:1px solid rgba(229,57,53,0.3); color:#e53935; font-size:10px; padding:2px 7px; border-radius:4px; cursor:pointer; font-family:'DM Sans',sans-serif; }
   .dataset-modal-item .dm-btn:hover { background:rgba(229,57,53,0.08); }
 
-  /* EXPORT MODAL */
   .export-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
   .export-overlay.show { display:flex; }
   .export-box { background:white; border-radius:18px; padding:32px; max-width:480px; width:90%; animation:slideIn 0.25s ease; }
@@ -287,7 +276,6 @@
   .export-progress .ep-spinner { width:32px; height:32px; border:2px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 9px; }
   .export-progress .ep-text { font-size:12px; color:rgba(66,66,66,0.48); }
 
-  /* SELECT BY AREA MODAL */
   .area-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center; }
   .area-overlay.show { display:flex; }
   .area-box { background:white; border-radius:18px; padding:32px; max-width:500px; width:90%; animation:slideIn 0.25s ease; max-height:85vh; display:flex; flex-direction:column; }
@@ -300,7 +288,7 @@
   .area-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; overflow-y:auto; flex:1; padding-right:2px; }
   .area-grid::-webkit-scrollbar { width:4px; }
   .area-grid::-webkit-scrollbar-thumb { background:rgba(66,66,66,0.1); border-radius:4px; }
-  .area-card { border:1.5px solid rgba(66,66,66,0.10); border-radius:12px; padding:14px 13px; cursor:pointer; transition:all 0.18s; background:white; text-align:left; position:relative; overflow:visible; height: auto;  }
+  .area-card { border:1.5px solid rgba(66,66,66,0.10); border-radius:12px; padding:14px 13px; cursor:pointer; transition:all 0.18s; background:white; text-align:left; position:relative; overflow:visible; height:auto; }
   .area-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--orange); transform:scaleX(0); transition:transform 0.2s; transform-origin:left; }
   .area-card:hover { border-color:var(--orange); box-shadow:0 3px 14px rgba(222,145,81,0.18); transform:translateY(-1px); }
   .area-card:hover::before { transform:scaleX(1); }
@@ -315,7 +303,6 @@
   .area-cancel { margin-top:16px; width:100%; height:38px; background:rgba(66,66,66,0.07); border:none; border-radius:9px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--charcoal); cursor:pointer; transition:background 0.15s; flex-shrink:0; }
   .area-cancel:hover { background:rgba(66,66,66,0.12); }
 
-  /* LOADING */
   .loading-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:3000; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
   .loading-overlay.show { display:flex; }
   .loading-spinner { width:44px; height:44px; border:3px solid rgba(222,145,81,0.2); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; }
@@ -349,7 +336,6 @@
   .dataset-name { font-size:11px; color:var(--charcoal); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
   .dataset-count { font-size:10px; color:rgba(66,66,66,0.38); }
 
-  /* GEOSPATIAL CATEGORIES PANEL */
   .geo-cat-item { border-radius:10px; border:1px solid rgba(66,66,66,0.08); margin-bottom:8px; background:white; overflow:hidden; transition:box-shadow 0.15s; }
   .geo-cat-item:hover { box-shadow:0 2px 8px rgba(0,0,0,0.07); }
   .geo-cat-header { display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; }
@@ -365,7 +351,6 @@
   .maplibregl-ctrl-group { border-radius:8px !important; border:1px solid rgba(66,66,66,0.15) !important; overflow:hidden; }
   .maplibregl-ctrl-group button { width:30px !important; height:30px !important; }
 
-  /* ROAD DATA SECTION */
   .road-data-section { margin-top:14px; }
   .road-section-title { font-size:9px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:rgba(66,66,66,0.38); margin:12px 0 7px; display:flex; align-items:center; gap:6px; }
   .road-section-title::before { content:''; display:block; width:3px; height:10px; background:var(--orange); border-radius:2px; }
@@ -378,7 +363,6 @@
   .road-layer-desc { font-size:10px; color:rgba(66,66,66,0.42); margin-top:1px; }
   .road-layer-count { font-size:9px; padding:2px 7px; border-radius:20px; background:rgba(222,145,81,0.12); color:var(--orange); font-weight:600; white-space:nowrap; }
 
-  /* SUMMARY REDESIGN */
   .summary-hero { background:linear-gradient(135deg,var(--charcoal-dark),#1a2a4a); border-radius:12px; padding:16px; margin-bottom:11px; position:relative; overflow:hidden; }
   .summary-hero::before { content:''; position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(222,145,81,0.12); }
   .summary-hero::after { content:''; position:absolute; bottom:-10px; left:-10px; width:50px; height:50px; border-radius:50%; background:rgba(222,145,81,0.06); }
@@ -399,14 +383,12 @@
   .postcode-bar-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
   .postcode-count { font-size:10px; color:rgba(66,66,66,0.42); min-width:35px; text-align:right; }
 
-  /* TRAFFIC LIGHT EMOJI MARKERS */
   .tl-marker { font-size:18px; cursor:pointer; line-height:1; user-select:none; transition:transform 0.15s; filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3)); }
   .tl-marker:hover { transform:scale(1.3); }
 
   @keyframes spin    { to{transform:rotate(360deg);} }
   @keyframes slideIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
 
-  /* LOT LIST MODAL */
   .lotlist-overlay { position:fixed; inset:0; background:rgba(46,46,46,0.45); backdrop-filter:blur(3px); z-index:1000; display:none; align-items:center; justify-content:center; }
   .lotlist-overlay.show { display:flex; }
   .lotlist-box { background:white; border-radius:16px; width:860px; max-width:96vw; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.2); overflow:hidden; }
@@ -466,7 +448,6 @@
   .ll-page-info { font-size:11px; color:rgba(66,66,66,0.38); }
   .ll-page-btns { display:flex; align-items:center; gap:4px; }
 
-  /* HISTORY ANALYSIS MODAL */
   .history-overlay { position:fixed; inset:0; background:rgba(46,46,46,0.45); backdrop-filter:blur(3px); z-index:1000; display:none; align-items:center; justify-content:center; }
   .history-overlay.show { display:flex; }
   .history-box { background:white; border-radius:16px; width:600px; max-width:95vw; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.2); overflow:hidden; }
@@ -1682,6 +1663,10 @@ function buildMapStyle(key) {
 // MAP INIT
 // ============================================================
 window.addEventListener('load', () => {
+  // ── PMTiles Protocol Setup ──
+  const pmtilesProtocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile.bind(pmtilesProtocol));
+
   map = new maplibregl.Map({
     container: 'map',
     style: buildMapStyle('google-road'),
@@ -2027,24 +2012,23 @@ function loadUzmaSatLayer() {
   removeUzmaSatLayer();
   try {
     map.addSource('uzmasat-source', {
-      type: 'raster',
-      tiles: ['http://localhost:8080/data/seremban/{z}/{x}/{y}.png'],
+      type    : 'raster',
+      url     : 'pmtiles://seremban.pmtiles',  // ← PMTiles, bukan tiles[]
       tileSize: 256,
-      minzoom: 0,
-      maxzoom: 16,
-      scheme: 'tms',
+      minzoom : 0,
+      maxzoom : 16,
+      bounds  : [101.87766, 2.67433, 101.98575, 2.78302],
       attribution: '© UZMA Berhad',
-      bounds: [101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691],
     });
     map.addLayer({
-      id: 'uzmasat-layer',
-      type: 'raster',
+      id    : 'uzmasat-layer',
+      type  : 'raster',
       source: 'uzmasat-source',
-      paint: { 'raster-opacity': uzmaSatOpacity, 'raster-fade-duration': 300 }
+      paint : { 'raster-opacity': uzmaSatOpacity, 'raster-fade-duration': 300 }
     }, getFirstGeoJsonLayerId());
   } catch(e) {
     console.error('UZMA-sat load error:', e);
-    showToast('⚠️ Tiles could not be loaded. Check the seremban_final/ folder');
+    showToast('⚠️ PMTiles could not be loaded · seremban.pmtiles');
   }
 }
 
@@ -3094,34 +3078,32 @@ function switchBasemap(key, label, el) {
   // Keep dropdown open so user can see UZMA controls; close only when switching away
   currentBasemap = key;
 
-  const uzmaControls = document.getElementById('uzmasat-controls');
+ const uzmaControls = document.getElementById('uzmasat-controls');
 
-  if (key === 'uzma-sat') {
-    uzmaControls.style.display = 'block';
-    if (!uzmaSatActive) {
-      uzmaSatActive = true;
-      document.getElementById('tog-uzmasat').className = 'layer-toggle on';
-      document.getElementById('uzmasat-layer-info').style.display = 'block';
-      document.getElementById('badge-uzmasat').textContent = 'Active';
-      document.getElementById('badge-uzmasat').classList.add('demo');
-      map.fitBounds(UZMASAT_COORDS.bounds, { padding: 40, duration: 1200 });
-      addActivityLog('UZMA-sat activated', 'seremban_final/ · TMS · scheme:tms');
-      showToast('🛰️ UZMA-sat loaded · seremban_final/ · zoom 0–16');
-    }
-    try {
-      map.getSource('basemap')?.setTiles(['http://localhost:8080/data/seremban/{z}/{x}/{y}.png']);
-    } catch(e) {
-      const center = map.getCenter(), zoom = map.getZoom();
-      map.setStyle(buildMapStyle('uzmasat-tiles'));
-      map.once('style.load', () => {
-        map.setCenter(center); map.setZoom(zoom);
-        for (const dsId of Object.keys(datasets)) addLayersForDataset(dsId);
-        loadUzmaSatLayer();
-      });
-    }
-    if (!map.getSource('uzmasat-source')) loadUzmaSatLayer();
-    return;
+if (key === 'uzma-sat') {
+  uzmaControls.style.display = 'block';
+  if (!uzmaSatActive) {
+    uzmaSatActive = true;
+    document.getElementById('tog-uzmasat').className = 'layer-toggle on';
+    document.getElementById('uzmasat-layer-info').style.display = 'block';
+    document.getElementById('badge-uzmasat').textContent = 'Active';
+    document.getElementById('badge-uzmasat').classList.add('demo');
+    addActivityLog('UZMA-sat activated', 'seremban.pmtiles · PMTiles · GitHub LFS');
+    showToast('🛰️ UZMA-sat loaded · satellite Seremban');
   }
+
+  // Guna setStyle dengan PMTiles
+  const center = map.getCenter(), zoom = map.getZoom();
+  map.setStyle(buildMapStyle('uzma-sat'));
+  map.once('style.load', () => {
+    map.setCenter(center);
+    map.setZoom(zoom);
+    map.fitBounds(UZMASAT_COORDS.bounds, { padding:40, duration:1200 });
+    for (const dsId of Object.keys(datasets)) addLayersForDataset(dsId);
+    loadUzmaSatLayer();
+  });
+  return;
+}
 
   // Switching to non-UZMA basemap — close dropdown
   document.getElementById('basemap-dropdown').classList.remove('open');
