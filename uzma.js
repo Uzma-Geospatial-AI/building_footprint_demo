@@ -264,7 +264,7 @@ const UZMASAT_COORDS = {
   tifPath: 'seremban.pmtiles',
   resolution: 'PMTiles · zoom 0-16',
   crs: 'WGS84',
-  size: 'pmtiles://seremban.pmtiles',
+  size: 'pmtiles://https://uzma-geospatial-ai.github.io/building_footprint_demo/seremban.pmtiles',
 };
 
 // ============================================================
