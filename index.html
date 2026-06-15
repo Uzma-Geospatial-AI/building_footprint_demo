@@ -134,6 +134,19 @@
   .layer-toggle.on::after  { left:13px; }
   .layer-toggle.off::after { left:2px; }
 
+  /* 3D VIEW TOGGLE */
+  .view3d-switcher { position:absolute; top:10px; right:calc(var(--panel-w) + 250px); z-index:4; }
+  .view3d-btn { background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; padding:7px 12px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; color:var(--charcoal); cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.08); transition:all 0.2s; }
+  .view3d-btn:hover { border-color:var(--orange); color:var(--orange); }
+  .view3d-btn svg { width:13px; height:13px; }
+  .view3d-btn.active { background:var(--orange); border-color:var(--orange); color:white; }
+  .view3d-options { display:none; position:absolute; top:calc(100% + 6px); right:0; background:white; border:1px solid rgba(66,66,66,0.12); border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12); overflow:hidden; min-width:215px; }
+  .view3d-options.open { display:block; }
+  .view3d-opt-row { display:flex; align-items:center; gap:9px; padding:10px 13px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--charcoal); border-bottom:1px solid rgba(66,66,66,0.05); }
+  .view3d-opt-row:last-child { border-bottom:none; }
+  .view3d-opt-row .v3d-label { flex:1; line-height:1.35; }
+  .view3d-opt-row .v3d-sub { font-size:9.5px; font-weight:400; color:rgba(66,66,66,0.42); }
+
   /* BASEMAP */
   .basemap-switcher { position:absolute; top:10px; right:calc(var(--panel-w) + 60px); z-index:4; }
   .basemap-btn { background:white; border:1px solid rgba(66,66,66,0.15); border-radius:8px; padding:7px 13px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--charcoal); cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.08); transition:all 0.2s; white-space:nowrap; }
@@ -641,6 +654,27 @@
       <div id="dataset-items-container"></div>
     </div>
 
+    <!-- 3D VIEW TOGGLE -->
+    <div class="view3d-switcher">
+      <button class="view3d-btn" id="view3d-btn" onclick="toggle3D()" title="Togol paparan 3D — extrude data guna tanah jadi blok berketinggian">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>
+        <span id="view3d-label">2D</span>
+      </button>
+      <!-- 3D feature toggles (shown when 3D is active) -->
+      <div class="view3d-options" id="view3d-options">
+        <div class="view3d-opt-row">
+          <span style="font-size:15px;">⛰️</span>
+          <div class="v3d-label">Topografi<div class="v3d-sub">Terrain relief (DEM)</div></div>
+          <div class="layer-toggle on" id="tog-terrain" onclick="toggleTerrain(this)" style="flex-shrink:0;"></div>
+        </div>
+        <div class="view3d-opt-row">
+          <span style="font-size:15px;">🏢</span>
+          <div class="v3d-label">Bangunan 3D<div class="v3d-sub">Tinggi bangunan · OpenFreeMap</div></div>
+          <div class="layer-toggle on" id="tog-buildings3d" onclick="toggleBuildings3D(this)" style="flex-shrink:0;"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- BASEMAP SWITCHER -->
     <div class="basemap-switcher">
       <button class="basemap-btn" onclick="toggleBasemapDropdown()">
@@ -675,7 +709,7 @@
               <span style="font-size:12px;font-weight:600;">UZMA-sat</span>
               <span class="uzmasat-badge">UZMA</span>
             </div>
-            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban_final/ · TMS · zoom 0–16</div>
+            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban_final/ · TMS · zoom 0–14</div>
           </div>
         </div>
         <!-- UZMA-sat inline controls (shown when UZMA-sat is active) -->
@@ -706,7 +740,10 @@
         <div class="no-data-icon">🗺️</div>
         <div class="no-data-title">No GeoJSON Data</div>
         <div class="no-data-sub">Upload a <strong>GeoJSON</strong> lot file to begin geospatial analysis.</div>
+        <div id="no-data-error" style="display:none;margin:10px auto 2px;max-width:420px;padding:9px 14px;border-radius:8px;background:rgba(229,57,53,0.08);border:1px solid rgba(229,57,53,0.25);color:#c62828;font-size:11.5px;line-height:1.6;text-align:left;"></div>
         <button class="no-data-btn" onclick="openUploadModal()">📂 Upload GeoJSON</button>
+        <button class="no-data-btn" onclick="autoLoadGeoJSON()" style="margin-left:8px;background:#fff;color:#DE9151;border:1.5px solid #DE9151;">🔄 Retry Auto-load</button>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:0.1em;color:rgba(66,66,66,0.3);">BUILD v2 · 2026-06-10</div>
       </div>
 
       <!-- Plot Marker Toolbar -->
@@ -895,13 +932,13 @@
                   UZMA-sat
                   <span class="uzmasat-badge" style="font-size:8px;">PROPRIETARY</span>
                 </div>
-                <div class="geo-cat-desc">Raster tiles (seremban_final/) · zoom 0–16 — Seremban</div>
+                <div class="geo-cat-desc">Raster tiles (seremban_final/) · zoom 0–14 — Seremban</div>
               </div>
               <span class="geo-cat-badge demo" id="badge-uzmasat">Available</span>
               <div class="layer-toggle off" id="tog-uzmasat" onclick="activateUzmaSat(this)" style="margin-left:6px;"></div>
             </div>
             <div id="uzmasat-layer-info" style="display:none;padding:0 12px 11px;font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;border-top:1px solid rgba(66,66,66,0.06);margin-top:0;padding-top:9px;">
-              📐 Tiles: seremban_final/{z}/{x}/{y}.png · zoom 0–16<br>
+              📐 Tiles: seremban_final/{z}/{x}/{y}.png · zoom 0–14<br>
               🗺 System: WGS84 (gdal raster tile)<br>
               📍 Area: 101.878° – 101.986°E, 2.674° – 2.783°N<br>
               🗓 Center: 2.7287°N, 101.9317°E
@@ -1330,6 +1367,12 @@ let map, currentPopup = null;
 let selectedFeature = null;
 let mapMode = 'navigate';
 let currentBasemap = 'google-road';
+let is3D = false;            // 3D view (terrain relief + extruded data) for Seremban
+let terrainOn = true;        // terrain (topo) sub-toggle within 3D mode
+let buildingsOn = true;      // OSM 3D buildings sub-toggle within 3D mode
+let extrudeHeight = 30;      // default block height (metres) when no height field exists
+// Free, no-API global elevation tiles (AWS Terrain Tiles / Mapzen Terrarium) — works over Seremban
+const TERRAIN_DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 let datasets = {};
 let activeDatasetId = null;
 let datasetCounter = 0;
@@ -1585,10 +1628,10 @@ const UZMASAT_COORDS = {
   ],
   bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
   center: [101.93170359033098, 2.7286763970638583],
-  tifPath: 'http://localhost:8080/data/seremban/',
-  resolution: 'TMS tiles · zoom 0-16',
+  tifPath: 'seremban_final/',
+  resolution: 'TMS tiles · zoom 0-14',
   crs: 'WGS84 (gdal raster tile output)',
-  size: 'http://localhost:8080/data/seremban/{z}/{x}/{y}.png',
+  size: 'seremban_final/{z}/{x}/{y}.png',
 };
 
 // ============================================================
@@ -1669,19 +1712,37 @@ const BASEMAPS = {
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
-  'uzmasat-tiles':    { tiles:['http://localhost:8080/data/seremban/{z}/{x}/{y}.png'], tileSize:256, minzoom:0, maxzoom:16, scheme:'tms' },
+  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:1, maxzoom:14, scheme:'tms', bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
   const src = { type:'raster', tiles:bm.tiles, tileSize:bm.tileSize, minzoom:bm.minzoom||0, maxzoom:bm.maxzoom||19 };
   if (bm.scheme) src.scheme = bm.scheme;
-  return { version:8, sources:{ basemap:src }, layers:[{ id:'basemap', type:'raster', source:'basemap' }] };
+  if (bm.bounds) src.bounds = bm.bounds;
+  const layers = [];
+  if (bm.whiteBackground) layers.push({ id:'whitebg', type:'background', paint:{ 'background-color':'#ffffff' } });
+  layers.push({ id:'basemap', type:'raster', source:'basemap' });
+  return { version:8, sources:{ basemap:src }, layers };
 }
 
 // ============================================================
 // MAP INIT
 // ============================================================
 window.addEventListener('load', () => {
+  // Detect WebGL support before MapLibre tries (gives a clear error instead of crash)
+  const testCanvas = document.createElement('canvas');
+  const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+  if (!gl) {
+    const errBox = document.getElementById('no-data-error');
+    if (errBox) {
+      errBox.style.display = 'block';
+      errBox.innerHTML = '⚠️ <strong>WebGL not available.</strong> Chrome hardware acceleration is disabled.<br>Go to <code>chrome://settings/system</code> → enable <strong>"Use hardware acceleration"</strong> → Relaunch Chrome.';
+    }
+    document.getElementById('no-data-state').style.display = 'flex';
+    console.error('WebGL unavailable — map cannot initialize');
+    return;
+  }
+
   map = new maplibregl.Map({
     container: 'map',
     style: buildMapStyle('google-road'),
@@ -1696,6 +1757,9 @@ window.addEventListener('load', () => {
   map.on('mouseleave', onMapMouseLeave);
   map.getCanvas().style.cursor = 'grab';
   map.on('load', () => { autoLoadGeoJSON(); });
+  // Keep 3D terrain + buildings applied across basemap/style changes
+  // (vector-tile buildings auto-load per viewport, so no moveend refetch needed)
+  map.on('style.load', () => { applyTerrain(); if (is3D) loadOSMBuildings(); });
 
   const mapEl = document.getElementById('map');
   mapEl.addEventListener('mousemove', e => {
@@ -1722,7 +1786,7 @@ window.addEventListener('load', () => {
 async function autoLoadGeoJSON() {
   showLoading('Loading ' + SEREMBAN_FILE + '...', 'Please wait a moment');
   try {
-    const res = await fetch(SEREMBAN_FILE);
+    const res = await fetch(SEREMBAN_FILE, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const geojson = await res.json();
     const size = parseInt(res.headers.get('content-length') || 0);
@@ -1731,6 +1795,14 @@ async function autoLoadGeoJSON() {
   } catch (err) {
     hideLoading();
     console.warn('Auto-load failed:', err.message);
+    const errBox = document.getElementById('no-data-error');
+    if (errBox) {
+      errBox.style.display = 'block';
+      errBox.innerHTML = location.protocol === 'file:'
+        ? '⚠️ <strong>Auto-load blocked:</strong> page opened via <code>file://</code>. Open through a local server (e.g. Live Server) for data to load automatically.'
+        : '⚠️ <strong>Auto-load failed:</strong> ' + err.message + '<br>URL: <code>' + new URL(SEREMBAN_FILE, location.href).href + '</code>';
+    }
+    showToast('⚠️ Auto-load failed — see details on screen');
   }
 }
 
@@ -2028,10 +2100,10 @@ function loadUzmaSatLayer() {
   try {
     map.addSource('uzmasat-source', {
       type: 'raster',
-      tiles: ['http://localhost:8080/data/seremban/{z}/{x}/{y}.png'],
+      tiles: ['seremban_final/{z}/{x}/{y}.png'],
       tileSize: 256,
-      minzoom: 0,
-      maxzoom: 16,
+      minzoom: 1,
+      maxzoom: 14,
       scheme: 'tms',
       attribution: '© UZMA Berhad',
       bounds: [101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691],
@@ -2079,6 +2151,7 @@ function toggleGeoJsonOverlay(el) {
       try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
     }
   }
+  refresh3DLayers();
   showToast(geoJsonOverlayVisible ? '✅ GeoJSON lot overlay shown' : '🔲 GeoJSON lot overlay hidden');
 }
 
@@ -2181,11 +2254,13 @@ function addLayersForDataset(dsId) {
   map.addSource(sourceId, { type:'geojson', data:ds.geojson, generateId:true });
 
   const classes = Object.keys(ds.classCount);
+  const heightExpr = buildHeightExpr(ds);
   ds.layerVisibility = {};
   classes.forEach(cls => {
     const safeCls = cls.replace(/[^a-zA-Z0-9]/g, '-');
     const fillId    = dsId + '-fill-'    + safeCls;
     const outlineId = dsId + '-outline-' + safeCls;
+    const extrudeId = dsId + '-extrude-' + safeCls;
     const color = getColor(cls);
     const filter = ds.classProp ? ['==', ['get', ds.classProp], cls] : ['literal', true];
 
@@ -2198,9 +2273,128 @@ function addLayersForDataset(dsId) {
       'line-width': ['interpolate',['linear'],['zoom'], 12, ['case',['boolean',['feature-state','hover'],false],2,0.5], 16, ['case',['boolean',['feature-state','hover'],false],3,1.5]],
       'line-opacity': ['case', ['boolean',['feature-state','hover'],false], 1, 0.7]
     }});
+    // 3D block — hidden until the user turns on 3D view (refresh3DLayers controls it)
+    map.addLayer({ id:extrudeId, type:'fill-extrusion', source:sourceId, filter, layout:{ visibility:'none' }, paint:{
+      'fill-extrusion-color': ['case', ['boolean',['feature-state','hover'],false], '#FFFFFF', color],
+      'fill-extrusion-height': heightExpr,
+      'fill-extrusion-base': 0,
+      'fill-extrusion-opacity': 0.85
+    }});
 
-    ds.layerVisibility[cls] = { fillId, outlineId, sourceId, visible:true, color, count:ds.classCount[cls] };
+    ds.layerVisibility[cls] = { fillId, outlineId, extrudeId, sourceId, visible:true, color, count:ds.classCount[cls] };
   });
+  refresh3DLayers();
+}
+
+// Pick a numeric height/levels field if the data has one; otherwise use a flat default height.
+function buildHeightExpr(ds) {
+  const f = ds.features && ds.features[0];
+  if (f && f.properties) {
+    for (const k of Object.keys(f.properties)) {
+      if (/height|tinggi|level|aras|floor|storey|tingkat|bil_tingka/i.test(k) && !isNaN(parseFloat(f.properties[k]))) {
+        const perUnit = /level|aras|floor|storey|tingkat|bil_tingka/i.test(k) ? 3.2 : 1; // levels → metres
+        return ['max', 5, ['*', ['to-number', ['get', k], 0], perUnit]];
+      }
+    }
+  }
+  return extrudeHeight;
+}
+
+// Sync 3D extrusion layers to the current fill-layer visibility + the global 3D toggle.
+function refresh3DLayers() {
+  for (const ds of Object.values(datasets)) {
+    for (const info of Object.values(ds.layerVisibility)) {
+      if (!info.extrudeId) continue;
+      let fillVis = 'visible';
+      try { fillVis = map.getLayoutProperty(info.fillId, 'visibility') || 'visible'; } catch(e) {}
+      const vis = (is3D && fillVis !== 'none') ? 'visible' : 'none';
+      try { map.setLayoutProperty(info.extrudeId, 'visibility', vis); } catch(e) {}
+    }
+  }
+}
+
+function toggle3D() { set3DMode(!is3D); }
+function set3DMode(on) {
+  is3D = on;
+  const btn = document.getElementById('view3d-btn');
+  const lbl = document.getElementById('view3d-label');
+  if (btn) btn.classList.toggle('active', on);
+  if (lbl) lbl.textContent = on ? '3D' : '2D';
+  const opts = document.getElementById('view3d-options');
+  if (opts) opts.classList.toggle('open', on);
+  refresh3DLayers();
+  applyTerrain();
+  if (on) { loadOSMBuildings(); }
+  else { try { map.setLayoutProperty('ofm-buildings-3d', 'visibility', 'none'); } catch(e) {} }
+  try { map.easeTo({ pitch: on ? 55 : 0, duration: 800 }); } catch(e) {}
+  addActivityLog(on ? '3D view enabled' : '3D view disabled', on ? 'Terrain + buildings + extruded data' : 'Flat 2D view');
+  showToast(on ? '🧊 Paparan 3D Seremban — terrain + bangunan + data' : '🗺️ Kembali ke paparan 2D');
+}
+
+// Sub-toggle: terrain (topo) relief
+function toggleTerrain(el) {
+  terrainOn = !terrainOn;
+  el.className = 'layer-toggle ' + (terrainOn ? 'on' : 'off');
+  applyTerrain();
+  showToast(terrainOn ? '⛰️ Topografi dihidupkan' : '🗺️ Topografi dimatikan');
+}
+// Sub-toggle: OSM 3D buildings (height data)
+function toggleBuildings3D(el) {
+  buildingsOn = !buildingsOn;
+  el.className = 'layer-toggle ' + (buildingsOn ? 'on' : 'off');
+  if (buildingsOn) { loadOSMBuildings(); }
+  else { try { map.setLayoutProperty('ofm-buildings-3d', 'visibility', 'none'); } catch(e) {} }
+  showToast(buildingsOn ? '🏢 Bangunan 3D dihidupkan' : '🏚️ Bangunan 3D dimatikan');
+}
+
+// ============================================================
+// 3D BUILDINGS (free — OpenFreeMap vector tiles, no API key)
+// Liberty style ships a `building` source-layer with render_height.
+// ============================================================
+const OPENFREEMAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+let ofmBuildingsLoading = false;
+
+async function loadOSMBuildings() {
+  if (!is3D || !map || !buildingsOn) return;
+  if (ofmBuildingsLoading) return;
+  // Already built — just show it
+  if (map.getLayer('ofm-buildings-3d')) {
+    try { map.setLayoutProperty('ofm-buildings-3d', 'visibility', 'visible'); } catch(e) {}
+    return;
+  }
+  ofmBuildingsLoading = true;
+  showToast('🏢 Memuatkan bangunan OpenFreeMap…');
+  try {
+    // Pull the vector source definition straight from the Liberty style
+    if (!map.getSource('ofm-openmaptiles')) {
+      const style = await (await fetch(OPENFREEMAP_STYLE)).json();
+      const src = (style.sources && style.sources.openmaptiles)
+                || Object.values(style.sources || {}).find(s => s.type === 'vector');
+      if (!src) throw new Error('no vector source in style');
+      map.addSource('ofm-openmaptiles', src);
+    }
+    if (!is3D || !buildingsOn) { ofmBuildingsLoading = false; return; } // user toggled off mid-fetch
+    map.addLayer({
+      id: 'ofm-buildings-3d',
+      type: 'fill-extrusion',
+      source: 'ofm-openmaptiles',
+      'source-layer': 'building',
+      minzoom: 13,
+      paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get','render_height'], 9],
+          0, '#d8cfc0', 30, '#a99c86', 120, '#6f6757'],
+        'fill-extrusion-height': ['coalesce', ['get','render_height'], 9],
+        'fill-extrusion-base':   ['coalesce', ['get','render_min_height'], 0],
+        'fill-extrusion-opacity': 0.92
+      }
+    });
+    showToast('🏢 Bangunan 3D OpenFreeMap dimuatkan');
+  } catch(err) {
+    console.warn('OpenFreeMap buildings error:', err);
+    showToast('⚠️ Gagal muat bangunan OpenFreeMap — semak sambungan internet');
+  } finally {
+    ofmBuildingsLoading = false;
+  }
 }
 
 function setActiveDataset(dsId) {
@@ -2225,6 +2419,7 @@ function removeDataset(dsId) {
   for (const [,info] of Object.entries(ds.layerVisibility)) {
     try { map.removeLayer(info.fillId); } catch(e) {}
     try { map.removeLayer(info.outlineId); } catch(e) {}
+    try { map.removeLayer(info.extrudeId); } catch(e) {}
   }
   try { map.removeSource('geojson-' + dsId); } catch(e) {}
   delete datasets[dsId];
@@ -2447,8 +2642,10 @@ function onMapClick(e) {
 
   const allFillLayers = [];
   for (const [,ds] of Object.entries(datasets))
-    for (const [,info] of Object.entries(ds.layerVisibility))
+    for (const [,info] of Object.entries(ds.layerVisibility)) {
       allFillLayers.push(info.fillId);
+      if (is3D && info.extrudeId) allFillLayers.push(info.extrudeId);
+    }
   if (!allFillLayers.length) return;
 
   const features = map.queryRenderedFeatures(e.point, { layers: allFillLayers });
@@ -2475,7 +2672,10 @@ function onMapMouseMove(e) {
   const allFillLayers = [];
   for (const [,ds] of Object.entries(datasets))
     for (const [,info] of Object.entries(ds.layerVisibility))
-      if (info.visible) allFillLayers.push(info.fillId);
+      if (info.visible) {
+        allFillLayers.push(info.fillId);
+        if (is3D && info.extrudeId) allFillLayers.push(info.extrudeId);
+      }
   if (!allFillLayers.length) return;
 
   const features = map.queryRenderedFeatures(e.point, { layers: allFillLayers });
@@ -2487,7 +2687,7 @@ function onMapMouseMove(e) {
     const f = features[0];
     for (const [dsId, ds] of Object.entries(datasets)) {
       for (const [,info] of Object.entries(ds.layerVisibility)) {
-        if (info.fillId === f.layer.id) {
+        if (info.fillId === f.layer.id || info.extrudeId === f.layer.id) {
           hoveredFeatureId = f.id; hoverDatasetId = dsId;
           try { map.setFeatureState({ source:'geojson-'+dsId, id:f.id }, { hover:true }); } catch(ex) {}
           break;
@@ -2708,6 +2908,7 @@ function toggleGeoCat(cat, el) {
       toggled++;
     }
   }
+  refresh3DLayers();
   if (toggled > 0) showToast(`${newState ? '✅' : '🔲'} ${getCatName(cat)} — ${toggled} class(es) ${newState ? 'shown' : 'hidden'}`);
   else showToast(`ℹ️ ${getCatName(cat)}: No matching classes in active dataset`);
 }
@@ -2778,6 +2979,7 @@ function toggleLayer(dsId, cls, el) {
   const vis = info.visible ? 'visible' : 'none';
   try { map.setLayoutProperty(info.fillId,    'visibility', vis); } catch(e) {}
   try { map.setLayoutProperty(info.outlineId, 'visibility', vis); } catch(e) {}
+  refresh3DLayers();
 }
 
 function filterToClass(cls) {
@@ -2793,6 +2995,7 @@ function filterToClass(cls) {
     const tog = document.getElementById(badgeId);
     if (tog) tog.className = 'layer-toggle ' + (makeVisible ? 'on' : 'off');
   }
+  refresh3DLayers();
   showToast('🔍 Filtering: ' + cls);
 }
 
@@ -3087,6 +3290,22 @@ function toggleBasemapDropdown() {
   dd.classList.toggle('open');
 }
 
+// ---- 3D terrain (free MapLibre DEM, no API key) ----
+// Re-applied on every style.load so it survives basemap switches.
+function applyTerrain() {
+  if (!map) return;
+  if (is3D && terrainOn) {
+    if (!map.getSource('terrain-dem')) {
+      try {
+        map.addSource('terrain-dem', { type:'raster-dem', tiles:[TERRAIN_DEM], encoding:'terrarium', tileSize:256, maxzoom:15 });
+      } catch(e) {}
+    }
+    try { map.setTerrain({ source:'terrain-dem', exaggeration:1.4 }); } catch(e) {}
+  } else {
+    try { map.setTerrain(null); } catch(e) {}
+  }
+}
+
 function switchBasemap(key, label, el) {
   document.querySelectorAll('.basemap-option').forEach(o => o.classList.remove('active'));
   if (el) el.classList.add('active');
@@ -3106,11 +3325,11 @@ function switchBasemap(key, label, el) {
       document.getElementById('badge-uzmasat').classList.add('demo');
       map.fitBounds(UZMASAT_COORDS.bounds, { padding: 40, duration: 1200 });
       addActivityLog('UZMA-sat activated', 'seremban_final/ · TMS · scheme:tms');
-      showToast('🛰️ UZMA-sat loaded · seremban_final/ · zoom 0–16');
+      showToast('🛰️ UZMA-sat loaded · seremban_final/ · zoom 0–14');
     }
-    try {
-      map.getSource('basemap')?.setTiles(['http://localhost:8080/data/seremban/{z}/{x}/{y}.png']);
-    } catch(e) {
+    // The UZMA-sat basemap needs scheme:tms + white background outside Seremban,
+    // which setTiles() can't apply — rebuild the style unless already on it
+    if (!basemapIsSeremban()) {
       const center = map.getCenter(), zoom = map.getZoom();
       map.setStyle(buildMapStyle('uzmasat-tiles'));
       map.once('style.load', () => {
@@ -3118,8 +3337,9 @@ function switchBasemap(key, label, el) {
         for (const dsId of Object.keys(datasets)) addLayersForDataset(dsId);
         loadUzmaSatLayer();
       });
+    } else if (!map.getSource('uzmasat-source')) {
+      loadUzmaSatLayer();
     }
-    if (!map.getSource('uzmasat-source')) loadUzmaSatLayer();
     return;
   }
 
@@ -3145,11 +3365,26 @@ function switchBasemap(key, label, el) {
           }
         }
       }
+      refresh3DLayers();
     }
   }
 
   const bm = BASEMAPS[key];
   if (bm) {
+    // Coming from UZMA-sat: style has tms scheme + white background — must rebuild
+    if (basemapIsSeremban()) {
+      const center = map.getCenter();
+      const zoom   = map.getZoom();
+      map.setStyle(buildMapStyle(key));
+      map.once('style.load', () => {
+        map.setCenter(center);
+        map.setZoom(zoom);
+        for (const dsId of Object.keys(datasets)) {
+          addLayersForDataset(dsId);
+        }
+      });
+      return;
+    }
     try {
       map.getSource('basemap')?.setTiles(bm.tiles);
     } catch(e) {
@@ -3165,6 +3400,13 @@ function switchBasemap(key, label, el) {
       });
     }
   }
+}
+
+function basemapIsSeremban() {
+  try {
+    const s = map.getSource('basemap');
+    return !!(s && s.tiles && s.tiles[0].includes('seremban_final'));
+  } catch(e) { return false; }
 }
 
 // ============================================================
