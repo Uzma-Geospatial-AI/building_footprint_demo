@@ -1747,6 +1747,59 @@ function buildMapStyle(key) {
 }
 
 // ============================================================
+// MAP CREATION + WebGL CONTEXT RECOVERY
+// ============================================================
+let _ctxLostTimer = null;
+function initMap(view) {
+  map = new maplibregl.Map({
+    container: 'map',
+    style: buildMapStyle('google-road'),
+    center: view.center,
+    zoom: view.zoom,
+    pitch: view.pitch || 0,
+    bearing: view.bearing || 0,
+    maxZoom: 20
+    // NOTE: preserveDrawingBuffer sengaja DIMATIKAN untuk jimat memory GPU
+    // (elak WebGL context lost → skrin putih). Export PDF/PNG snapshot canvas
+    // secara on-demand dalam captureMapWithMarkers().
+  });
+  map.addControl(new maplibregl.NavigationControl(), 'top-right');
+  map.on('click', onMapClick);
+  map.on('mousemove', onMapMouseMove);
+  map.on('mouseleave', onMapMouseLeave);
+  map.getCanvas().style.cursor = 'grab';
+  map.on('load', () => { autoLoadGeoJSON(); });
+  // Keep 3D terrain + buildings applied across basemap/style changes
+  map.on('style.load', () => { applyTerrain(); if (is3D) loadOSMBuildings(); });
+
+  // --- WebGL context-loss recovery: elak peta jadi putih kekal ---
+  const canvas = map.getCanvas();
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault(); // beritahu browser kita mahu event 'restored'
+    if (typeof showToast === 'function') showToast('⚠️ Paparan peta terganggu — memulihkan…');
+    if (_ctxLostTimer) clearTimeout(_ctxLostTimer);
+    // Fallback: kalau browser tak pulihkan context, bina semula peta.
+    _ctxLostTimer = setTimeout(rebuildMap, 4000);
+  }, false);
+  canvas.addEventListener('webglcontextrestored', () => {
+    if (_ctxLostTimer) { clearTimeout(_ctxLostTimer); _ctxLostTimer = null; }
+    try { applyTerrain(); if (is3D) loadOSMBuildings(); } catch (err) {}
+    if (typeof showToast === 'function') showToast('✅ Peta dipulihkan');
+  }, false);
+}
+
+function rebuildMap() {
+  if (_ctxLostTimer) { clearTimeout(_ctxLostTimer); _ctxLostTimer = null; }
+  let view = { center:[101.94, 2.72], zoom:11 };
+  try {
+    const c = map.getCenter();
+    view = { center:[c.lng, c.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+  } catch (e) {}
+  try { map.remove(); } catch (e) {}
+  initMap(view);
+}
+
+// ============================================================
 // MAP INIT
 // ============================================================
 window.addEventListener('load', () => {
@@ -1764,23 +1817,7 @@ window.addEventListener('load', () => {
     return;
   }
 
-  map = new maplibregl.Map({
-    container: 'map',
-    style: buildMapStyle('google-road'),
-    center: [101.94, 2.72],
-    zoom: 11,
-    maxZoom: 20,
-    preserveDrawingBuffer: true
-  });
-  map.addControl(new maplibregl.NavigationControl(), 'top-right');
-  map.on('click', onMapClick);
-  map.on('mousemove', onMapMouseMove);
-  map.on('mouseleave', onMapMouseLeave);
-  map.getCanvas().style.cursor = 'grab';
-  map.on('load', () => { autoLoadGeoJSON(); });
-  // Keep 3D terrain + buildings applied across basemap/style changes
-  // (vector-tile buildings auto-load per viewport, so no moveend refetch needed)
-  map.on('style.load', () => { applyTerrain(); if (is3D) loadOSMBuildings(); });
+  initMap({ center:[101.94, 2.72], zoom:11 });
 
   const mapEl = document.getElementById('map');
   mapEl.addEventListener('mousemove', e => {
@@ -3492,13 +3529,44 @@ function selectExportType(type, el) {
 function openExportModal() { document.getElementById('export-overlay').classList.add('show'); document.getElementById('export-progress').style.display = 'none'; }
 function closeExportModal() { document.getElementById('export-overlay').classList.remove('show'); }
 
+// Snapshot the WebGL map canvas on-demand. Because preserveDrawingBuffer is OFF,
+// toDataURL only returns valid pixels if read in the SAME frame as a render —
+// the 'render' event fires right after MapLibre draws, before the buffer clears.
+function snapshotMapCanvas() {
+  return new Promise((resolve) => {
+    map.once('render', () => {
+      try { resolve(map.getCanvas().toDataURL('image/png')); }
+      catch (e) { console.warn('Map snapshot failed:', e); resolve(null); }
+    });
+    map.triggerRepaint();
+  });
+}
+
 async function captureMapWithMarkers() {
   const mapWrapper = document.getElementById('mapWrapper');
-  const canvas = await html2canvas(mapWrapper, {
-    useCORS: true, allowTaint: true, scale: 1.5, logging: false,
-    ignoreElements: (el) => el.classList?.contains('map-controls') || el.classList?.contains('mode-indicator') || el.classList?.contains('no-data-state') || el.classList?.contains('plot-toolbar') || el.id === 'selection-pulse'
-  });
-  return canvas;
+  const mapCanvas = map.getCanvas();
+  // Replace the live GL canvas with a static snapshot so html2canvas can read it
+  // (html2canvas cannot read a WebGL canvas unless its drawing buffer is preserved).
+  const dataUrl = await snapshotMapCanvas();
+  let overlay = null;
+  if (dataUrl) {
+    overlay = document.createElement('img');
+    overlay.src = dataUrl;
+    overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;';
+    mapCanvas.style.visibility = 'hidden';
+    mapCanvas.parentElement.appendChild(overlay);
+    try { await overlay.decode(); } catch (e) {}
+  }
+  try {
+    const canvas = await html2canvas(mapWrapper, {
+      useCORS: true, allowTaint: true, scale: 1.5, logging: false,
+      ignoreElements: (el) => el.classList?.contains('map-controls') || el.classList?.contains('mode-indicator') || el.classList?.contains('no-data-state') || el.classList?.contains('plot-toolbar') || el.id === 'selection-pulse'
+    });
+    return canvas;
+  } finally {
+    if (overlay) overlay.remove();
+    mapCanvas.style.visibility = '';
+  }
 }
 
 async function runExport() {
