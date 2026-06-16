@@ -536,6 +536,36 @@
   .tag-system  { background:rgba(30,44,68,0.07); color:rgba(30,44,68,0.5); }
   .history-empty { text-align:center; padding:40px 20px; }
   .history-footer { padding:10px 22px; border-top:1px solid rgba(66,66,66,0.07); font-size:10.5px; color:rgba(66,66,66,0.35); display:flex; gap:8px; align-items:center; flex-shrink:0; }
+
+  /* ============================================================
+     RESPONSIVE — "kecilkan & wrap je"
+     Kekalkan 3-column (sidebar | map | panel). Bila tetingkap kecik,
+     kecilkan lebar sidebar/panel/search & benarkan topbar wrap, supaya
+     elemen tak overflow/"lari". Element absolute guna --panel-w (calc),
+     jadi cukup tukar variable di sini — semuanya ikut auto.
+     ============================================================ */
+  @media (max-width: 1200px) {
+    :root { --sidebar-w: 188px; --panel-w: 296px; }
+    .topbar-search { width: 190px; }
+    .topbar { gap: 8px; padding: 0 14px; }
+    .topbar-title { max-width: 220px; font-size: 15px; }
+  }
+  @media (max-width: 960px) {
+    :root { --sidebar-w: 156px; --panel-w: 252px; }
+    /* Topbar wrap ke baris bawah daripada bertindih */
+    .topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-h);
+              row-gap: 7px; padding-top: 8px; padding-bottom: 8px; }
+    .topbar-sub { display: none; }
+    .topbar-search { width: 170px; }
+    .topbar-btn { padding: 0 10px; font-size: 12px; }
+  }
+  @media (max-width: 720px) {
+    :root { --sidebar-w: 132px; --panel-w: 214px; }
+    /* Search ambil baris penuh sendiri supaya butang tak terhimpit */
+    .topbar-spacer { display: none; }
+    .topbar-search { flex: 1 1 100%; width: auto; order: 5; }
+    .topbar-title { max-width: 160px; font-size: 14px; }
+  }
 </style>
 </head>
 <body>
