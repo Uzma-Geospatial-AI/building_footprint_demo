@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -766,7 +767,7 @@
               <span style="font-size:12px;font-weight:600;">UZMA-sat</span>
               <span class="uzmasat-badge">UZMA</span>
             </div>
-            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban_final/ · TMS · zoom 0–14</div>
+            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban.pmtiles · S3 · zoom 8–19</div>
           </div>
         </div>
         <!-- UZMA-sat inline controls (shown when UZMA-sat is active) -->
@@ -978,14 +979,14 @@
                   UZMA-sat
                   <span class="uzmasat-badge" style="font-size:8px;">PROPRIETARY</span>
                 </div>
-                <div class="geo-cat-desc">Raster tiles (seremban_final/) · zoom 0–14 — Seremban</div>
+                <div class="geo-cat-desc">Hosted PMTiles raster · zoom 8–19 — Seremban</div>
               </div>
               <span class="geo-cat-badge demo" id="badge-uzmasat">Available</span>
               <div class="layer-toggle off" id="tog-uzmasat" onclick="activateUzmaSat(this)" style="margin-left:6px;"></div>
             </div>
             <div id="uzmasat-layer-info" style="display:none;padding:0 12px 11px;font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;border-top:1px solid rgba(66,66,66,0.06);margin-top:0;padding-top:9px;">
-              📐 Tiles: seremban_final/{z}/{x}/{y}.png · zoom 0–14<br>
-              🗺 System: WGS84 (gdal raster tile)<br>
+              📐 Source: seremban.pmtiles (S3) · zoom 8–19<br>
+              🗺 System: WebMercator EPSG:3857 · PMTiles<br>
               📍 Area: 101.878° – 101.986°E, 2.674° – 2.783°N<br>
               🗓 Center: 2.7287°N, 101.9317°E
             </div>
@@ -1678,10 +1679,10 @@ const UZMASAT_COORDS = {
   ],
   bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
   center: [101.93170359033098, 2.7286763970638583],
-  tifPath: 'seremban_final/',
-  resolution: 'TMS tiles · zoom 0-14',
-  crs: 'WGS84 (gdal raster tile output)',
-  size: 'seremban_final/{z}/{x}/{y}.png',
+  tifPath: 'seremban.pmtiles (S3)',
+  resolution: 'PMTiles raster · zoom 8-19',
+  crs: 'WebMercator (EPSG:3857) · PMTiles',
+  size: 'digitalearthbasemap.s3 · seremban.pmtiles',
 };
 
 // ============================================================
@@ -1758,12 +1759,23 @@ function flattenCoords(g) { return flattenRaw(g); }
 // ============================================================
 // BASEMAPS
 // ============================================================
+// ============================================================
+// UZMA-sat hosted imagery (PMTiles on S3) + protocol registration
+// ============================================================
+const UZMASAT_PMTILES_URL = 'https://digitalearthbasemap.s3.ap-southeast-1.amazonaws.com/seremban.pmtiles';
+const UZMASAT_TILES = ['pmtiles://' + UZMASAT_PMTILES_URL + '/{z}/{x}/{y}'];
+if (window.pmtiles && !window._pmtilesRegistered) {
+  const _pmtilesProtocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', _pmtilesProtocol.tile);
+  window._pmtilesRegistered = true;
+}
+
 const BASEMAPS = {
   'google-road':      { tiles:['https://mt0.google.com/vt/lyrs=m&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
-  'uzmasat-tiles':    { tiles:['seremban_final/{z}/{x}/{y}.png'], tileSize:256, minzoom:1, maxzoom:14, scheme:'tms', bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
+  'uzmasat-tiles':    { tiles:UZMASAT_TILES, tileSize:256, minzoom:8, maxzoom:19, bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
@@ -2247,8 +2259,8 @@ function activateUzmaSat(el) {
     loadUzmaSatLayer();
     switchBasemap('uzma-sat', 'UZMA-sat', null);
     uzmaSatActive = true;
-    addActivityLog('UZMA-sat activated', 'seremban_final/ · TMS · scheme:tms');
-    showToast('🛰️ UZMA-sat loaded — seremban_final/ · TMS tiles');
+    addActivityLog('UZMA-sat activated', 'seremban.pmtiles · S3 · zoom 8–19');
+    showToast('🛰️ UZMA-sat loaded — seremban.pmtiles (S3)');
   } else {
     el.className = 'layer-toggle off';
     document.getElementById('uzmasat-layer-info').style.display = 'none';
@@ -3417,10 +3429,10 @@ function switchBasemap(key, label, el) {
       document.getElementById('badge-uzmasat').textContent = 'Active';
       document.getElementById('badge-uzmasat').classList.add('demo');
       map.fitBounds(UZMASAT_COORDS.bounds, { padding: 40, duration: 1200 });
-      addActivityLog('UZMA-sat activated', 'seremban_final/ · TMS · scheme:tms');
-      showToast('🛰️ UZMA-sat loaded · seremban_final/ · zoom 0–14');
+      addActivityLog('UZMA-sat activated', 'seremban.pmtiles · S3 · zoom 8–19');
+      showToast('🛰️ UZMA-sat loaded · seremban.pmtiles (S3) · zoom 8–19');
     }
-    // The UZMA-sat basemap needs scheme:tms + white background outside Seremban,
+    // The UZMA-sat basemap needs the pmtiles source + white background outside Seremban,
     // which setTiles() can't apply — rebuild the style unless already on it
     if (!basemapIsSeremban()) {
       const center = map.getCenter(), zoom = map.getZoom();
@@ -3499,7 +3511,7 @@ function switchBasemap(key, label, el) {
 function basemapIsSeremban() {
   try {
     const s = map.getSource('basemap');
-    return !!(s && s.tiles && s.tiles[0].includes('seremban_final'));
+    return !!(s && s.tiles && s.tiles[0].includes('pmtiles'));
   } catch(e) { return false; }
 }
 
@@ -3661,7 +3673,7 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
     pdf.setFillColor(254,248,243); pdf.setDrawColor(232,119,46); pdf.setLineWidth(0.3);
     pdf.rect(margin, y, W-margin*2, 7, 'FD');
     pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(192,114,64);
-    pdf.text('🛰 UZMA-sat ACTIVE: seremban_final/ · TMS tiles · WGS84 · Seremban Area, Negeri Sembilan', margin+3, y+4.5);
+    pdf.text('🛰 UZMA-sat ACTIVE: seremban.pmtiles (S3) · PMTiles raster · Seremban Area, Negeri Sembilan', margin+3, y+4.5);
     y += 10;
   }
 
@@ -3677,7 +3689,7 @@ async function exportPDF(title, includeMap, includeMarkers, includeStats) {
       pdf.addImage(imgData, 'JPEG', margin, y, mapW, mapH);
       y += mapH + 4;
       pdf.setFontSize(7); pdf.setTextColor(150,150,150); pdf.setFont('helvetica','normal');
-      pdf.text('Figure 1: Current map screenshot' + (uzmaSatActive ? ' with UZMA-sat overlay (seremban_final/)' : '') + ' · Basemap: ' + document.getElementById('basemap-label').textContent + ' · ' + plotMarkers.length + ' marker(s)', margin, y);
+      pdf.text('Figure 1: Current map screenshot' + (uzmaSatActive ? ' with UZMA-sat overlay (seremban.pmtiles)' : '') + ' · Basemap: ' + document.getElementById('basemap-label').textContent + ' · ' + plotMarkers.length + ' marker(s)', margin, y);
       y += 7;
     } catch(e) {
       console.warn('Map capture failed:', e);
