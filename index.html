@@ -1775,7 +1775,7 @@ const BASEMAPS = {
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
-  'uzmasat-tiles':    { tiles:UZMASAT_TILES, tileSize:256, minzoom:8, maxzoom:19, bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
+  'uzmasat-tiles':    { tiles:UZMASAT_TILES, tileSize:256, minzoom:8, maxzoom:18, bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
