@@ -3436,7 +3436,7 @@ function switchBasemap(key, label, el) {
     // which setTiles() can't apply — rebuild the style unless already on it
     if (!basemapIsSeremban()) {
       const center = map.getCenter(), zoom = map.getZoom();
-      map.setStyle(buildMapStyle('uzmasat-tiles'));
+      map.setStyle(buildMapStyle('uzmasat-tiles'), { diff: false });
       map.once('style.load', () => {
         map.setCenter(center); map.setZoom(zoom);
         for (const dsId of Object.keys(datasets)) addLayersForDataset(dsId);
@@ -3477,11 +3477,11 @@ function switchBasemap(key, label, el) {
 
   const bm = BASEMAPS[key];
   if (bm) {
-    // Coming from UZMA-sat: style has tms scheme + white background — must rebuild
+    // Coming from UZMA-sat: style has the pmtiles source + white background — must rebuild
     if (basemapIsSeremban()) {
       const center = map.getCenter();
       const zoom   = map.getZoom();
-      map.setStyle(buildMapStyle(key));
+      map.setStyle(buildMapStyle(key), { diff: false });
       map.once('style.load', () => {
         map.setCenter(center);
         map.setZoom(zoom);
@@ -3496,7 +3496,7 @@ function switchBasemap(key, label, el) {
     } catch(e) {
       const center = map.getCenter();
       const zoom   = map.getZoom();
-      map.setStyle(buildMapStyle(key));
+      map.setStyle(buildMapStyle(key), { diff: false });
       map.once('style.load', () => {
         map.setCenter(center);
         map.setZoom(zoom);
