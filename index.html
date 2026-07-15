@@ -767,7 +767,7 @@
               <span style="font-size:12px;font-weight:600;">UZMA-sat</span>
               <span class="uzmasat-badge">UZMA</span>
             </div>
-            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban.pmtiles · S3 · zoom 8–15</div>
+            <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban.pmtiles · S3 · zoom 8–17</div>
           </div>
         </div>
         <!-- UZMA-sat inline controls (shown when UZMA-sat is active) -->
@@ -979,13 +979,13 @@
                   UZMA-sat
                   <span class="uzmasat-badge" style="font-size:8px;">PROPRIETARY</span>
                 </div>
-                <div class="geo-cat-desc">Hosted PMTiles raster · zoom 8–15 — Seremban</div>
+                <div class="geo-cat-desc">Hosted PMTiles raster · zoom 8–17 — Seremban</div>
               </div>
               <span class="geo-cat-badge demo" id="badge-uzmasat">Available</span>
               <div class="layer-toggle off" id="tog-uzmasat" onclick="activateUzmaSat(this)" style="margin-left:6px;"></div>
             </div>
             <div id="uzmasat-layer-info" style="display:none;padding:0 12px 11px;font-size:10px;color:rgba(66,66,66,0.48);line-height:1.7;border-top:1px solid rgba(66,66,66,0.06);margin-top:0;padding-top:9px;">
-              📐 Source: seremban.pmtiles (S3) · zoom 8–15<br>
+              📐 Source: seremban.pmtiles (S3) · zoom 8–17<br>
               🗺 System: WebMercator EPSG:3857 · PMTiles<br>
               📍 Area: 101.878° – 101.986°E, 2.674° – 2.783°N<br>
               🗓 Center: 2.7287°N, 101.9317°E
@@ -1680,7 +1680,7 @@ const UZMASAT_COORDS = {
   bounds: [[101.87766085815322, 2.6743293354532471], [101.98574632250876, 2.7830234586744691]],
   center: [101.93170359033098, 2.7286763970638583],
   tifPath: 'seremban.pmtiles (S3)',
-  resolution: 'PMTiles raster · zoom 8-15',
+  resolution: 'PMTiles raster · zoom 8-17',
   crs: 'WebMercator (EPSG:3857) · PMTiles',
   size: 'digitalearthbasemap.s3 · seremban.pmtiles',
 };
@@ -1766,7 +1766,7 @@ const UZMASAT_PMTILES_URL = 'https://digitalearthbasemap.s3.ap-southeast-1.amazo
 const UZMASAT_TILES = ['pmtiles://' + UZMASAT_PMTILES_URL + '/{z}/{x}/{y}'];
 // Cap UZMA-sat at zoom 15 — imagery beyond this is upscaled (blurry), so we stop
 // the map from zooming past it while UZMA-sat is the basemap. Other basemaps keep 20.
-const UZMASAT_MAXZOOM = 15;
+const UZMASAT_MAXZOOM = 17;
 const GLOBAL_MAXZOOM = 20;
 if (window.pmtiles && !window._pmtilesRegistered) {
   const _pmtilesProtocol = new pmtiles.Protocol();
@@ -2263,7 +2263,7 @@ function activateUzmaSat(el) {
     loadUzmaSatLayer();
     switchBasemap('uzma-sat', 'UZMA-sat', null);
     uzmaSatActive = true;
-    addActivityLog('UZMA-sat activated', 'seremban.pmtiles · S3 · zoom 8–15');
+    addActivityLog('UZMA-sat activated', 'seremban.pmtiles · S3 · zoom 8–17');
     showToast('🛰️ UZMA-sat loaded — seremban.pmtiles (S3)');
   } else {
     el.className = 'layer-toggle off';
@@ -3437,8 +3437,8 @@ function switchBasemap(key, label, el) {
       document.getElementById('badge-uzmasat').textContent = 'Active';
       document.getElementById('badge-uzmasat').classList.add('demo');
       map.fitBounds(UZMASAT_COORDS.bounds, { padding: 40, duration: 1200 });
-      addActivityLog('UZMA-sat activated', 'seremban.pmtiles · S3 · zoom 8–15');
-      showToast('🛰️ UZMA-sat loaded · seremban.pmtiles (S3) · zoom 8–15');
+      addActivityLog('UZMA-sat activated', 'seremban.pmtiles · S3 · zoom 8–17');
+      showToast('🛰️ UZMA-sat loaded · seremban.pmtiles (S3) · zoom 8–17');
     }
     // The UZMA-sat basemap needs the pmtiles source + white background outside Seremban,
     // which setTiles() can't apply — rebuild the style unless already on it
