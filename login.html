@@ -86,9 +86,7 @@
   /* orbit rings */
   .orbit { fill:none; stroke:rgba(232,119,46,0.28); stroke-width:1; stroke-dasharray:3 7; }
   .orbit-faint { fill:none; stroke:rgba(255,255,255,0.10); stroke-width:1; }
-  .orbit-spin  { transform-box:fill-box; transform-origin:center; animation:rollA 46s linear infinite; }
   .orbit-spin-2{ transform-box:fill-box; transform-origin:center; animation:rollB 64s linear infinite; }
-  @keyframes rollA { from { transform:rotate(-18deg); } to { transform:rotate(342deg); } }
   @keyframes rollB { from { transform:rotate(24deg); }  to { transform:rotate(-336deg); } }
 
   /* satellite skeleton — wireframe line art */
@@ -98,10 +96,18 @@
 
   /* ground pings */
   .ping { fill:var(--orange); opacity:0; animation:ping 4.2s ease-out infinite; }
-  .ping-ring { fill:none; stroke:var(--orange); stroke-width:1; opacity:0; animation:pingRing 4.2s ease-out infinite; }
+  .ping-ring {
+    fill:none; stroke:var(--orange); stroke-width:1.2; opacity:0;
+    transform-box:fill-box; transform-origin:center;
+    animation:pingRing 4.2s ease-out infinite;
+  }
   .p2 { animation-delay:1.4s; } .p3 { animation-delay:2.8s; }
-  @keyframes ping { 0%{opacity:0}10%{opacity:0.9}55%{opacity:0.9}100%{opacity:0} }
-  @keyframes pingRing { 0%{opacity:0.6; r:2}45%{opacity:0; r:16}100%{opacity:0; r:16} }
+  @keyframes ping { 0%{opacity:0} 10%{opacity:0.9} 55%{opacity:0.9} 100%{opacity:0} }
+  @keyframes pingRing {
+    0%   { opacity:0.7; transform:scale(0.18); }
+    50%  { opacity:0;   transform:scale(1); }
+    100% { opacity:0;   transform:scale(1); }
+  }
 
   /* ── HERO COPY ───────────────────────────────────────── */
   .hero { position:relative; z-index:3; }
@@ -134,6 +140,7 @@
   }
 
   .login-card { width:100%; max-width:372px; position:relative; z-index:2; }
+  .mobile-logo { display:none; max-width:150px; max-height:44px; object-fit:contain; margin-bottom:26px; }
   .login-card h2 { font-size:26px; font-weight:700; color:var(--charcoal-dark); letter-spacing:-0.022em; margin-bottom:6px; }
   .login-card .sub { font-size:13.5px; color:var(--charcoal-light); margin-bottom:30px; }
 
@@ -206,11 +213,7 @@
     body { overflow:auto; }
     .visual-panel { display:none; }
     .form-panel { width:100%; min-height:100vh; }
-    .login-card::before {
-      content:''; display:block; width:44px; height:44px; border-radius:11px;
-      background:var(--orange); margin-bottom:20px;
-      -webkit-mask:none;
-    }
+    .mobile-logo { display:block; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; }
@@ -227,9 +230,9 @@
   <div class="scene" aria-hidden="true">
     <svg viewBox="0 0 520 520">
       <defs>
-        <!-- orbit path the satellite travels along -->
-        <ellipse id="orbit-path" cx="260" cy="260" rx="228" ry="96"
-                 transform="rotate(-18 260 260)" />
+        <!-- orbit path the satellite travels along: ellipse rx228/ry96 tilted -18° -->
+        <path id="orbit-path"
+              d="M43.16,330.46 A228,96 -18 1,1 476.84,189.54 A228,96 -18 1,1 43.16,330.46" />
       </defs>
 
       <!-- faint outer orbit -->
@@ -258,16 +261,16 @@
 
       <!-- ground station pings -->
       <g>
-        <circle class="ping-ring"    cx="228" cy="238" r="2" />
+        <circle class="ping-ring"    cx="228" cy="238" r="15" />
         <circle class="ping"         cx="228" cy="238" r="2.4" />
-        <circle class="ping-ring p2" cx="292" cy="296" r="2" />
+        <circle class="ping-ring p2" cx="292" cy="296" r="15" />
         <circle class="ping p2"      cx="292" cy="296" r="2.4" />
-        <circle class="ping-ring p3" cx="264" cy="196" r="2" />
+        <circle class="ping-ring p3" cx="264" cy="196" r="15" />
         <circle class="ping p3"      cx="264" cy="196" r="2.4" />
       </g>
 
-      <!-- main orbit ring -->
-      <ellipse class="orbit orbit-spin" cx="260" cy="260" rx="228" ry="96" />
+      <!-- main orbit ring — must match #orbit-path exactly -->
+      <use class="orbit" href="#orbit-path" xlink:href="#orbit-path" />
 
       <!-- SATELLITE (skeleton / wireframe) -->
       <g class="sat-glow">
@@ -342,6 +345,7 @@
 <!-- ══ RIGHT: LOGIN FORM ══════════════════════════════════ -->
 <div class="form-panel">
   <div class="login-card">
+    <img src="GeoAILogo.png" alt="UZMA Geospatial AI" class="mobile-logo" onerror="this.style.display='none';" />
     <h2>Welcome back</h2>
     <div class="sub">Sign in to access the Geospatial AI Dashboard.</div>
 
@@ -393,8 +397,8 @@
   const ACCOUNT = {
     email: 'geospatial.ai@uzmagroup.com',
     pass:  'Geoai123!',
-    name:  'Ather Sulaiman',
-    role:  'Business Development (BD)'
+    name:  'Geospatial AI',
+    role:  'Admin'
   };
   /* ─────────────────────────────────────────────────────── */
 
