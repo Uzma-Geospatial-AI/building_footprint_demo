@@ -58,13 +58,15 @@
   /* ── SATELLITE / GLOBE SCENE ─────────────────────────── */
   /* Flat technical line drawing — single stroke weight, no depth, no glow. */
   .scene {
-    position:absolute; top:46%; left:50%; transform:translate(-50%,-50%);
-    width:min(58vh, 62%); aspect-ratio:1/1; z-index:1; pointer-events:none;
+    position:absolute; top:47%; left:50%; transform:translate(-50%,-50%);
+    width:min(78vh, 86%); aspect-ratio:1/1; z-index:1; pointer-events:none;
   }
   .scene svg { width:100%; height:100%; overflow:visible; }
 
-  .globe-line { fill:none; stroke:rgba(255,255,255,0.13); stroke-width:1; }
-  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.20); stroke-width:1; }
+  /* stroke widths are in viewBox units — kept sub-1 so they stay hairlines
+     once the 520-unit scene is scaled up to its rendered size */
+  .globe-line { fill:none; stroke:rgba(255,255,255,0.13); stroke-width:0.6; }
+  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.20); stroke-width:0.75; }
 
   /* meridians rotate in Y — orthographic projection gives a true spin */
   .meridian { transform-box:fill-box; transform-origin:center; animation:spinY 40s linear infinite; }
@@ -74,10 +76,10 @@
   @keyframes spinY { from { transform:rotateY(0deg); } to { transform:rotateY(360deg); } }
 
   /* orbit — continuous hairline, drawn over the globe like a drafted diagram */
-  .orbit { fill:none; stroke:rgba(232,119,46,0.24); stroke-width:1; }
+  .orbit { fill:none; stroke:rgba(232,119,46,0.26); stroke-width:0.75; }
 
   /* satellite — same hairline weight as everything else */
-  .sat { stroke:rgba(232,119,46,0.7); stroke-width:1.2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .sat { stroke:rgba(232,119,46,0.72); stroke-width:0.9; fill:none; stroke-linecap:round; stroke-linejoin:round; }
 
   /* ── HERO COPY ───────────────────────────────────────── */
   .hero { position:relative; z-index:3; }
@@ -154,7 +156,72 @@
   .alert.show { display:flex; }
 
   .footnote { text-align:center; margin-top:26px; font-size:11.5px; color:rgba(30,44,68,0.38); line-height:1.7; }
-  .footnote a { color:var(--orange); text-decoration:none; font-weight:500; }
+  .footnote a, .footnote button {
+    color:var(--orange); text-decoration:none; font-weight:500;
+    background:none; border:none; padding:0; font-family:inherit; font-size:inherit; cursor:pointer;
+  }
+  .footnote button:hover { text-decoration:underline; }
+
+  /* ── SUPPORT CONTACT MODAL ───────────────────────────── */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:100; display:none;
+    align-items:center; justify-content:center; padding:24px;
+    background:rgba(30,44,68,0.45);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  }
+  .modal-overlay.open { display:flex; animation:fade 0.18s ease both; }
+
+  .modal-card {
+    width:100%; max-width:430px; max-height:calc(100vh - 48px); overflow-y:auto;
+    background:#fff; border-radius:16px; padding:24px 24px 20px;
+    box-shadow:0 24px 60px rgba(30,44,68,0.28);
+    animation:rise 0.22s cubic-bezier(0.2,0.7,0.3,1) both;
+  }
+  .modal-head { display:flex; align-items:flex-start; gap:12px; margin-bottom:20px; }
+  .modal-head h3 { font-size:17px; font-weight:700; color:var(--charcoal-dark); letter-spacing:-0.015em; }
+  .modal-head p { font-size:12.5px; color:var(--charcoal-light); margin-top:3px; line-height:1.5; }
+  .modal-close {
+    margin-left:auto; flex-shrink:0; width:30px; height:30px; border:none; background:transparent;
+    border-radius:8px; color:var(--charcoal-light); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background 0.15s;
+  }
+  .modal-close:hover { background:rgba(30,44,68,0.06); }
+  .modal-close svg { width:16px; height:16px; }
+
+  .group-label {
+    font-size:10px; font-weight:600; letter-spacing:0.11em; text-transform:uppercase;
+    color:rgba(30,44,68,0.35); margin:0 0 9px; padding-bottom:7px;
+    border-bottom:1px solid rgba(30,44,68,0.08);
+  }
+  .group + .group { margin-top:20px; }
+
+  .contact {
+    display:flex; align-items:center; gap:12px; padding:10px 10px; margin:0 -10px;
+    border-radius:11px; text-decoration:none; transition:background 0.15s;
+  }
+  .contact:hover { background:rgba(232,119,46,0.06); }
+  .contact-avatar {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background:rgba(232,119,46,0.12); color:var(--orange-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; letter-spacing:0.01em;
+  }
+  .contact-info { min-width:0; flex:1; }
+  .contact-name { font-size:13.5px; font-weight:600; color:var(--charcoal-dark); }
+  .contact-role { font-size:11.5px; color:var(--charcoal-light); margin-top:1px; }
+  .contact-tel  { font-size:12.5px; color:var(--orange); font-weight:600; white-space:nowrap; flex-shrink:0; }
+
+  .modal-foot {
+    margin-top:20px; padding-top:14px; border-top:1px solid rgba(30,44,68,0.08);
+    font-size:11.5px; color:rgba(30,44,68,0.42); text-align:center; line-height:1.6;
+  }
+  .modal-foot a { color:var(--orange); text-decoration:none; font-weight:500; }
+  .modal-foot a:hover { text-decoration:underline; }
+
+  @media (max-width:480px) {
+    .contact { flex-wrap:wrap; }
+    .contact-tel { width:100%; padding-left:48px; }
+  }
 
   /* entrance */
   .visual-panel { animation:fade 0.5s ease both; }
@@ -227,7 +294,7 @@
           <mpath href="#orbit-path" xlink:href="#orbit-path" />
         </animateMotion>
         <!-- drawn around local origin so it rides the path -->
-        <g transform="scale(0.8)">
+        <g transform="scale(0.7)">
           <!-- solar panels -->
           <rect class="sat" x="-25" y="-8"  width="15" height="16" />
           <line class="sat" x1="-25" y1="0" x2="-10" y2="0" />
@@ -330,7 +397,70 @@
 
     <div class="footnote">
       Access is restricted to authorised UZMA personnel.<br>
-      Having trouble? Contact <a href="mailto:geospatial.ai@uzmagroup.com">Geospatial AI Support</a>
+      Having trouble? Contact <button type="button" id="btn-support">Geospatial AI Support</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUPPORT CONTACTS ═══════════════════════════════════ -->
+<div class="modal-overlay" id="support-modal" role="dialog" aria-modal="true" aria-labelledby="support-title">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h3 id="support-title">Geospatial AI Support</h3>
+        <p>Reach the right person directly — tap a name to call.</p>
+      </div>
+      <button type="button" class="modal-close" id="support-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Business Development</div>
+
+      <a class="contact" href="tel:+60176670864">
+        <div class="contact-avatar">AS</div>
+        <div class="contact-info">
+          <div class="contact-name">Ather Sulaiman</div>
+          <div class="contact-role">Drone Ops · InSAR · Agri</div>
+        </div>
+        <div class="contact-tel">017-6670864</div>
+      </a>
+
+      <a class="contact" href="tel:+60193642448">
+        <div class="contact-avatar">MD</div>
+        <div class="contact-info">
+          <div class="contact-name">Mohammad Danial Aqmar</div>
+          <div class="contact-role">Uzma Space &amp; Defence</div>
+        </div>
+        <div class="contact-tel">019-3642448</div>
+      </a>
+
+      <a class="contact" href="tel:+601156770921">
+        <div class="contact-avatar">AA</div>
+        <div class="contact-info">
+          <div class="contact-name">Arief Syazni Azhar</div>
+          <div class="contact-role">Urban Planning</div>
+        </div>
+        <div class="contact-tel">011-56770921</div>
+      </a>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Solution Architect</div>
+
+      <a class="contact" href="tel:+60175255512">
+        <div class="contact-avatar">MH</div>
+        <div class="contact-info">
+          <div class="contact-name">Muhammad Hanis Rashidan</div>
+          <div class="contact-role">Solution Architect</div>
+        </div>
+        <div class="contact-tel">017-5255512</div>
+      </a>
+    </div>
+
+    <div class="modal-foot">
+      Or email <a href="mailto:geospatial.ai@uzmagroup.com">geospatial.ai@uzmagroup.com</a>
     </div>
   </div>
 </div>
@@ -417,11 +547,27 @@
     inp.focus();
   });
 
-  $('btn-hint').addEventListener('click', () => {
-    clearError();
-    alertText.textContent = 'Please contact Geospatial AI Support at geospatial.ai@uzmagroup.com to reset your password.';
-    alertBox.classList.add('show');
+  // ── Support contacts modal ──────────────────────────────
+  const supportModal = $('support-modal');
+
+  function openSupport() {
+    supportModal.classList.add('open');
+    $('support-close').focus();
+  }
+  function closeSupport() {
+    supportModal.classList.remove('open');
+    $('btn-support').focus();
+  }
+
+  $('btn-support').addEventListener('click', openSupport);
+  $('support-close').addEventListener('click', closeSupport);
+  supportModal.addEventListener('click', e => { if (e.target === supportModal) closeSupport(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && supportModal.classList.contains('open')) closeSupport();
   });
+
+  // Also reachable from the "Forgot password?" hint
+  $('btn-hint').addEventListener('click', openSupport);
 
   $('inp-user').focus();
 </script>
