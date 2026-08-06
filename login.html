@@ -32,23 +32,13 @@
     width:56%; background:var(--charcoal-dark); position:relative; overflow:hidden;
     display:flex; flex-direction:column; justify-content:space-between; padding:34px 44px;
   }
-  /* soft ambient glow */
-  .visual-panel::before {
-    content:''; position:absolute; top:-18%; right:-12%; width:60%; padding-bottom:60%;
-    border-radius:50%; background:radial-gradient(circle, rgba(232,119,46,0.16) 0%, transparent 68%);
-  }
-  .visual-panel::after {
-    content:''; position:absolute; bottom:-22%; left:-16%; width:58%; padding-bottom:58%;
-    border-radius:50%; background:radial-gradient(circle, rgba(232,119,46,0.09) 0%, transparent 70%);
-  }
+  /* faint cartographic graticule — flat, no glow */
   .grid-bg {
-    position:absolute; inset:0; opacity:0.5;
+    position:absolute; inset:0;
     background-image:
-      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-    background-size:48px 48px;
-    -webkit-mask-image:radial-gradient(ellipse at 50% 45%, #000 20%, transparent 78%);
-    mask-image:radial-gradient(ellipse at 50% 45%, #000 20%, transparent 78%);
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+    background-size:64px 64px;
   }
 
   /* brand chip — mirrors .sidebar-brand in the dashboard */
@@ -66,59 +56,36 @@
   .brand-texts .t2 { font-size:9px; color:rgba(30,44,68,0.45); letter-spacing:0.1em; margin-top:2px; }
 
   /* ── SATELLITE / GLOBE SCENE ─────────────────────────── */
+  /* Flat technical line drawing — single stroke weight, no depth, no glow. */
   .scene {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:min(70vh, 78%); aspect-ratio:1/1; z-index:1; pointer-events:none;
+    position:absolute; top:46%; left:50%; transform:translate(-50%,-50%);
+    width:min(58vh, 62%); aspect-ratio:1/1; z-index:1; pointer-events:none;
   }
   .scene svg { width:100%; height:100%; overflow:visible; }
 
-  .globe-line { fill:none; stroke:rgba(255,255,255,0.16); stroke-width:1; }
-  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.30); stroke-width:1.2; }
-  .globe-fill { fill:rgba(232,119,46,0.035); }
+  .globe-line { fill:none; stroke:rgba(255,255,255,0.13); stroke-width:1; }
+  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.20); stroke-width:1; }
 
   /* meridians rotate in Y — orthographic projection gives a true spin */
-  .meridian { transform-box:fill-box; transform-origin:center; animation:spinY 22s linear infinite; }
-  .m2 { animation-delay:-2.75s; } .m3 { animation-delay:-5.5s; }
-  .m4 { animation-delay:-8.25s; } .m5 { animation-delay:-11s; }
-  .m6 { animation-delay:-13.75s; } .m7 { animation-delay:-16.5s; } .m8 { animation-delay:-19.25s; }
+  .meridian { transform-box:fill-box; transform-origin:center; animation:spinY 40s linear infinite; }
+  .m2 { animation-delay:-5s; }  .m3 { animation-delay:-10s; }
+  .m4 { animation-delay:-15s; } .m5 { animation-delay:-20s; }
+  .m6 { animation-delay:-25s; } .m7 { animation-delay:-30s; } .m8 { animation-delay:-35s; }
   @keyframes spinY { from { transform:rotateY(0deg); } to { transform:rotateY(360deg); } }
 
-  /* orbit rings */
-  .orbit { fill:none; stroke:rgba(232,119,46,0.28); stroke-width:1; stroke-dasharray:3 7; }
-  .orbit-faint { fill:none; stroke:rgba(255,255,255,0.10); stroke-width:1; }
-  .orbit-spin-2{ transform-box:fill-box; transform-origin:center; animation:rollB 64s linear infinite; }
-  @keyframes rollB { from { transform:rotate(24deg); }  to { transform:rotate(-336deg); } }
+  /* orbit — continuous hairline, drawn over the globe like a drafted diagram */
+  .orbit { fill:none; stroke:rgba(232,119,46,0.24); stroke-width:1; }
 
-  /* satellite skeleton — wireframe line art */
-  .sat { stroke:var(--orange-light); stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; }
-  .sat-body { fill:rgba(232,119,46,0.18); }
-  .sat-glow { filter:drop-shadow(0 0 6px rgba(244,163,104,0.55)); }
-
-  /* ground pings */
-  .ping { fill:var(--orange); opacity:0; animation:ping 4.2s ease-out infinite; }
-  .ping-ring {
-    fill:none; stroke:var(--orange); stroke-width:1.2; opacity:0;
-    transform-box:fill-box; transform-origin:center;
-    animation:pingRing 4.2s ease-out infinite;
-  }
-  .p2 { animation-delay:1.4s; } .p3 { animation-delay:2.8s; }
-  @keyframes ping { 0%{opacity:0} 10%{opacity:0.9} 55%{opacity:0.9} 100%{opacity:0} }
-  @keyframes pingRing {
-    0%   { opacity:0.7; transform:scale(0.18); }
-    50%  { opacity:0;   transform:scale(1); }
-    100% { opacity:0;   transform:scale(1); }
-  }
+  /* satellite — same hairline weight as everything else */
+  .sat { stroke:rgba(232,119,46,0.7); stroke-width:1.2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
 
   /* ── HERO COPY ───────────────────────────────────────── */
   .hero { position:relative; z-index:3; }
-  .hero .tag {
-    display:inline-flex; align-items:center; gap:7px;
-    background:rgba(232,119,46,0.14); border:1px solid rgba(232,119,46,0.30);
-    color:var(--orange-light); font-size:10.5px; font-weight:500; letter-spacing:0.09em;
-    text-transform:uppercase; padding:5px 12px; border-radius:100px; margin-bottom:18px;
+  .hero .eyebrow {
+    display:block; color:rgba(255,255,255,0.42); font-size:10.5px; font-weight:500;
+    letter-spacing:0.16em; text-transform:uppercase; margin-bottom:14px;
+    padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.10); max-width:290px;
   }
-  .tag-dot { width:5px; height:5px; border-radius:50%; background:var(--orange-light); animation:pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
   .hero h1 { font-size:38px; font-weight:700; color:#fff; line-height:1.14; letter-spacing:-0.02em; margin-bottom:14px; }
   .hero h1 span { color:var(--orange); }
@@ -133,10 +100,6 @@
   .form-panel {
     width:44%; display:flex; align-items:center; justify-content:center; padding:40px; position:relative;
     background:var(--cream);
-  }
-  .form-panel::before {
-    content:''; position:absolute; top:0; right:0; width:240px; height:240px;
-    background:radial-gradient(circle at 100% 0%, rgba(232,119,46,0.10), transparent 70%);
   }
 
   .login-card { width:100%; max-width:372px; position:relative; z-index:2; }
@@ -176,9 +139,9 @@
     font-family:inherit; font-size:14px; font-weight:600; letter-spacing:0.01em; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:9px;
     transition:background 0.2s, transform 0.08s, box-shadow 0.2s;
-    box-shadow:0 6px 18px rgba(30,44,68,0.16);
+    box-shadow:0 2px 6px rgba(30,44,68,0.12);
   }
-  .btn-login:hover { background:var(--orange); box-shadow:0 8px 22px rgba(232,119,46,0.28); }
+  .btn-login:hover { background:var(--orange); box-shadow:0 2px 8px rgba(30,44,68,0.16); }
   .btn-login:active { transform:scale(0.985); }
   .btn-login svg { width:16px; height:16px; }
 
@@ -230,72 +193,52 @@
   <div class="scene" aria-hidden="true">
     <svg viewBox="0 0 520 520">
       <defs>
-        <!-- orbit path the satellite travels along: ellipse rx228/ry96 tilted -18° -->
+        <!-- orbit path: ellipse rx170/ry58 tilted -16°, sized to hug the globe -->
         <path id="orbit-path"
-              d="M43.16,330.46 A228,96 -18 1,1 476.84,189.54 A228,96 -18 1,1 43.16,330.46" />
+              d="M96.59,306.86 A170,58 -16 1,1 423.41,213.14 A170,58 -16 1,1 96.59,306.86" />
       </defs>
 
-      <!-- faint outer orbit -->
-      <ellipse class="orbit-faint orbit-spin-2" cx="260" cy="260" rx="248" ry="74" />
-
-      <!-- GLOBE -->
-      <circle class="globe-fill" cx="260" cy="260" r="132" />
-      <circle class="globe-rim"  cx="260" cy="260" r="132" />
+      <!-- GLOBE — graticule only, no fill -->
+      <circle class="globe-rim" cx="260" cy="260" r="112" />
 
       <!-- latitudes -->
-      <ellipse class="globe-line" cx="260" cy="260" rx="132" ry="0.5" />
-      <ellipse class="globe-line" cx="260" cy="216" rx="124" ry="26" />
-      <ellipse class="globe-line" cx="260" cy="304" rx="124" ry="26" />
-      <ellipse class="globe-line" cx="260" cy="176" rx="97"  ry="20" />
-      <ellipse class="globe-line" cx="260" cy="344" rx="97"  ry="20" />
+      <ellipse class="globe-line" cx="260" cy="260" rx="112" ry="0.4" />
+      <ellipse class="globe-line" cx="260" cy="223" rx="105" ry="22" />
+      <ellipse class="globe-line" cx="260" cy="297" rx="105" ry="22" />
+      <ellipse class="globe-line" cx="260" cy="189" rx="82"  ry="17" />
+      <ellipse class="globe-line" cx="260" cy="331" rx="82"  ry="17" />
 
       <!-- meridians (spin in Y) -->
-      <ellipse class="globe-line meridian"    cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m2" cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m3" cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m4" cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m5" cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m6" cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m7" cx="260" cy="260" rx="132" ry="132" />
-      <ellipse class="globe-line meridian m8" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian"    cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m2" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m3" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m4" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m5" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m6" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m7" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian m8" cx="260" cy="260" rx="112" ry="112" />
 
-      <!-- ground station pings -->
-      <g>
-        <circle class="ping-ring"    cx="228" cy="238" r="15" />
-        <circle class="ping"         cx="228" cy="238" r="2.4" />
-        <circle class="ping-ring p2" cx="292" cy="296" r="15" />
-        <circle class="ping p2"      cx="292" cy="296" r="2.4" />
-        <circle class="ping-ring p3" cx="264" cy="196" r="15" />
-        <circle class="ping p3"      cx="264" cy="196" r="2.4" />
-      </g>
-
-      <!-- main orbit ring — must match #orbit-path exactly -->
+      <!-- orbit ring — same geometry as the motion path -->
       <use class="orbit" href="#orbit-path" xlink:href="#orbit-path" />
 
-      <!-- SATELLITE (skeleton / wireframe) -->
-      <g class="sat-glow">
-        <g>
-          <animateMotion dur="17s" repeatCount="indefinite" rotate="auto">
-            <mpath href="#orbit-path" xlink:href="#orbit-path" />
-          </animateMotion>
-          <!-- drawn around local origin so it rides the path -->
-          <g transform="scale(1.05)">
-            <!-- solar panels -->
-            <rect class="sat" x="-25" y="-8"  width="15" height="16" rx="1.5" />
-            <line class="sat" x1="-25" y1="0" x2="-10" y2="0" />
-            <rect class="sat" x="10"  y="-8"  width="15" height="16" rx="1.5" />
-            <line class="sat" x1="10"  y1="0" x2="25"  y2="0" />
-            <!-- boom -->
-            <line class="sat" x1="-10" y1="0" x2="-6" y2="0" />
-            <line class="sat" x1="6"   y1="0" x2="10" y2="0" />
-            <!-- body -->
-            <rect class="sat sat-body" x="-6" y="-6" width="12" height="12" rx="2" />
-            <!-- dish + antenna -->
-            <path class="sat" d="M0 6 L0 11" />
-            <path class="sat" d="M-5.5 11 A 5.5 4 0 0 0 5.5 11" />
-            <line class="sat" x1="0" y1="-6" x2="0" y2="-10.5" />
-            <circle class="sat" cx="0" cy="-11.5" r="1.2" />
-          </g>
+      <!-- SATELLITE -->
+      <g>
+        <animateMotion dur="30s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#orbit-path" xlink:href="#orbit-path" />
+        </animateMotion>
+        <!-- drawn around local origin so it rides the path -->
+        <g transform="scale(0.8)">
+          <!-- solar panels -->
+          <rect class="sat" x="-25" y="-8"  width="15" height="16" />
+          <line class="sat" x1="-25" y1="0" x2="-10" y2="0" />
+          <rect class="sat" x="10"  y="-8"  width="15" height="16" />
+          <line class="sat" x1="10"  y1="0" x2="25"  y2="0" />
+          <!-- body -->
+          <rect class="sat" x="-6" y="-6" width="12" height="12" />
+          <!-- dish + antenna -->
+          <line class="sat" x1="0" y1="6" x2="0" y2="10.5" />
+          <path class="sat" d="M-5 10.5 A 5 3.6 0 0 0 5 10.5" />
+          <line class="sat" x1="0" y1="-6" x2="0" y2="-10.5" />
         </g>
       </g>
     </svg>
@@ -319,7 +262,7 @@
   <!-- HERO -->
   <div>
     <div class="hero">
-      <div class="tag"><span class="tag-dot"></span> Building Footprint Intelligence</div>
+      <span class="eyebrow">Building Footprint Intelligence</span>
       <h1>Mapping the Future<br>of <span>Malaysian Land</span></h1>
       <p>AI-powered geospatial analysis for building footprint extraction, land use classification and spatial decision support.</p>
     </div>
