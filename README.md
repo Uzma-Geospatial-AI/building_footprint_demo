@@ -70,17 +70,32 @@ Then open http://localhost:8000/login.html
 
 ### Sign in
 
-The demo is gated by a single hardcoded credential (client-side only):
+The demo is gated by a single account. The email is
+`geospatial.ai@uzmagroup.com`; the password is **not** published here — ask one
+of the contacts in the sign-in page's support modal.
 
-| Field    | Value                          |
-|----------|--------------------------------|
-| Email    | `geospatial.ai@uzmagroup.com`  |
-| Password | `Geoai123!`                    |
+`login.html` stores a salted SHA-256 digest of the password rather than the
+plaintext, so neither the page source nor this repository contains it.
 
-`login.html` sets a `sessionStorage` flag that `index.html` checks on load and
-redirects on if absent. This is presentation-layer gating for a public demo —
-**not** a security boundary. Anything requiring real access control needs a
-server-side session.
+> **This is obfuscation, not security.** The check runs in the browser, so it is
+> bypassable no matter how the password is stored — setting the session flag by
+> hand in the console is enough to reach the dashboard. It keeps the demo tidy
+> for a public showcase; it is **not** an access-control boundary. Nothing
+> confidential should sit behind it. Real gating needs a server-side session or
+> an edge policy (Cloudflare Access, Netlify/Vercel password protection).
+
+**Rotating the password.** Either recompute the digest and commit it:
+
+```bash
+printf '%s' 'uzma-geoai::NEW_PASSWORD' | sha256sum
+# paste the hex into PASS_HASH in login.html
+```
+
+…or set a `DEMO_PASSWORD` repository secret and enable
+`.github/workflows/deploy.yml`, which injects the digest at deploy time so the
+plaintext never enters the repo. That workflow requires switching
+**Settings → Pages → Source** to *GitHub Actions*; see the comments at the top
+of the file.
 
 ---
 
@@ -170,8 +185,12 @@ ranges, not whole files.
 
 ## Notes & limits
 
-- **Client-side auth only.** The credential above ships in the page source. Fine
-  for a public showcase, unsuitable for anything real.
+- **Client-side auth only.** The password is stored as a digest, but the check
+  still runs in the browser and can be bypassed. Fine for a public showcase,
+  unsuitable for anything real.
+- **`crypto.subtle` needs a secure context.** Sign-in works over `https://` and
+  `http://localhost`, but not over a plain-HTTP LAN address — the page reports
+  this rather than failing silently.
 - **`preserveDrawingBuffer` is off** to save GPU memory (it was causing WebGL
   context loss → white map). PDF export snapshots the canvas on demand instead,
   and a `webglcontextlost` handler rebuilds the map as a fallback.

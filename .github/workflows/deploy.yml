@@ -1,0 +1,78 @@
+name: Deploy to GitHub Pages
+
+# OPTIONAL. The site also deploys fine without this workflow — login.html
+# already ships a working password digest.
+#
+# Enable this only if you want to rotate the demo password from a GitHub
+# Secret instead of committing a new digest:
+#
+#   1. Settings -> Secrets and variables -> Actions -> New repository secret
+#        Name:  DEMO_PASSWORD
+#        Value: the new plaintext password
+#   2. Settings -> Pages -> Source -> "GitHub Actions"
+#
+# Step 2 is required. While Pages is still set to "Deploy from a branch",
+# the deploy job below will fail.
+#
+# If DEMO_PASSWORD is not set, the digest already in login.html is left
+# untouched and the site deploys unchanged.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Inject password digest
+        env:
+          # Read via env, never interpolated straight into the script body.
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+        run: |
+          if [ -z "$DEMO_PASSWORD" ]; then
+            echo "DEMO_PASSWORD not set — keeping the digest committed in login.html"
+            exit 0
+          fi
+
+          SALT=$(grep -oP "(?<=const PASS_SALT = ')[^']*" login.html)
+          HASH=$(printf '%s' "${SALT}${DEMO_PASSWORD}" | sha256sum | cut -d' ' -f1)
+
+          # Replace the 64-hex digest in place. The password itself is never
+          # written to disk or echoed to the log.
+          sed -i -E "s/(const PASS_HASH = ')[0-9a-f]{64}(')/\1${HASH}\2/" login.html
+
+          if ! grep -qE "const PASS_HASH = '${HASH}'" login.html; then
+            echo "::error::Digest substitution failed — refusing to deploy a broken login"
+            exit 1
+          fi
+          echo "Digest injected (${#HASH} hex chars)"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

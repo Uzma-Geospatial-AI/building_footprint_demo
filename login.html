@@ -466,14 +466,32 @@
 </div>
 
 <script>
-  /* ── Hardcoded credential (demo / single account) ─────── */
+  /* ── Demo credential (single account) ───────────────────
+     The password is stored as a salted SHA-256 digest so the plaintext is
+     not sitting in the page source or the repo.
+
+     This is OBFUSCATION, NOT SECURITY. The check runs in the browser, so it
+     is bypassable regardless of how the password is stored — see the note in
+     README.md. Do not put anything confidential behind it.
+
+     To rotate, recompute the digest and replace PASS_HASH below:
+       printf '%s' 'uzma-geoai::NEW_PASSWORD' | sha256sum
+     ────────────────────────────────────────────────────── */
   const ACCOUNT = {
     email: 'geospatial.ai@uzmagroup.com',
-    pass:  'Geoai123!',
     name:  'Geospatial AI',
     role:  'Admin'
   };
+  const PASS_SALT = 'uzma-geoai::';
+  const PASS_HASH = '6c8dba5e30fb6f92f63c81706568229c5f0fe2b164736bc01b1f248fd17e8977';
   /* ─────────────────────────────────────────────────────── */
+
+  async function sha256Hex(text) {
+    const bytes = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
   const $ = id => document.getElementById(id);
   const form = $('login-form');
@@ -495,7 +513,7 @@
 
   function clearError() { alertBox.classList.remove('show'); }
 
-  form.addEventListener('submit', function (e) {
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
     clearError();
 
@@ -504,7 +522,28 @@
 
     if (!email || !pass) { showError('Please enter your email and password.'); return; }
 
-    if (email.toLowerCase() !== ACCOUNT.email.toLowerCase() || pass !== ACCOUNT.pass) {
+    // Fail closed if the digest is malformed (e.g. a bad deploy-time substitution)
+    if (!/^[0-9a-f]{64}$/.test(PASS_HASH)) {
+      showError('Sign-in is not configured for this deployment. Please contact support.');
+      return;
+    }
+
+    // crypto.subtle needs a secure context (https:// or localhost).
+    // Serving over plain http:// on a LAN address will land here.
+    if (!window.crypto || !crypto.subtle) {
+      showError('This page must be served over HTTPS or localhost to sign in.');
+      return;
+    }
+
+    let entered;
+    try {
+      entered = await sha256Hex(PASS_SALT + pass);
+    } catch (err) {
+      showError('Unable to verify credentials in this browser.');
+      return;
+    }
+
+    if (email.toLowerCase() !== ACCOUNT.email.toLowerCase() || entered !== PASS_HASH) {
       showError('Incorrect email or password. Please try again.');
       $('inp-pass').value = '';
       $('inp-pass').focus();
