@@ -58,15 +58,15 @@
   /* ── SATELLITE / GLOBE SCENE ─────────────────────────── */
   /* Flat technical line drawing — single stroke weight, no depth, no glow. */
   .scene {
-    position:absolute; top:47%; left:50%; transform:translate(-50%,-50%);
-    width:min(78vh, 86%); aspect-ratio:1/1; z-index:1; pointer-events:none;
+    position:absolute; top:45%; left:50%; transform:translate(-50%,-50%);
+    width:min(82vh, 88%); aspect-ratio:1/1; z-index:1; pointer-events:none;
   }
   .scene svg { width:100%; height:100%; overflow:visible; }
 
   /* stroke widths are in viewBox units — kept sub-1 so they stay hairlines
      once the 520-unit scene is scaled up to its rendered size */
-  .globe-line { fill:none; stroke:rgba(255,255,255,0.13); stroke-width:0.6; }
-  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.20); stroke-width:0.75; }
+  .globe-line { fill:none; stroke:rgba(255,255,255,0.14); stroke-width:0.6; }
+  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.22); stroke-width:0.75; }
 
   /* meridians rotate in Y — orthographic projection gives a true spin */
   .meridian { transform-box:fill-box; transform-origin:center; animation:spinY 40s linear infinite; }
@@ -260,30 +260,30 @@
   <div class="scene" aria-hidden="true">
     <svg viewBox="0 0 520 520">
       <defs>
-        <!-- orbit path: ellipse rx170/ry58 tilted -16°, sized to hug the globe -->
+        <!-- orbit path: ellipse rx218/ry74 tilted -16°, sized to hug the globe -->
         <path id="orbit-path"
-              d="M96.59,306.86 A170,58 -16 1,1 423.41,213.14 A170,58 -16 1,1 96.59,306.86" />
+              d="M50.45,320.09 A218,74 -16 1,1 469.56,199.91 A218,74 -16 1,1 50.45,320.09" />
       </defs>
 
       <!-- GLOBE — graticule only, no fill -->
-      <circle class="globe-rim" cx="260" cy="260" r="112" />
+      <circle class="globe-rim" cx="260" cy="260" r="145" />
 
       <!-- latitudes -->
-      <ellipse class="globe-line" cx="260" cy="260" rx="112" ry="0.4" />
-      <ellipse class="globe-line" cx="260" cy="223" rx="105" ry="22" />
-      <ellipse class="globe-line" cx="260" cy="297" rx="105" ry="22" />
-      <ellipse class="globe-line" cx="260" cy="189" rx="82"  ry="17" />
-      <ellipse class="globe-line" cx="260" cy="331" rx="82"  ry="17" />
+      <ellipse class="globe-line" cx="260" cy="260"   rx="145"   ry="0.4" />
+      <ellipse class="globe-line" cx="260" cy="212.1" rx="135.9" ry="28.5" />
+      <ellipse class="globe-line" cx="260" cy="307.9" rx="135.9" ry="28.5" />
+      <ellipse class="globe-line" cx="260" cy="168.1" rx="106.2" ry="22" />
+      <ellipse class="globe-line" cx="260" cy="351.9" rx="106.2" ry="22" />
 
       <!-- meridians (spin in Y) -->
-      <ellipse class="globe-line meridian"    cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m2" cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m3" cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m4" cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m5" cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m6" cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m7" cx="260" cy="260" rx="112" ry="112" />
-      <ellipse class="globe-line meridian m8" cx="260" cy="260" rx="112" ry="112" />
+      <ellipse class="globe-line meridian"    cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m2" cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m3" cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m4" cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m5" cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m6" cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m7" cx="260" cy="260" rx="145" ry="145" />
+      <ellipse class="globe-line meridian m8" cx="260" cy="260" rx="145" ry="145" />
 
       <!-- orbit ring — same geometry as the motion path -->
       <use class="orbit" href="#orbit-path" xlink:href="#orbit-path" />
@@ -294,7 +294,7 @@
           <mpath href="#orbit-path" xlink:href="#orbit-path" />
         </animateMotion>
         <!-- drawn around local origin so it rides the path -->
-        <g transform="scale(0.7)">
+        <g transform="scale(0.85)">
           <!-- solar panels -->
           <rect class="sat" x="-25" y="-8"  width="15" height="16" />
           <line class="sat" x1="-25" y1="0" x2="-10" y2="0" />
