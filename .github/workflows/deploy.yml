@@ -17,9 +17,15 @@ name: Deploy to GitHub Pages
 # If DEMO_PASSWORD is not set, the digest already in login.html is left
 # untouched and the site deploys unchanged.
 
+# Manual-only on purpose. While Pages is set to "Deploy from a branch", the
+# deploy job below cannot succeed — a push trigger would just fail on every
+# commit. Once you have switched Settings -> Pages -> Source to "GitHub
+# Actions", add the push trigger back:
+#
+#   push:
+#     branches: [main]
+#
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
