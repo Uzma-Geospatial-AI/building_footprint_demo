@@ -3,642 +3,481 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UZMA Geospatial AI — Login</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>UZMA Geospatial AI — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --cream: #FEF8F3;
-    --orange: #DE9151;
-    --orange-dark: #C07240;
-    --orange-light: #EEB07A;
-    --charcoal: #424242;
-    --charcoal-light: #5A5A5A;
-    --charcoal-dark: #2E2E2E;
+    --cream: #F5F5F7;
+    --orange: #E8772E;
+    --orange-dark: #C75F1C;
+    --orange-light: #F4A368;
+    --charcoal: #34465F;
+    --charcoal-light: #5E6E84;
+    --charcoal-dark: #1E2C44;
     --white: #FFFFFF;
+    --red: #e53935;
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    font-family: 'DM Sans', sans-serif;
-    background-color: var(--cream);
-    min-height: 100vh;
-    display: flex;
-    overflow: hidden;
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Inter',sans-serif;
+    background:var(--cream); color:var(--charcoal); min-height:100vh; display:flex;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; letter-spacing:-0.006em;
+    overflow:hidden;
   }
 
-  /* LEFT PANEL */
-  .left-panel {
-    width: 55%;
-    background: var(--charcoal-dark);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 3rem;
-    overflow: hidden;
+  /* ── LEFT / VISUAL PANEL ─────────────────────────────── */
+  .visual-panel {
+    width:56%; background:var(--charcoal-dark); position:relative; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between; padding:34px 44px;
   }
-
-  .left-panel::before {
-    content: '';
-    position: absolute;
-    top: -80px; right: -80px;
-    width: 400px; height: 400px;
-    border-radius: 50%;
-    background: rgba(222, 145, 81, 0.12);
+  /* soft ambient glow */
+  .visual-panel::before {
+    content:''; position:absolute; top:-18%; right:-12%; width:60%; padding-bottom:60%;
+    border-radius:50%; background:radial-gradient(circle, rgba(232,119,46,0.16) 0%, transparent 68%);
   }
-
-  .left-panel::after {
-    content: '';
-    position: absolute;
-    bottom: -100px; left: -60px;
-    width: 360px; height: 360px;
-    border-radius: 50%;
-    background: rgba(222, 145, 81, 0.08);
+  .visual-panel::after {
+    content:''; position:absolute; bottom:-22%; left:-16%; width:58%; padding-bottom:58%;
+    border-radius:50%; background:radial-gradient(circle, rgba(232,119,46,0.09) 0%, transparent 70%);
   }
-
-  /* Map mockup grid */
-  .map-container {
-    position: absolute;
-    inset: 0;
-    opacity: 0.06;
-    overflow: hidden;
-  }
-
-  .map-grid {
-    width: 100%;
-    height: 100%;
+  .grid-bg {
+    position:absolute; inset:0; opacity:0.5;
     background-image:
-      linear-gradient(rgba(222,145,81,0.4) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(222,145,81,0.4) 1px, transparent 1px);
-    background-size: 40px 40px;
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size:48px 48px;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 45%, #000 20%, transparent 78%);
+    mask-image:radial-gradient(ellipse at 50% 45%, #000 20%, transparent 78%);
   }
 
-  .map-blobs {
-    position: absolute;
-    inset: 0;
+  /* brand chip — mirrors .sidebar-brand in the dashboard */
+  .brand-chip {
+    position:relative; z-index:3; align-self:flex-start;
+    background:#fff; border-radius:12px; padding:9px 16px; height:60px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 26px rgba(0,0,0,0.20);
+  }
+  .brand-chip img { max-width:158px; max-height:42px; object-fit:contain; display:block; }
+  .brand-fallback { display:flex; align-items:center; gap:10px; }
+  .brand-icon-sm { width:34px; height:34px; border-radius:8px; background:var(--orange); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .brand-icon-sm svg { width:17px; height:17px; color:#fff; }
+  .brand-texts .t1 { font-size:13px; font-weight:700; color:var(--charcoal-dark); letter-spacing:0.04em; }
+  .brand-texts .t2 { font-size:9px; color:rgba(30,44,68,0.45); letter-spacing:0.1em; margin-top:2px; }
+
+  /* ── SATELLITE / GLOBE SCENE ─────────────────────────── */
+  .scene {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(70vh, 78%); aspect-ratio:1/1; z-index:1; pointer-events:none;
+  }
+  .scene svg { width:100%; height:100%; overflow:visible; }
+
+  .globe-line { fill:none; stroke:rgba(255,255,255,0.16); stroke-width:1; }
+  .globe-rim  { fill:none; stroke:rgba(255,255,255,0.30); stroke-width:1.2; }
+  .globe-fill { fill:rgba(232,119,46,0.035); }
+
+  /* meridians rotate in Y — orthographic projection gives a true spin */
+  .meridian { transform-box:fill-box; transform-origin:center; animation:spinY 22s linear infinite; }
+  .m2 { animation-delay:-2.75s; } .m3 { animation-delay:-5.5s; }
+  .m4 { animation-delay:-8.25s; } .m5 { animation-delay:-11s; }
+  .m6 { animation-delay:-13.75s; } .m7 { animation-delay:-16.5s; } .m8 { animation-delay:-19.25s; }
+  @keyframes spinY { from { transform:rotateY(0deg); } to { transform:rotateY(360deg); } }
+
+  /* orbit rings */
+  .orbit { fill:none; stroke:rgba(232,119,46,0.28); stroke-width:1; stroke-dasharray:3 7; }
+  .orbit-faint { fill:none; stroke:rgba(255,255,255,0.10); stroke-width:1; }
+  .orbit-spin  { transform-box:fill-box; transform-origin:center; animation:rollA 46s linear infinite; }
+  .orbit-spin-2{ transform-box:fill-box; transform-origin:center; animation:rollB 64s linear infinite; }
+  @keyframes rollA { from { transform:rotate(-18deg); } to { transform:rotate(342deg); } }
+  @keyframes rollB { from { transform:rotate(24deg); }  to { transform:rotate(-336deg); } }
+
+  /* satellite skeleton — wireframe line art */
+  .sat { stroke:var(--orange-light); stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .sat-body { fill:rgba(232,119,46,0.18); }
+  .sat-glow { filter:drop-shadow(0 0 6px rgba(244,163,104,0.55)); }
+
+  /* ground pings */
+  .ping { fill:var(--orange); opacity:0; animation:ping 4.2s ease-out infinite; }
+  .ping-ring { fill:none; stroke:var(--orange); stroke-width:1; opacity:0; animation:pingRing 4.2s ease-out infinite; }
+  .p2 { animation-delay:1.4s; } .p3 { animation-delay:2.8s; }
+  @keyframes ping { 0%{opacity:0}10%{opacity:0.9}55%{opacity:0.9}100%{opacity:0} }
+  @keyframes pingRing { 0%{opacity:0.6; r:2}45%{opacity:0; r:16}100%{opacity:0; r:16} }
+
+  /* ── HERO COPY ───────────────────────────────────────── */
+  .hero { position:relative; z-index:3; }
+  .hero .tag {
+    display:inline-flex; align-items:center; gap:7px;
+    background:rgba(232,119,46,0.14); border:1px solid rgba(232,119,46,0.30);
+    color:var(--orange-light); font-size:10.5px; font-weight:500; letter-spacing:0.09em;
+    text-transform:uppercase; padding:5px 12px; border-radius:100px; margin-bottom:18px;
+  }
+  .tag-dot { width:5px; height:5px; border-radius:50%; background:var(--orange-light); animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+  .hero h1 { font-size:38px; font-weight:700; color:#fff; line-height:1.14; letter-spacing:-0.02em; margin-bottom:14px; }
+  .hero h1 span { color:var(--orange); }
+  .hero p { font-size:14px; color:rgba(255,255,255,0.46); line-height:1.65; max-width:400px; }
+
+  .stats { position:relative; z-index:3; display:flex; align-items:center; gap:26px; margin-top:26px; }
+  .stat-num { font-size:22px; font-weight:700; color:var(--orange); line-height:1; letter-spacing:-0.02em; }
+  .stat-label { font-size:11px; color:rgba(255,255,255,0.38); margin-top:5px; }
+  .stat-divider { width:1px; height:30px; background:rgba(255,255,255,0.10); }
+
+  /* ── RIGHT / FORM PANEL ──────────────────────────────── */
+  .form-panel {
+    width:44%; display:flex; align-items:center; justify-content:center; padding:40px; position:relative;
+    background:var(--cream);
+  }
+  .form-panel::before {
+    content:''; position:absolute; top:0; right:0; width:240px; height:240px;
+    background:radial-gradient(circle at 100% 0%, rgba(232,119,46,0.10), transparent 70%);
   }
 
-  .blob {
-    position: absolute;
-    border: 1.5px solid rgba(222,145,81,0.5);
-    border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+  .login-card { width:100%; max-width:372px; position:relative; z-index:2; }
+  .login-card h2 { font-size:26px; font-weight:700; color:var(--charcoal-dark); letter-spacing:-0.022em; margin-bottom:6px; }
+  .login-card .sub { font-size:13.5px; color:var(--charcoal-light); margin-bottom:30px; }
+
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:11px; font-weight:600; color:var(--charcoal); letter-spacing:0.05em; text-transform:uppercase; margin-bottom:7px; }
+  .input-wrap { position:relative; }
+  .input-wrap > svg { position:absolute; left:13px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--charcoal-light); opacity:0.5; pointer-events:none; }
+  .field input {
+    width:100%; height:46px; background:#fff; border:1px solid rgba(30,44,68,0.12); border-radius:11px;
+    padding:0 42px 0 38px; font-family:inherit; font-size:13.5px; color:var(--charcoal-dark);
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s;
   }
+  .field input::placeholder { color:rgba(30,44,68,0.28); }
+  .field input:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(232,119,46,0.12); }
 
-  .blob-1 { width: 200px; height: 140px; top: 120px; left: 80px; background: rgba(222,145,81,0.08); }
-  .blob-2 { width: 160px; height: 100px; top: 200px; left: 200px; background: rgba(222,145,81,0.06); border-radius: 30% 70% 60% 40% / 55% 45% 55% 45%; }
-  .blob-3 { width: 240px; height: 180px; top: 300px; left: 120px; background: rgba(222,145,81,0.07); border-radius: 55% 45% 40% 60% / 45% 55% 45% 55%; }
-  .blob-4 { width: 120px; height: 80px; top: 420px; left: 300px; background: rgba(222,145,81,0.05); border-radius: 50%; }
-  .blob-5 { width: 180px; height: 120px; top: 80px; left: 300px; background: rgba(222,145,81,0.06); border-radius: 45% 55% 65% 35% / 60% 40% 60% 40%; }
-
-  .dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); opacity: 0.5; }
-  .dot-1 { top: 150px; left: 140px; }
-  .dot-2 { top: 230px; left: 260px; }
-  .dot-3 { top: 340px; left: 190px; }
-  .dot-4 { top: 430px; left: 340px; }
-  .dot-5 { top: 100px; left: 360px; }
-  .dot-6 { top: 390px; left: 130px; }
-
-  /* Branding top */
-  .brand-top {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  .toggle-pw {
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    width:30px; height:30px; border:none; background:transparent; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; border-radius:7px; color:var(--charcoal-light);
+    opacity:0.55; transition:opacity 0.2s, background 0.2s;
   }
+  .toggle-pw:hover { opacity:1; background:rgba(30,44,68,0.05); }
+  .toggle-pw svg { width:16px; height:16px; }
 
-  .brand-icon {
-    width: 48px; height: 48px;
-    background: var(--orange);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .brand-icon svg { width: 26px; height: 26px; }
-
-  .brand-name {
-    font-family: 'Syne', sans-serif;
-  }
-
-  .brand-name .uzma {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--white);
-    letter-spacing: 0.05em;
-    line-height: 1;
-  }
-
-  .brand-name .sub {
-    font-size: 11px;
-    font-weight: 400;
-    color: rgba(255,255,255,0.45);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
-
-  /* Hero text */
-  .hero-text {
-    position: relative;
-    z-index: 2;
-  }
-
-  .hero-text .tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(222,145,81,0.15);
-    border: 1px solid rgba(222,145,81,0.3);
-    color: var(--orange-light);
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 6px 14px;
-    border-radius: 100px;
-    margin-bottom: 24px;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .tag-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--orange-light);
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  .hero-text h1 {
-    font-family: 'Syne', sans-serif;
-    font-size: 44px;
-    font-weight: 700;
-    color: var(--white);
-    line-height: 1.15;
-    margin-bottom: 20px;
-  }
-
-  .hero-text h1 span {
-    color: var(--orange);
-  }
-
-  .hero-text p {
-    font-size: 15px;
-    color: rgba(255,255,255,0.5);
-    line-height: 1.7;
-    max-width: 380px;
-  }
-
-  /* Stats row */
-  .stats-row {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    gap: 32px;
-  }
-
-  .stat-item {}
-  .stat-num {
-    font-family: 'Syne', sans-serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--orange);
-    line-height: 1;
-  }
-  .stat-label {
-    font-size: 12px;
-    color: rgba(255,255,255,0.4);
-    margin-top: 4px;
-    letter-spacing: 0.04em;
-  }
-
-  .stat-divider {
-    width: 1px;
-    background: rgba(255,255,255,0.1);
-  }
-
-  /* RIGHT PANEL */
-  .right-panel {
-    width: 45%;
-    background: var(--cream);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem;
-    position: relative;
-  }
-
-  .right-panel::before {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 200px; height: 200px;
-    background: rgba(222,145,81,0.06);
-    border-radius: 0 0 0 200px;
-  }
-
-  .login-card {
-    width: 100%;
-    max-width: 380px;
-    position: relative;
-    z-index: 2;
-  }
-
-  .login-card .welcome {
-    font-family: 'Syne', sans-serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--charcoal-dark);
-    margin-bottom: 6px;
-  }
-
-  .login-card .welcome-sub {
-    font-size: 14px;
-    color: var(--charcoal-light);
-    margin-bottom: 40px;
-  }
-
-  .form-group {
-    margin-bottom: 20px;
-  }
-
-  .form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--charcoal);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .input-wrap {
-    position: relative;
-  }
-
-  .input-wrap svg {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px; height: 16px;
-    color: var(--charcoal-light);
-    opacity: 0.5;
-  }
-
-  .form-group input {
-    width: 100%;
-    height: 48px;
-    background: var(--white);
-    border: 1.5px solid rgba(66,66,66,0.15);
-    border-radius: 10px;
-    padding: 0 14px 0 42px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--charcoal-dark);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .form-group input::placeholder { color: rgba(66,66,66,0.3); }
-
-  .form-group input:focus {
-    border-color: var(--orange);
-    box-shadow: 0 0 0 3px rgba(222,145,81,0.1);
-  }
-
-  .form-options {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
-  }
-
-  .remember {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--charcoal-light);
-    cursor: pointer;
-  }
-
-  .remember input[type="checkbox"] {
-    width: 16px; height: 16px;
-    accent-color: var(--orange);
-    cursor: pointer;
-  }
-
-  .forgot {
-    font-size: 13px;
-    color: var(--orange);
-    text-decoration: none;
-    font-weight: 500;
-  }
+  .row { display:flex; justify-content:space-between; align-items:center; margin:6px 0 22px; }
+  .remember { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--charcoal-light); cursor:pointer; user-select:none; }
+  .remember input { width:15px; height:15px; accent-color:var(--orange); cursor:pointer; }
+  .hint-link { font-size:12.5px; color:var(--orange); font-weight:500; text-decoration:none; background:none; border:none; cursor:pointer; font-family:inherit; padding:0; }
+  .hint-link:hover { text-decoration:underline; }
 
   .btn-login {
-    width: 100%;
-    height: 50px;
-    background: var(--charcoal-dark);
-    color: var(--white);
-    border: none;
-    border-radius: 10px;
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    text-decoration: none;
+    width:100%; height:48px; background:var(--charcoal-dark); color:#fff; border:none; border-radius:11px;
+    font-family:inherit; font-size:14px; font-weight:600; letter-spacing:0.01em; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    transition:background 0.2s, transform 0.08s, box-shadow 0.2s;
+    box-shadow:0 6px 18px rgba(30,44,68,0.16);
   }
+  .btn-login:hover { background:var(--orange); box-shadow:0 8px 22px rgba(232,119,46,0.28); }
+  .btn-login:active { transform:scale(0.985); }
+  .btn-login svg { width:16px; height:16px; }
 
-  .btn-login:hover { background: var(--orange); }
-  .btn-login:active { transform: scale(0.98); }
-
-  .btn-login svg { width: 18px; height: 18px; }
-
-  .divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 24px 0;
+  .alert {
+    display:none; align-items:center; gap:8px;
+    background:rgba(229,57,53,0.07); border:1px solid rgba(229,57,53,0.22); border-radius:10px;
+    padding:10px 13px; margin-bottom:14px; font-size:12.5px; color:#c62828;
   }
+  .alert svg { width:15px; height:15px; flex-shrink:0; }
+  .alert.show { display:flex; }
 
-  .divider-line {
-    flex: 1;
-    height: 1px;
-    background: rgba(66,66,66,0.12);
+  .footnote { text-align:center; margin-top:26px; font-size:11.5px; color:rgba(30,44,68,0.38); line-height:1.7; }
+  .footnote a { color:var(--orange); text-decoration:none; font-weight:500; }
+
+  /* entrance */
+  .visual-panel { animation:fade 0.5s ease both; }
+  .form-panel   { animation:fade 0.5s ease 0.1s both; }
+  .login-card   { animation:rise 0.45s cubic-bezier(0.2,0.7,0.3,1) 0.18s both; }
+  @keyframes fade { from{opacity:0} to{opacity:1} }
+  @keyframes rise { from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:translateY(0)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(7px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+  @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+  /* ── RESPONSIVE ──────────────────────────────────────── */
+  @media (max-width:1024px) {
+    .visual-panel { width:48%; padding:28px 32px; }
+    .form-panel { width:52%; }
+    .hero h1 { font-size:30px; }
+    .stats { gap:18px; }
   }
-
-  .divider span {
-    font-size: 12px;
-    color: rgba(66,66,66,0.35);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  @media (max-width:860px) {
+    body { overflow:auto; }
+    .visual-panel { display:none; }
+    .form-panel { width:100%; min-height:100vh; }
+    .login-card::before {
+      content:''; display:block; width:44px; height:44px; border-radius:11px;
+      background:var(--orange); margin-bottom:20px;
+      -webkit-mask:none;
+    }
   }
-
-  .sso-btn {
-    width: 100%;
-    height: 48px;
-    background: transparent;
-    border: 1.5px solid rgba(66,66,66,0.15);
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--charcoal);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: border-color 0.2s, background 0.2s;
-    text-decoration: none;
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; }
   }
-
-  .sso-btn:hover {
-    border-color: var(--orange);
-    background: rgba(222,145,81,0.04);
-  }
-
-  .sso-btn svg { width: 18px; height: 18px; }
-
-  .footer-text {
-    text-align: center;
-    margin-top: 32px;
-    font-size: 12px;
-    color: rgba(66,66,66,0.4);
-  }
-
-  .footer-text a { color: var(--orange); text-decoration: none; font-weight: 500; }
-
-  /* Slide-in animation */
-  .left-panel, .right-panel { animation: fadeIn 0.6s ease both; }
-  .right-panel { animation-delay: 0.15s; }
-  .login-card { animation: slideUp 0.5s ease both; animation-delay: 0.25s; }
-
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
 
-<!-- LEFT PANEL -->
-<div class="left-panel">
-  <div class="map-container">
-    <div class="map-grid"></div>
-    <div class="map-blobs">
-      <div class="blob blob-1"></div>
-      <div class="blob blob-2"></div>
-      <div class="blob blob-3"></div>
-      <div class="blob blob-4"></div>
-      <div class="blob blob-5"></div>
-      <div class="dot dot-1"></div>
-      <div class="dot dot-2"></div>
-      <div class="dot dot-3"></div>
-      <div class="dot dot-4"></div>
-      <div class="dot dot-5"></div>
-      <div class="dot dot-6"></div>
+<!-- ══ LEFT: BRAND + SATELLITE SCENE ══════════════════════ -->
+<div class="visual-panel">
+  <div class="grid-bg"></div>
+
+  <!-- Satellite orbiting a wireframe globe -->
+  <div class="scene" aria-hidden="true">
+    <svg viewBox="0 0 520 520">
+      <defs>
+        <!-- orbit path the satellite travels along -->
+        <ellipse id="orbit-path" cx="260" cy="260" rx="228" ry="96"
+                 transform="rotate(-18 260 260)" />
+      </defs>
+
+      <!-- faint outer orbit -->
+      <ellipse class="orbit-faint orbit-spin-2" cx="260" cy="260" rx="248" ry="74" />
+
+      <!-- GLOBE -->
+      <circle class="globe-fill" cx="260" cy="260" r="132" />
+      <circle class="globe-rim"  cx="260" cy="260" r="132" />
+
+      <!-- latitudes -->
+      <ellipse class="globe-line" cx="260" cy="260" rx="132" ry="0.5" />
+      <ellipse class="globe-line" cx="260" cy="216" rx="124" ry="26" />
+      <ellipse class="globe-line" cx="260" cy="304" rx="124" ry="26" />
+      <ellipse class="globe-line" cx="260" cy="176" rx="97"  ry="20" />
+      <ellipse class="globe-line" cx="260" cy="344" rx="97"  ry="20" />
+
+      <!-- meridians (spin in Y) -->
+      <ellipse class="globe-line meridian"    cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m2" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m3" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m4" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m5" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m6" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m7" cx="260" cy="260" rx="132" ry="132" />
+      <ellipse class="globe-line meridian m8" cx="260" cy="260" rx="132" ry="132" />
+
+      <!-- ground station pings -->
+      <g>
+        <circle class="ping-ring"    cx="228" cy="238" r="2" />
+        <circle class="ping"         cx="228" cy="238" r="2.4" />
+        <circle class="ping-ring p2" cx="292" cy="296" r="2" />
+        <circle class="ping p2"      cx="292" cy="296" r="2.4" />
+        <circle class="ping-ring p3" cx="264" cy="196" r="2" />
+        <circle class="ping p3"      cx="264" cy="196" r="2.4" />
+      </g>
+
+      <!-- main orbit ring -->
+      <ellipse class="orbit orbit-spin" cx="260" cy="260" rx="228" ry="96" />
+
+      <!-- SATELLITE (skeleton / wireframe) -->
+      <g class="sat-glow">
+        <g>
+          <animateMotion dur="17s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#orbit-path" xlink:href="#orbit-path" />
+          </animateMotion>
+          <!-- drawn around local origin so it rides the path -->
+          <g transform="scale(1.05)">
+            <!-- solar panels -->
+            <rect class="sat" x="-25" y="-8"  width="15" height="16" rx="1.5" />
+            <line class="sat" x1="-25" y1="0" x2="-10" y2="0" />
+            <rect class="sat" x="10"  y="-8"  width="15" height="16" rx="1.5" />
+            <line class="sat" x1="10"  y1="0" x2="25"  y2="0" />
+            <!-- boom -->
+            <line class="sat" x1="-10" y1="0" x2="-6" y2="0" />
+            <line class="sat" x1="6"   y1="0" x2="10" y2="0" />
+            <!-- body -->
+            <rect class="sat sat-body" x="-6" y="-6" width="12" height="12" rx="2" />
+            <!-- dish + antenna -->
+            <path class="sat" d="M0 6 L0 11" />
+            <path class="sat" d="M-5.5 11 A 5.5 4 0 0 0 5.5 11" />
+            <line class="sat" x1="0" y1="-6" x2="0" y2="-10.5" />
+            <circle class="sat" cx="0" cy="-11.5" r="1.2" />
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- BRAND -->
+  <div class="brand-chip">
+    <img src="GeoAILogo.png" alt="UZMA Geospatial AI"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+    <div class="brand-fallback" style="display:none;">
+      <div class="brand-icon-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div class="brand-texts">
+        <div class="t1">UZMA BERHAD</div>
+        <div class="t2">Geospatial AI</div>
+      </div>
     </div>
   </div>
 
-  <div class="brand-top">
-    <div class="brand-icon">
-      <svg viewBox="0 0 26 26" fill="none">
-        <path d="M13 2L4 7v12l9 5 9-5V7L13 2z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
-        <circle cx="13" cy="13" r="3.5" fill="white" opacity="0.9"/>
-        <path d="M13 9.5V6M13 20v-3.5M9.5 13H6M20 13h-3.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
+  <!-- HERO -->
+  <div>
+    <div class="hero">
+      <div class="tag"><span class="tag-dot"></span> Building Footprint Intelligence</div>
+      <h1>Mapping the Future<br>of <span>Malaysian Land</span></h1>
+      <p>AI-powered geospatial analysis for building footprint extraction, land use classification and spatial decision support.</p>
     </div>
-    <div class="brand-name">
-      <div class="uzma">UZMA BERHAD</div>
-      <div class="sub">Geospatial AI Division</div>
-    </div>
-  </div>
-
-  <div class="hero-text">
-    <div class="tag">
-      <span class="tag-dot"></span>
-      Land Use Intelligence Platform
-    </div>
-    <h1>Mapping the Future<br>of <span>Malaysian Land</span></h1>
-    <p>AI-powered geospatial analysis platform for land use classification, change detection, and spatial decision support across Malaysia.</p>
-  </div>
-
-  <div class="stats-row">
-    <div class="stat-item">
-      <div class="stat-num">329K+</div>
-      <div class="stat-label">Parcels Analysed</div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat-item">
-      <div class="stat-num">98.4%</div>
-      <div class="stat-label">Classification Accuracy</div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat-item">
-      <div class="stat-num">16</div>
-      <div class="stat-label">States Covered</div>
+    <div class="stats">
+      <div>
+        <div class="stat-num">329K+</div>
+        <div class="stat-label">Parcels analysed</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div>
+        <div class="stat-num">98.4%</div>
+        <div class="stat-label">Classification accuracy</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div>
+        <div class="stat-num">UZMA-Sat</div>
+        <div class="stat-label">Imagery basemap</div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- RIGHT PANEL -->
-<div class="right-panel">
+<!-- ══ RIGHT: LOGIN FORM ══════════════════════════════════ -->
+<div class="form-panel">
   <div class="login-card">
-    <div class="welcome">Welcome back</div>
-    <div class="welcome-sub">Sign in to access the Geospatial AI Dashboard</div>
+    <h2>Welcome back</h2>
+    <div class="sub">Sign in to access the Geospatial AI Dashboard.</div>
 
-    <div class="form-group">
-      <label>Staff ID / Email</label>
-      <div class="input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
-        </svg>
-        <input id="inp-user" type="text" placeholder="e.g. UZ00123 atau name@uzma.com.my" />
+    <div class="alert" id="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="alert-text"></span>
+    </div>
+
+    <form id="login-form" autocomplete="on" novalidate>
+      <div class="field">
+        <label for="inp-user">Email</label>
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+          <input id="inp-user" name="email" type="email" placeholder="name@uzmagroup.com" autocomplete="username" />
+        </div>
       </div>
-    </div>
 
-    <div class="form-group">
-      <label>Password</label>
-      <div class="input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="11" width="18" height="11" rx="2"/>
-          <path d="M7 11V7a5 5 0 0110 0v4"/>
-        </svg>
-        <input id="inp-pass" type="password" placeholder="Enter your password" onkeydown="if(event.key==='Enter') doLogin()" />
+      <div class="field">
+        <label for="inp-pass">Password</label>
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <input id="inp-pass" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" />
+          <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Show password">
+            <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div id="err-msg" style="display:none; background:rgba(229,57,53,0.08); border:1px solid rgba(229,57,53,0.25); border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:13px; color:#c62828; display:none; align-items:center; gap:8px;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span id="err-text">ID atau password salah.</span>
-    </div>
+      <div class="row">
+        <label class="remember"><input type="checkbox" id="inp-remember" /> Remember me</label>
+        <button type="button" class="hint-link" id="btn-hint">Forgot password?</button>
+      </div>
 
-    <div class="form-options">
-      <label class="remember">
-        <input type="checkbox" /> Remember me
-      </label>
-      <a href="#" class="forgot">Forgot password?</a>
-    </div>
+      <button type="submit" class="btn-login" id="btn-signin">
+        Sign In
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </form>
 
-    <button onclick="doLogin()" class="btn-login" id="btn-signin">
-      Sign In
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M5 12h14M12 5l7 7-7 7"/>
-      </svg>
-    </button>
-
-    <div class="divider">
-      <div class="divider-line"></div>
-      <span>or</span>
-      <div class="divider-line"></div>
-    </div>
-
-    <a href="index.html" class="sso-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="2" y="7" width="20" height="14" rx="2"/>
-        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
-        <line x1="12" y1="12" x2="12" y2="16"/>
-        <line x1="10" y1="14" x2="14" y2="14"/>
-      </svg>
-      Continue with UZMA SSO
-    </a>
-
-    <div class="footer-text">
-      Having trouble? Contact <a href="#">IT Helpdesk</a> &nbsp;·&nbsp; <a href="#">Privacy Policy</a>
+    <div class="footnote">
+      Access is restricted to authorised UZMA personnel.<br>
+      Having trouble? Contact <a href="mailto:geospatial.ai@uzmagroup.com">Geospatial AI Support</a>
     </div>
   </div>
 </div>
 
 <script>
-  // ── Demo credentials ──────────────────────────────────
-  const USERS = [
-    { id: 'UZ00123',              pass: 'uzma2025',  name: 'Ahmad Mukhlis'  },
-    { id: 'ahmad@uzma.com.my',    pass: 'uzma2025',  name: 'Ahmad Mukhlis'  },
-    { id: 'UZ00456',              pass: 'geoai2025', name: 'Siti Rahmah'    },
-    { id: 'admin',                pass: 'admin123',  name: 'Administrator'  },
-  ];
-  // ─────────────────────────────────────────────────────
+  /* ── Hardcoded credential (demo / single account) ─────── */
+  const ACCOUNT = {
+    email: 'geospatial.ai@uzmagroup.com',
+    pass:  'Geoai123!',
+    name:  'Ather Sulaiman',
+    role:  'Business Development (BD)'
+  };
+  /* ─────────────────────────────────────────────────────── */
 
-  function doLogin() {
-    const userId = document.getElementById('inp-user').value.trim();
-    const pass   = document.getElementById('inp-pass').value;
-    const errBox = document.getElementById('err-msg');
-    const errTxt = document.getElementById('err-text');
-    const btn    = document.getElementById('btn-signin');
+  const $ = id => document.getElementById(id);
+  const form = $('login-form');
+  const alertBox = $('alert'), alertText = $('alert-text');
 
-    // Clear previous error
-    errBox.style.display = 'none';
+  // Prefill remembered email
+  try {
+    const saved = localStorage.getItem('uzma_remember_email');
+    if (saved) { $('inp-user').value = saved; $('inp-remember').checked = true; }
+  } catch (e) {}
 
-    if (!userId || !pass) {
-      errTxt.textContent = 'Sila masukkan Staff ID dan password.';
-      errBox.style.display = 'flex';
+  function showError(msg) {
+    alertText.textContent = msg;
+    alertBox.classList.add('show');
+    const card = document.querySelector('.login-card');
+    card.style.animation = 'shake 0.38s ease';
+    setTimeout(() => card.style.animation = '', 400);
+  }
+
+  function clearError() { alertBox.classList.remove('show'); }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearError();
+
+    const email = $('inp-user').value.trim();
+    const pass  = $('inp-pass').value;
+
+    if (!email || !pass) { showError('Please enter your email and password.'); return; }
+
+    if (email.toLowerCase() !== ACCOUNT.email.toLowerCase() || pass !== ACCOUNT.pass) {
+      showError('Incorrect email or password. Please try again.');
+      $('inp-pass').value = '';
+      $('inp-pass').focus();
       return;
     }
 
-    const match = USERS.find(u =>
-      u.id.toLowerCase() === userId.toLowerCase() && u.pass === pass
-    );
+    // Remember email preference
+    try {
+      if ($('inp-remember').checked) localStorage.setItem('uzma_remember_email', email);
+      else localStorage.removeItem('uzma_remember_email');
+    } catch (err) {}
 
-    if (!match) {
-      errTxt.textContent = 'Staff ID atau password tidak betul. Cuba semula.';
-      errBox.style.display = 'flex';
-      document.getElementById('inp-pass').value = '';
-      document.getElementById('inp-pass').focus();
-      // Shake the card
-      const card = document.querySelector('.login-card');
-      card.style.animation = 'shake 0.4s ease';
-      setTimeout(() => card.style.animation = '', 400);
-      return;
-    }
+    // Session flag read by index.html
+    try {
+      sessionStorage.setItem('uzma_auth', '1');
+      sessionStorage.setItem('uzma_user', ACCOUNT.name);
+      sessionStorage.setItem('uzma_role', ACCOUNT.role);
+      sessionStorage.setItem('uzma_email', ACCOUNT.email);
+    } catch (err) {}
 
-    // Success — show loading state
-    btn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 0.8s linear infinite">
-        <path d="M21 12a9 9 0 11-6.219-8.56"/>
-      </svg>
-      Logging in...
-    `;
+    const btn = $('btn-signin');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 0.8s linear infinite"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Signing in…';
+    btn.disabled = true;
     btn.style.pointerEvents = 'none';
 
-    // Save name for dashboard greeting
-    sessionStorage.setItem('uzma_user', match.name);
-
-    setTimeout(() => {
-      window.location.href = 'index.html';
-    }, 900);
-  }
-
-  // Clear error on typing
-  ['inp-user','inp-pass'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-      document.getElementById('err-msg').style.display = 'none';
-    });
+    setTimeout(() => { window.location.replace('index.html'); }, 750);
   });
-</script>
 
-<style>
-  @keyframes shake {
-    0%,100%{transform:translateX(0)}
-    20%{transform:translateX(-8px)}
-    40%{transform:translateX(8px)}
-    60%{transform:translateX(-6px)}
-    80%{transform:translateX(6px)}
-  }
-  @keyframes spin {
-    from{transform:rotate(0deg)} to{transform:rotate(360deg)}
-  }
-  .btn-login { cursor: pointer; }
-</style>
+  ['inp-user', 'inp-pass'].forEach(id => $(id).addEventListener('input', clearError));
+
+  // Show / hide password
+  $('toggle-pw').addEventListener('click', () => {
+    const inp = $('inp-pass'), btn = $('toggle-pw');
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    $('eye-icon').innerHTML = show
+      ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+      : '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>';
+    inp.focus();
+  });
+
+  $('btn-hint').addEventListener('click', () => {
+    clearError();
+    alertText.textContent = 'Please contact Geospatial AI Support at geospatial.ai@uzmagroup.com to reset your password.';
+    alertBox.classList.add('show');
+  });
+
+  $('inp-user').focus();
+</script>
 
 </body>
 </html>
