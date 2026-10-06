@@ -13,7 +13,6 @@
 .mpk-tag { font-size:9px; font-weight:600; color:var(--orange-dark); background:rgba(232,119,46,0.12); border-radius:4px; padding:1px 6px; }
 .mpk-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
 .mpk-label { font-size:11px; color:var(--charcoal-light); }
-.mpk-buffer-val { font-size:14px; font-weight:700; color:var(--red); font-variant-numeric:tabular-nums; }
 .mpk-range { width:100%; accent-color:var(--red); cursor:pointer; }
 .mpk-range-scale { display:flex; justify-content:space-between; font-size:9.5px; color:rgba(66,66,66,0.4); }
 
@@ -37,8 +36,6 @@
 .mpk-legend { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:10.5px; color:var(--charcoal); margin:2px 2px 12px; }
 .mpk-legend span { display:flex; align-items:center; gap:5px; }
 .mpk-legend .sw { display:inline-block; width:12px; height:12px; border-radius:3px; }
-.mpk-legend .sw.red { background:#e53935; }
-.mpk-legend .sw.grey { background:#90A4AE; }
 .mpk-legend .sw.line { height:0; border-top:2.5px dashed var(--orange); border-radius:0; width:16px; }
 
 .mpk-list-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
@@ -56,11 +53,34 @@
 .mpk-more, .mpk-empty { padding:9px 10px; font-size:10.5px; color:rgba(66,66,66,0.5); text-align:center; }
 .mpk-note { margin-top:10px; font-size:10px; line-height:1.5; color:rgba(66,66,66,0.5); font-style:italic; }
 
-.popup-header.mpk-popup-danger { background:#b71c1c; }
 
-/* While MPK mode is on, hide Seremban-only chrome so the numbers on screen are MPK's */
+/* While MPK mode is on, show only MPK content — hide every Seremban-specific control */
 body.mpk-mode .stats-strip,
 body.mpk-mode #layer-badge,
-body.mpk-mode .ptab[onclick*="'parcel'"],
-body.mpk-mode .ptab[onclick*="'roaddata'"] { display:none !important; }
+body.mpk-mode #dataset-badge,
+body.mpk-mode .map-controls,
+body.mpk-mode #basemap-opt-uzmasat,
+body.mpk-mode #uzmasat-controls,
+body.mpk-mode .topbar-search,
+body.mpk-mode .topbar .upload-btn,
+body.mpk-mode .topbar-btn[onclick="openExportModal()"],
+body.mpk-mode #btn-fly,
+body.mpk-mode .sidebar-section .nav-item[onclick],
+body.mpk-mode .sidebar-section + .sidebar-section,
+body.mpk-mode .ptab:not(#ptab-mpk) { display:none !important; }
 #ptab-mpk { white-space:nowrap; color:var(--red); font-weight:600; }
+
+.mpk-chips { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+.mpk-chip { height:28px; padding:0 11px; border:1px solid rgba(30,44,68,0.14); border-radius:999px; background:#fff; font-family:inherit; font-size:11px; font-weight:600; color:var(--charcoal); cursor:pointer; transition:all 0.15s; }
+.mpk-chip:hover { border-color:var(--orange); color:var(--orange-dark); }
+.mpk-chip.active { background:var(--charcoal-dark); border-color:var(--charcoal-dark); color:#fff; }
+#mpk-ctl-buffer + #mpk-ctl-rizab { margin-top:10px; padding-top:10px; border-top:1px solid rgba(30,44,68,0.06); }
+.mpk-slider-val { font-size:14px; font-weight:700; color:var(--red); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.mpk-jenis { padding:6px 13px; }
+.mpk-jenis-row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:11px; color:var(--charcoal); }
+.mpk-jenis-row + .mpk-jenis-row { border-top:1px solid rgba(30,44,68,0.06); }
+.mpk-jenis-row span { flex:1; }
+.mpk-jenis-row strong { font-size:13px; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
+.mpk-jenis-row .sw, .mpk-dot { display:inline-block; width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+.mpk-legend .sw.lot { background:rgba(142,36,170,0.35); border:1px solid #6A1B9A; }
+.mpk-legend .sw.band { background:rgba(253,216,53,0.35); border-top:2px solid #F9A825; border-radius:0; height:10px; }

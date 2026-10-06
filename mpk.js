@@ -1,58 +1,98 @@
 // ============================================================
 // MPK KEMAMAN — SUSPECTED ILLEGAL CONSTRUCTION MODE
-// Buildings outside the PBT industrial planning boundary, within a user-set buffer,
-// are flagged as suspected construction without Kebenaran Merancang.
-// Data: mpk/*.geojson, built by tools/build_mpk_illegal.py
+// Three study areas from MPK:
+//   tk   Kawasan Industri Teluk Kalong — buildings inside the PBT boundary on no approved
+//        lot, or outside the boundary within the buffer
+//   bpb  Koridor Bandar Putra – Berenjut } buildings within the road-reserve distance of
+//   bbc  Koridor Binjai – Bandar Chukai  } the road centreline
+// Data: mpk/*.geojson, built by tools/vectorize_teluk_kalong.py + tools/build_mpk_illegal.py
 // ============================================================
 
 // ---------- Pure logic (also exported for tools/test_mpk_logic.js) ----------
-function mpkSuspectFilter(buffer) {
-  return ['all', ['==', ['get', 'status'], 'luar'], ['<=', ['get', 'jarak_m'], buffer]];
+// Suspect type of one building under the current settings {buffer, rizab}, or null.
+function mpkJenis(p, s) {
+  if (p.kategori === 'tiada_lot') return 'tiada_lot';
+  if (p.kategori === 'luar' && p.jarak_m <= s.buffer) return 'luar_sempadan';
+  if (p.kategori === 'koridor' && p.jarak_jalan_m != null && p.jarak_jalan_m <= s.rizab) return 'rizab';
+  return null;
 }
 
-function mpkSuspects(features, buffer) {
-  return features.filter(f => f.properties.status === 'luar' && f.properties.jarak_m <= buffer);
+// MapLibre filter equivalent of mpkJenis(...) !== null
+function mpkSuspectFilter(s) {
+  return ['any',
+    ['==', ['get', 'kategori'], 'tiada_lot'],
+    ['all', ['==', ['get', 'kategori'], 'luar'], ['<=', ['get', 'jarak_m'], s.buffer]],
+    ['all', ['==', ['get', 'kategori'], 'koridor'],
+      ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], s.rizab]],
+  ];
 }
 
-function mpkStats(features, buffer, rates) {
-  const suspects = mpkSuspects(features, buffer).sort((a, b) => b.properties.area_m2 - a.properties.area_m2);
+function mpkStats(features, s, rates, kawasan) {
+  const feats = kawasan === 'all' ? features : features.filter(f => f.properties.kawasan === kawasan);
+  const byJenis = { tiada_lot: 0, luar_sempadan: 0, rizab: 0 };
+  const suspects = [];
+  let lulus = 0;
+  for (const f of feats) {
+    if (f.properties.kategori === 'lulus') lulus++;
+    const j = mpkJenis(f.properties, s);
+    if (j) { byJenis[j]++; suspects.push(f); }
+  }
+  suspects.sort((a, b) => b.properties.area_m2 - a.properties.area_m2);
   const area = suspects.reduce((sum, f) => sum + f.properties.area_m2, 0);
-  const inPlan = features.filter(f => f.properties.status === 'dalam').length;
-  return { count: suspects.length, area, inPlan, fee: area * rates.fee, cukai: area * rates.cukai, suspects };
+  return { total: feats.length, lulus, count: suspects.length, area, byJenis,
+           fee: area * rates.fee, cukai: area * rates.cukai, suspects };
 }
 
-function mpkCSV(suspects, rates) {
-  const header = 'id,plus_code,lng,lat,jarak_m,area_m2,confidence,anggaran_fee_rm,anggaran_cukai_tahunan_rm';
+function mpkCSV(suspects, rates, s) {
+  const header = 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,anggaran_fee_rm,anggaran_cukai_tahunan_rm';
   const rows = suspects.map(f => {
-    const p = f.properties;
-    return [p.id, p.plus_code, p.lng, p.lat, p.jarak_m, p.area_m2, p.confidence,
+    const p = f.properties, jenis = mpkJenis(p, s);
+    const jarak = jenis === 'luar_sempadan' ? p.jarak_m : jenis === 'rizab' ? p.jarak_jalan_m : '';
+    return [p.id, p.kawasan, jenis, p.plus_code, p.lng, p.lat, jarak, p.area_m2, p.confidence,
       (p.area_m2 * rates.fee).toFixed(2), (p.area_m2 * rates.cukai).toFixed(2)].join(',');
   });
   return [header, ...rows].join('\n') + '\n';
 }
 
-if (typeof module !== 'undefined') module.exports = { mpkSuspectFilter, mpkSuspects, mpkStats, mpkCSV };
+if (typeof module !== 'undefined') module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV };
 
 // ---------- Browser mode ----------
+const MPK_AREAS = {
+  tk:  { name: 'Kawasan Industri Teluk Kalong', short: 'Teluk Kalong' },
+  bpb: { name: 'Koridor Bandar Putra – Berenjut', short: 'B. Putra – Berenjut' },
+  bbc: { name: 'Koridor Binjai – Bandar Chukai', short: 'Binjai – Chukai' },
+};
+const MPK_JENIS = {
+  tiada_lot:     { label: 'Dalam sempadan, tiada lot lulus', color: '#e53935', areas: ['tk'] },
+  luar_sempadan: { label: 'Luar sempadan PBT (dalam penampan)', color: '#FB8C00', areas: ['tk'] },
+  rizab:         { label: 'Menceroboh rizab jalan', color: '#C2185B', areas: ['bpb', 'bbc'] },
+};
+
 const MPK = {
-  BUILDINGS_URL: 'mpk/mpk_buildings.geojson',
-  BOUNDARY_URL: 'mpk/mpk_sempadan.geojson',
+  FILES: {
+    buildings: 'mpk/mpk_buildings.geojson',
+    boundary: 'mpk/tk_sempadan.geojson',
+    lots: 'mpk/tk_lot_lulus.geojson',
+    roads: 'mpk/koridor_jalan.geojson',
+  },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
-  DEFAULT_BUFFER: 500,
   LIST_SIZE: 50,
-  LAYERS: ['mpk-boundary-fill', 'mpk-boundary-line', 'mpk-plan-fill', 'mpk-suspect-fill',
-           'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
-  SOURCES: ['mpk-buildings', 'mpk-boundary', 'mpk-highlight'],
+  LAYERS: ['mpk-lot-fill', 'mpk-lot-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+           'mpk-koridor-line', 'mpk-base-fill', 'mpk-suspect-fill', 'mpk-suspect-line',
+           'mpk-suspect-extrude', 'mpk-highlight-line'],
+  SOURCES: ['mpk-lots', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
-  buildings: null,
-  boundary: null,
+  data: null,
   bounds: null,
-  buffer: 500,
+  settings: { buffer: 500, rizab: 10 },
+  area: 'all',
   rates: null,
   boundMap: null,
   prevTitle: null,
   popup: null,
+  lastStats: null,
 };
 
 function mpkLoadRates() {
@@ -68,48 +108,74 @@ function mpkSaveRates() {
   try { localStorage.setItem(MPK.RATES_KEY, JSON.stringify(MPK.rates)); } catch (e) {}
 }
 
+function mpkBoundsOf(features) {
+  let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90;
+  const visit = c => {
+    if (typeof c[0] === 'number') {
+      if (c[0] < minLng) minLng = c[0]; if (c[0] > maxLng) maxLng = c[0];
+      if (c[1] < minLat) minLat = c[1]; if (c[1] > maxLat) maxLat = c[1];
+    } else c.forEach(visit);
+  };
+  features.forEach(f => visit(f.geometry.coordinates));
+  return [[minLng, minLat], [maxLng, maxLat]];
+}
+
 async function mpkEnsureData() {
-  if (MPK.buildings) return;
-  const [b, s] = await Promise.all([MPK.BUILDINGS_URL, MPK.BOUNDARY_URL].map(async url => {
+  if (MPK.data) return;
+  const entries = await Promise.all(Object.entries(MPK.FILES).map(async ([key, url]) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status + ' · ' + url);
-    return res.json();
+    return [key, await res.json()];
   }));
-  let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90;
-  const extend = ([lng, lat]) => {
-    if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+  const data = Object.fromEntries(entries);
+  const b = data.buildings.features;
+  MPK.bounds = {
+    all: mpkBoundsOf([...b, ...data.boundary.features, ...data.roads.features]),
+    tk: mpkBoundsOf(data.boundary.features),
+    bpb: mpkBoundsOf(data.roads.features.filter(f => f.properties.kawasan === 'bpb')),
+    bbc: mpkBoundsOf(data.roads.features.filter(f => f.properties.kawasan === 'bbc')),
   };
-  b.features.forEach(f => f.geometry.coordinates[0].forEach(extend));
-  s.features.forEach(f => f.geometry.coordinates[0].forEach(extend));
-  MPK.buildings = b;
-  MPK.boundary = s;
-  MPK.bounds = [[minLng, minLat], [maxLng, maxLat]];
+  MPK.data = data;
 }
 
 // Returns false when the style was not ready and nothing was added.
 function mpkAddLayers() {
   if (!map) return false;
   if (map.getSource('mpk-buildings')) return true;
+  const suspect = mpkSuspectFilter(MPK.settings);
+  const jenisColor = ['match', ['get', 'kategori'],
+    'tiada_lot', MPK_JENIS.tiada_lot.color, 'luar', MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color];
   try {
-    map.addSource('mpk-boundary', { type: 'geojson', data: MPK.boundary });
-    map.addSource('mpk-buildings', { type: 'geojson', data: MPK.buildings });
+    map.addSource('mpk-lots', { type: 'geojson', data: MPK.data.lots });
+    map.addSource('mpk-boundary', { type: 'geojson', data: MPK.data.boundary });
+    map.addSource('mpk-roads', { type: 'geojson', data: MPK.data.roads });
+    map.addSource('mpk-buildings', { type: 'geojson', data: MPK.data.buildings });
     map.addSource('mpk-highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    const suspect = mpkSuspectFilter(MPK.buffer);
+
+    map.addLayer({ id: 'mpk-lot-fill', type: 'fill', source: 'mpk-lots',
+      paint: { 'fill-color': '#8E24AA', 'fill-opacity': 0.22 } });
+    map.addLayer({ id: 'mpk-lot-line', type: 'line', source: 'mpk-lots',
+      paint: { 'line-color': '#6A1B9A', 'line-width': 1, 'line-opacity': 0.7 } });
     map.addLayer({ id: 'mpk-boundary-fill', type: 'fill', source: 'mpk-boundary',
-      paint: { 'fill-color': '#E8772E', 'fill-opacity': 0.06 } });
+      paint: { 'fill-color': '#E8772E', 'fill-opacity': 0.04 } });
     map.addLayer({ id: 'mpk-boundary-line', type: 'line', source: 'mpk-boundary',
       paint: { 'line-color': '#E8772E', 'line-width': 2.5, 'line-dasharray': [3, 2] } });
-    map.addLayer({ id: 'mpk-plan-fill', type: 'fill', source: 'mpk-buildings',
-      filter: ['==', ['get', 'status'], 'dalam'],
-      paint: { 'fill-color': '#90A4AE', 'fill-opacity': 0.45 } });
+    // 100 m wide study corridor (50 m each side) — width converted from metres at lat 4.2°
+    map.addLayer({ id: 'mpk-koridor-band', type: 'line', source: 'mpk-roads',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#FDD835', 'line-opacity': 0.16,
+               'line-width': ['interpolate', ['exponential', 2], ['zoom'], 10, 0.66, 20, 672] } });
+    map.addLayer({ id: 'mpk-koridor-line', type: 'line', source: 'mpk-roads',
+      paint: { 'line-color': '#F9A825', 'line-width': 2 } });
+    map.addLayer({ id: 'mpk-base-fill', type: 'fill', source: 'mpk-buildings', filter: ['!', suspect],
+      paint: { 'fill-color': ['match', ['get', 'kategori'], 'lulus', '#7CB342', '#B0BEC5'], 'fill-opacity': 0.6 } });
     map.addLayer({ id: 'mpk-suspect-fill', type: 'fill', source: 'mpk-buildings', filter: suspect,
-      paint: { 'fill-color': '#e53935', 'fill-opacity': 0.7 } });
+      paint: { 'fill-color': jenisColor, 'fill-opacity': 0.8 } });
     map.addLayer({ id: 'mpk-suspect-line', type: 'line', source: 'mpk-buildings', filter: suspect,
-      paint: { 'line-color': '#b71c1c', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.5] } });
+      paint: { 'line-color': '#7f0000', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 17, 1.4] } });
     map.addLayer({ id: 'mpk-suspect-extrude', type: 'fill-extrusion', source: 'mpk-buildings', filter: suspect,
       layout: { visibility: 'none' },
-      paint: { 'fill-extrusion-color': '#e53935', 'fill-extrusion-height': 8, 'fill-extrusion-base': 0,
+      paint: { 'fill-extrusion-color': jenisColor, 'fill-extrusion-height': 8, 'fill-extrusion-base': 0,
                'fill-extrusion-opacity': 0.85 } });
     map.addLayer({ id: 'mpk-highlight-line', type: 'line', source: 'mpk-highlight',
       paint: { 'line-color': '#FDD835', 'line-width': 3 } });
@@ -126,6 +192,10 @@ function mpkRemoveLayers() {
   if (!map) return;
   MPK.LAYERS.forEach(id => { try { if (map.getLayer(id)) map.removeLayer(id); } catch (e) {} });
   MPK.SOURCES.forEach(id => { try { if (map.getSource(id)) map.removeSource(id); } catch (e) {} });
+}
+
+function mpkSetVis(id, vis) {
+  if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
 }
 
 // Called from refresh3DLayers() in index.html
@@ -147,10 +217,6 @@ function mpkOnStyleLoad() {
   setTimeout(attempt, 0);
 }
 
-function mpkSetVis(id, vis) {
-  if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
-}
-
 function mpkSetSerembanVisible(on) {
   for (const ds of Object.values(datasets)) {
     for (const info of Object.values(ds.layerVisibility)) {
@@ -168,7 +234,7 @@ function mpkSetSerembanVisible(on) {
 function mpkBindEvents() {
   if (MPK.boundMap === map) return;
   MPK.boundMap = map;
-  ['mpk-suspect-fill', 'mpk-plan-fill'].forEach(layer => {
+  ['mpk-suspect-fill', 'mpk-base-fill'].forEach(layer => {
     map.on('click', layer, e => {
       if (!MPK.active || !e.features.length) return;
       mpkShowPopup(e.features[0].properties, e.lngLat);
@@ -186,7 +252,7 @@ async function mpkEnter() {
   if (MPK.active) return;
   if (!MPK.rates) MPK.rates = mpkLoadRates();
   try {
-    if (!MPK.buildings) showLoading('Memuat data MPK Kemaman...', 'Bangunan & sempadan perancangan');
+    if (!MPK.data) showLoading('Memuat data MPK Kemaman...', 'Bangunan, sempadan, lot & koridor');
     await mpkEnsureData();
   } catch (err) {
     hideLoading();
@@ -198,6 +264,10 @@ async function mpkEnter() {
   MPK.active = true;
   document.body.classList.add('mpk-mode');
 
+  // Leave any Seremban interaction state behind
+  try { if (currentPopup) { currentPopup.remove(); currentPopup = null; } } catch (e) {}
+  const nav = document.getElementById('mode-navigate');
+  if (nav && mapMode !== 'navigate') setMapMode('navigate', nav);
   // UZMA-sat imagery only covers Seremban — use Google Satellite over Kemaman
   if (currentBasemap === 'uzma-sat') {
     const opt = document.querySelector('.basemap-option[onclick*="google-satellite"]');
@@ -207,21 +277,20 @@ async function mpkEnter() {
   mpkSetSerembanVisible(false);
   mpkAddLayers();
   mpkBindEvents();
-  map.fitBounds(MPK.bounds, { padding: 50, duration: 1200 });
 
   const title = document.getElementById('page-title'), sub = document.getElementById('page-sub');
   const panelSub = document.getElementById('panel-sub');
   MPK.prevTitle = { title: title.textContent, sub: sub.textContent, panelSub: panelSub.textContent };
   title.textContent = 'Pemantauan Binaan Haram — MPK Kemaman';
-  sub.textContent = 'Kaw. Perindustrian Teluk Kalong & Bandar Chukai';
+  sub.textContent = 'Teluk Kalong · Bandar Putra–Berenjut · Binjai–Bandar Chukai';
   panelSub.textContent = 'MPK Kemaman · Binaan disyaki tiada Kebenaran Merancang';
 
   const tab = document.getElementById('ptab-mpk');
   tab.style.display = '';
   mpkBuildPanel();
   switchTab(tab, 'mpk');
-  mpkRender();
-  addActivityLog('Mod MPK Kemaman', 'Pemantauan binaan disyaki · buffer ' + MPK.buffer + ' m');
+  mpkSelectArea(MPK.area);
+  addActivityLog('Mod MPK Kemaman', 'Pemantauan binaan disyaki');
 }
 
 function mpkExit() {
@@ -234,8 +303,8 @@ function mpkExit() {
   map.getCanvas().style.cursor = 'grab';
 
   const tab = document.getElementById('ptab-mpk');
-  if (tab.classList.contains('active')) switchTab(document.querySelector('.ptab'), 'overview');
   tab.style.display = 'none';
+  switchTab(document.querySelector('.ptab'), 'overview');
   if (MPK.prevTitle) {
     document.getElementById('page-title').textContent = MPK.prevTitle.title;
     document.getElementById('page-sub').textContent = MPK.prevTitle.sub;
@@ -253,28 +322,49 @@ function mpkBuildPanel() {
   const el = document.getElementById('tab-mpk');
   if (el.dataset.built) return;
   el.dataset.built = '1';
+  const chips = [['all', 'Semua'], ...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.short])]
+    .map(([k, label]) => `<button class="mpk-chip" data-area="${k}" onclick="mpkSelectArea('${k}')">${label}</button>`).join('');
+  const jenisRows = Object.entries(MPK_JENIS).map(([k, j]) => `
+    <div class="mpk-jenis-row" id="mpk-jenis-${k}">
+      <i class="sw" style="background:${j.color}"></i><span>${j.label}</span><strong id="mpk-j-${k}">—</strong>
+    </div>`).join('');
   el.innerHTML = `
     <div class="mpk-hero">
       <div class="mpk-eyebrow">MPK Kemaman · Mockup</div>
       <div class="mpk-hero-title">Binaan disyaki tiada Kebenaran Merancang</div>
-      <div class="mpk-hero-sub">Bangunan di luar sempadan perancangan perindustrian PBT, dalam zon penampan yang dipilih.</div>
+      <div class="mpk-hero-sub" id="mpk-hero-sub"></div>
     </div>
 
+    <div class="mpk-chips" role="tablist">${chips}</div>
+
     <div class="mpk-card">
-      <div class="mpk-row">
-        <label for="mpk-buffer" class="mpk-label">Zon penampan dari sempadan</label>
-        <span class="mpk-buffer-val" id="mpk-buffer-val"></span>
+      <div id="mpk-ctl-buffer">
+        <div class="mpk-row">
+          <label for="mpk-buffer" class="mpk-label">Zon penampan luar sempadan (Teluk Kalong)</label>
+          <span class="mpk-slider-val" id="mpk-buffer-val"></span>
+        </div>
+        <input type="range" id="mpk-buffer" class="mpk-range" min="100" max="1000" step="50"
+          value="${MPK.settings.buffer}" oninput="mpkOnSetting('buffer', this.value)">
+        <div class="mpk-range-scale"><span>100 m</span><span>1 km</span></div>
       </div>
-      <input type="range" id="mpk-buffer" class="mpk-range" min="100" max="1000" step="50"
-        value="${MPK.buffer}" oninput="mpkOnBuffer(this.value)">
-      <div class="mpk-range-scale"><span>100 m</span><span>1 km</span></div>
+      <div id="mpk-ctl-rizab">
+        <div class="mpk-row">
+          <label for="mpk-rizab" class="mpk-label">Rizab jalan dari garis tengah (koridor)</label>
+          <span class="mpk-slider-val" id="mpk-rizab-val"></span>
+        </div>
+        <input type="range" id="mpk-rizab" class="mpk-range" min="3" max="20" step="1"
+          value="${MPK.settings.rizab}" oninput="mpkOnSetting('rizab', this.value)">
+        <div class="mpk-range-scale"><span>3 m</span><span>20 m</span></div>
+      </div>
     </div>
 
     <div class="mpk-kpis">
       <div class="mpk-kpi danger"><div class="v" id="mpk-k-count">—</div><div class="l">Binaan disyaki</div></div>
-      <div class="mpk-kpi"><div class="v" id="mpk-k-area">—</div><div class="l">Keluasan (m²)</div></div>
-      <div class="mpk-kpi ok"><div class="v" id="mpk-k-plan">—</div><div class="l">Dalam perancangan</div></div>
+      <div class="mpk-kpi"><div class="v" id="mpk-k-area">—</div><div class="l">Keluasan disyaki (m²)</div></div>
+      <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Bangunan dikaji</div></div>
     </div>
+
+    <div class="mpk-card mpk-jenis">${jenisRows}</div>
 
     <div class="mpk-card">
       <div class="mpk-card-title">Anggaran hasil PBT <span class="mpk-tag">andaian</span></div>
@@ -292,9 +382,14 @@ function mpkBuildPanel() {
     </div>
 
     <div class="mpk-legend">
-      <span><i class="sw red"></i>Disyaki</span>
-      <span><i class="sw grey"></i>Dalam perancangan</span>
+      <span><i class="sw" style="background:${MPK_JENIS.tiada_lot.color}"></i>Tiada lot lulus</span>
+      <span><i class="sw" style="background:${MPK_JENIS.luar_sempadan.color}"></i>Luar sempadan</span>
+      <span><i class="sw" style="background:${MPK_JENIS.rizab.color}"></i>Ceroboh rizab</span>
+      <span><i class="sw" style="background:#7CB342"></i>Atas lot lulus</span>
+      <span><i class="sw" style="background:#B0BEC5"></i>Lain-lain</span>
+      <span><i class="sw lot"></i>Lot lulus</span>
       <span><i class="sw line"></i>Sempadan PBT</span>
+      <span><i class="sw band"></i>Koridor kajian</span>
     </div>
 
     <div class="mpk-list-head">
@@ -303,31 +398,53 @@ function mpkBuildPanel() {
     </div>
     <div class="mpk-list" id="mpk-list"></div>
 
-    <div class="mpk-note">Berdasarkan Google Open Buildings + sempadan perindustrian PBT; perlu pengesahan tapak.</div>
+    <div class="mpk-note">Bangunan: Google Open Buildings. Sempadan & lot lulus Teluk Kalong didigitkan dari peta MPK;
+      garis jalan dari OpenStreetMap. Lebar rizab dan kadar hasil ialah andaian. Semua kes perlu pengesahan tapak.</div>
   `;
 }
 
+function mpkSelectArea(area) {
+  MPK.area = area;
+  document.querySelectorAll('.mpk-chip').forEach(c => c.classList.toggle('active', c.dataset.area === area));
+  const showTk = area === 'all' || area === 'tk';
+  const showKoridor = area === 'all' || area === 'bpb' || area === 'bbc';
+  document.getElementById('mpk-ctl-buffer').style.display = showTk ? '' : 'none';
+  document.getElementById('mpk-ctl-rizab').style.display = showKoridor ? '' : 'none';
+  Object.entries(MPK_JENIS).forEach(([k, j]) => {
+    document.getElementById('mpk-jenis-' + k).style.display =
+      area === 'all' || j.areas.includes(area) ? '' : 'none';
+  });
+  document.getElementById('mpk-hero-sub').textContent = area === 'all'
+    ? 'Tiga kawasan kajian: Kaw. Industri Teluk Kalong dan dua koridor jalan di Bandar Chukai.'
+    : MPK_AREAS[area].name;
+  if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
+  mpkRender();
+}
+
 function mpkRender() {
-  if (!MPK.buildings) return;
-  const s = mpkStats(MPK.buildings.features, MPK.buffer, MPK.rates);
+  if (!MPK.data) return;
+  const s = mpkStats(MPK.data.buildings.features, MPK.settings, MPK.rates, MPK.area);
   MPK.lastStats = s;
-  document.getElementById('mpk-buffer-val').textContent = MPK.buffer + ' m';
+  document.getElementById('mpk-buffer-val').textContent = MPK.settings.buffer + ' m';
+  document.getElementById('mpk-rizab-val').textContent = MPK.settings.rizab + ' m';
   document.getElementById('mpk-k-count').textContent = mpkNum(s.count);
   document.getElementById('mpk-k-area').textContent = mpkNum(s.area);
-  document.getElementById('mpk-k-plan').textContent = mpkNum(s.inPlan);
+  document.getElementById('mpk-k-total').textContent = mpkNum(s.total);
+  Object.keys(MPK_JENIS).forEach(k => { document.getElementById('mpk-j-' + k).textContent = mpkNum(s.byJenis[k]); });
   mpkRenderRevenue();
 
   const list = document.getElementById('mpk-list');
   if (!s.count) {
-    list.innerHTML = '<div class="mpk-empty">Tiada binaan disyaki dalam zon penampan ini.</div>';
+    list.innerHTML = '<div class="mpk-empty">Tiada binaan disyaki dengan tetapan ini.</div>';
     return;
   }
   list.innerHTML = s.suspects.slice(0, MPK.LIST_SIZE).map((f, i) => {
-    const p = f.properties;
+    const p = f.properties, j = MPK_JENIS[mpkJenis(p, MPK.settings)];
     return `<div class="mpk-item" onclick="mpkZoomTo(${p.id})">
       <span class="mpk-rank">${i + 1}</span>
+      <i class="mpk-dot" style="background:${j.color}"></i>
       <div class="mpk-item-main"><div class="mpk-pc">${p.plus_code}</div>
-        <div class="mpk-meta">${p.jarak_m} m dari sempadan</div></div>
+        <div class="mpk-meta">${MPK_AREAS[p.kawasan].short} · ${j.label}</div></div>
       <div class="mpk-area">${mpkNum(p.area_m2)} m²</div>
     </div>`;
   }).join('') + (s.count > MPK.LIST_SIZE
@@ -343,12 +460,11 @@ function mpkRenderRevenue() {
   document.getElementById('mpk-r-total').textContent = mpkRM(fee + cukai);
 }
 
-function mpkOnBuffer(v) {
-  MPK.buffer = parseInt(v, 10);
-  const filter = mpkSuspectFilter(MPK.buffer);
-  ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'].forEach(id => {
-    try { if (map.getLayer(id)) map.setFilter(id, filter); } catch (e) {}
-  });
+function mpkOnSetting(key, v) {
+  MPK.settings = { ...MPK.settings, [key]: parseInt(v, 10) };
+  const suspect = mpkSuspectFilter(MPK.settings);
+  MPK.SUSPECT_LAYERS.forEach(id => { if (map.getLayer(id)) map.setFilter(id, suspect); });
+  if (map.getLayer('mpk-base-fill')) map.setFilter('mpk-base-fill', ['!', suspect]);
   mpkRender();
 }
 
@@ -360,34 +476,39 @@ function mpkOnRate() {
 }
 
 // ---------- Map interaction ----------
+function mpkStatusText(p, jenis) {
+  if (jenis) return 'Disyaki · ' + MPK_JENIS[jenis].label;
+  if (p.kategori === 'lulus') return 'Atas lot lulus PBT';
+  if (p.kategori === 'luar') return 'Luar sempadan, di luar zon penampan';
+  return 'Dalam koridor · perlu semakan KM / Cukai Pintu';
+}
+
 function mpkShowPopup(p, lngLat) {
-  const suspect = p.status === 'luar' && p.jarak_m <= MPK.buffer;
-  const statusText = p.status === 'dalam' ? 'Dalam perancangan PBT'
-    : suspect ? 'Disyaki tiada Kebenaran Merancang' : 'Luar zon penampan';
+  const jenis = mpkJenis(p, MPK.settings);
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
   const html = `
-    <div class="popup-header ${suspect ? 'mpk-popup-danger' : ''}">
-      <div class="popup-fc">${statusText}</div>
+    <div class="popup-header" ${jenis ? `style="background:${MPK_JENIS[jenis].color}"` : ''}>
+      <div class="popup-fc">${mpkStatusText(p, jenis)}</div>
       <div class="popup-name">${p.plus_code}</div>
     </div>
     <div class="popup-body">
-      ${p.status === 'luar' ? row('Jarak dari sempadan', p.jarak_m + ' m') : ''}
+      ${row('Kawasan', MPK_AREAS[p.kawasan].short)}
+      ${p.kategori === 'luar' ? row('Jarak dari sempadan', p.jarak_m + ' m') : ''}
+      ${p.kategori === 'koridor' ? row('Jarak dari garis tengah jalan',
+        p.jarak_jalan_m == null ? 'tiada data jalan' : p.jarak_jalan_m + ' m') : ''}
       ${row('Keluasan', mpkNum(p.area_m2) + ' m²')}
       ${row('Keyakinan AI', Math.round(p.confidence * 100) + '%')}
-      ${suspect ? row('Anggaran fee proses', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
-      ${suspect ? row('Anggaran Cukai Pintu', mpkRM(p.area_m2 * MPK.rates.cukai) + '/thn') : ''}
+      ${jenis ? row('Anggaran fee proses', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
+      ${jenis ? row('Anggaran Cukai Pintu', mpkRM(p.area_m2 * MPK.rates.cukai) + '/thn') : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
-  MPK.popup = new maplibregl.Popup({ maxWidth: '280px' }).setLngLat(lngLat).setHTML(html).addTo(map);
+  MPK.popup = new maplibregl.Popup({ maxWidth: '290px' }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
 function mpkZoomTo(id) {
-  const f = MPK.buildings.features.find(x => x.properties.id === id);
+  const f = MPK.data.buildings.features.find(x => x.properties.id === id);
   if (!f) return;
-  const ring = f.geometry.coordinates[0];
-  const lngs = ring.map(c => c[0]), lats = ring.map(c => c[1]);
-  map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-    { padding: 140, maxZoom: 18, duration: 1000 });
+  map.fitBounds(mpkBoundsOf([f]), { padding: 140, maxZoom: 18, duration: 1000 });
   try { map.getSource('mpk-highlight').setData(f); } catch (e) {}
   mpkShowPopup(f.properties, [f.properties.lng, f.properties.lat]);
 }
@@ -395,14 +516,14 @@ function mpkZoomTo(id) {
 function mpkExportCSV() {
   const s = MPK.lastStats;
   if (!s || !s.count) { showToast('⚠️ Tiada binaan disyaki untuk dieksport'); return; }
-  const blob = new Blob(['﻿' + mpkCSV(s.suspects, MPK.rates)], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob(['﻿' + mpkCSV(s.suspects, MPK.rates, MPK.settings)], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'mpk_binaan_disyaki_' + MPK.buffer + 'm.csv';
+  a.download = 'mpk_binaan_disyaki_' + MPK.area + '.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   showToast('📄 ' + mpkNum(s.count) + ' binaan disyaki dieksport');
-  addActivityLog('Export CSV MPK', mpkNum(s.count) + ' binaan · buffer ' + MPK.buffer + ' m');
+  addActivityLog('Export CSV MPK', mpkNum(s.count) + ' binaan · ' + (MPK_AREAS[MPK.area]?.short || 'Semua kawasan'));
 }

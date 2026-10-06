@@ -118,26 +118,39 @@ of the file.
 
 ## MPK Kemaman mode — suspected illegal construction
 
-A mockup for Majlis Perbandaran Kemaman (Kaw. Perindustrian Teluk Kalong & Bandar
-Chukai). Pick **MPK Kemaman** in the topbar area switcher.
+A mockup for Majlis Perbandaran Kemaman. Pick **MPK Kemaman** in the topbar area
+switcher: every Seremban control is hidden and only MPK content is shown.
 
-- **Rule:** a building is *suspected* (no Kebenaran Merancang) when its centroid is
-  **outside** the PBT industrial planning boundary and within the buffer chosen on the
-  slider (100–1000 m, default 500 m). Labels always say "Disyaki" — results need site
-  verification.
-- **Panel tab "Binaan Haram":** suspected count & area, in-plan count, revenue estimate
-  (processing fee + Cukai Pintu, editable assumption rates saved in the browser), the 50
-  largest suspected buildings (click to zoom) and a CSV export.
-- **Data:** `mpk/mpk_buildings.geojson` (Google Open Buildings v3 around Chukai, with
-  `status` / `jarak_m`) and `mpk/mpk_sempadan.geojson` (boundary ring #3 of the
-  [sempadan industri](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/sempadan+industri.geojson)
-  API). Code lives in `mpk.js` / `mpk.css`.
-- **Regenerate data** (stdlib Python, streams ~980 MB from Google):
+Three study areas from MPK, selectable as chips in the **Binaan Haram** panel tab:
 
-  ```bash
-  python tools/build_mpk_illegal.py
-  node tools/test_mpk_logic.js   # pure-logic tests
-  ```
+| Area | Flagged as suspected |
+|---|---|
+| Kawasan Industri Teluk Kalong | inside the PBT boundary but on no approved lot; or outside the boundary within the buffer slider (100–1000 m) |
+| Koridor Bandar Putra – Berenjut | buildings within the road-reserve slider (3–20 m) of the road centreline |
+| Koridor Binjai – Bandar Chukai | same as above |
+
+The panel shows counts per type, suspected area, a revenue estimate (processing fee +
+Cukai Pintu, editable assumption rates saved in the browser), the 50 largest suspected
+buildings (click to zoom) and a CSV export. Labels always say "Disyaki" — results need
+site verification.
+
+**Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
+
+- `tk_sempadan.geojson`, `tk_lot_lulus.geojson` — Teluk Kalong boundary and approved lots,
+  digitised from MPK's map by `tools/vectorize_teluk_kalong.py` (georeferenced from the
+  coordinates printed on the map; ~6 px ≈ 60 m mean residual)
+- `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
+- `mpk_buildings.geojson` — Google Open Buildings v3, classified per area
+
+**Regenerate:**
+
+```bash
+python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
+python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
+node tools/test_mpk_logic.js                                           # pure-logic tests
+```
+
+The MPK source map image is client material and is not committed.
 
 ---
 

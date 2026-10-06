@@ -105,3 +105,25 @@ list from the in-memory feature array. Rate change → recompute revenue only.
 Bukit Labohan / Kerteh boundaries, date-based change detection, real MPK KM approval
 data (would later replace the buffer rule), Bandar Chukai planning boundary (none
 provided).
+
+## Revision 2 — MPK study areas (2026-10-06)
+
+MPK supplied three maps, replacing the single API boundary + buffer rule above:
+
+1. **Kawasan Industri Teluk Kalong** — red dashed PBT boundary (vertex coordinates printed)
+   and purple approved lots. The image is georeferenced from the printed coordinates
+   (16/20 kept, mean residual 5.2 px ≈ 50 m), the boundary is hand-traced and the lots are
+   vectorised (139 polygons). Classes: `lulus` (on a lot), `tiada_lot` (inside, no lot →
+   suspected), `luar` (outside; suspected within the buffer slider).
+2. **Koridor Bandar Putra – Berenjut** and 3. **Koridor Binjai – Bandar Chukai** — MPK
+   point lists snapped to OpenStreetMap centrelines (≤15 m, ≤30°, then grown along
+   connected segments ≤60 m / ≤50°). Buildings within 50 m are in the corridor; those whose
+   closest vertex is within the road-reserve slider (3–20 m, default 10 m) are suspected
+   encroachment. Where OSM has no road along MPK's line, no reserve distance is computed.
+
+MPK mode hides every Seremban control (sidebar tools, search, export, Seremban tabs,
+stats, dataset badge, map mode bar, UZMA-sat basemap).
+
+Known limits: lots come from a low-resolution image (~9.4 m/px); dual carriageways are
+measured to the nearer carriageway centreline; reserve width and revenue rates are
+assumptions.
