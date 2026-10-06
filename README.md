@@ -116,6 +116,31 @@ of the file.
 
 ---
 
+## MPK Kemaman mode — suspected illegal construction
+
+A mockup for Majlis Perbandaran Kemaman (Kaw. Perindustrian Teluk Kalong & Bandar
+Chukai). Pick **MPK Kemaman** in the topbar area switcher.
+
+- **Rule:** a building is *suspected* (no Kebenaran Merancang) when its centroid is
+  **outside** the PBT industrial planning boundary and within the buffer chosen on the
+  slider (100–1000 m, default 500 m). Labels always say "Disyaki" — results need site
+  verification.
+- **Panel tab "Binaan Haram":** suspected count & area, in-plan count, revenue estimate
+  (processing fee + Cukai Pintu, editable assumption rates saved in the browser), the 50
+  largest suspected buildings (click to zoom) and a CSV export.
+- **Data:** `mpk/mpk_buildings.geojson` (Google Open Buildings v3 around Chukai, with
+  `status` / `jarak_m`) and `mpk/mpk_sempadan.geojson` (boundary ring #3 of the
+  [sempadan industri](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/sempadan+industri.geojson)
+  API). Code lives in `mpk.js` / `mpk.css`.
+- **Regenerate data** (stdlib Python, streams ~980 MB from Google):
+
+  ```bash
+  python tools/build_mpk_illegal.py
+  node tools/test_mpk_logic.js   # pure-logic tests
+  ```
+
+---
+
 ## UZMA-sat basemap
 
 `UZMA-sat` is a proprietary UZMA Berhad satellite mosaic published as a single

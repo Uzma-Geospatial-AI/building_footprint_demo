@@ -87,8 +87,10 @@ async function mpkEnsureData() {
   MPK.bounds = [[minLng, minLat], [maxLng, maxLat]];
 }
 
+// Returns false when the style was not ready and nothing was added.
 function mpkAddLayers() {
-  if (!map || map.getSource('mpk-buildings')) return;
+  if (!map) return false;
+  if (map.getSource('mpk-buildings')) return true;
   try {
     map.addSource('mpk-boundary', { type: 'geojson', data: MPK.boundary });
     map.addSource('mpk-buildings', { type: 'geojson', data: MPK.buildings });
@@ -112,11 +114,12 @@ function mpkAddLayers() {
     map.addLayer({ id: 'mpk-highlight-line', type: 'line', source: 'mpk-highlight',
       paint: { 'line-color': '#FDD835', 'line-width': 3 } });
   } catch (e) {
-    // Style not ready yet (e.g. mid basemap rebuild) — mpkOnStyleLoad re-adds them.
+    // Style not ready yet (e.g. mid basemap rebuild) — mpkOnStyleLoad retries.
     mpkRemoveLayers();
-    return;
+    return false;
   }
   mpkRefresh3D();
+  return true;
 }
 
 function mpkRemoveLayers() {
@@ -127,28 +130,39 @@ function mpkRemoveLayers() {
 
 // Called from refresh3DLayers() in index.html
 function mpkRefresh3D() {
-  if (!map || !map.getLayer('mpk-suspect-extrude')) return;
-  try { map.setLayoutProperty('mpk-suspect-extrude', 'visibility', MPK.active && is3D ? 'visible' : 'none'); } catch (e) {}
+  if (!map) return;
+  mpkSetVis('mpk-suspect-extrude', MPK.active && is3D ? 'visible' : 'none');
 }
 
 // Called from the style.load handler in index.html. Basemap code re-adds the Seremban
 // layers in its own style.load handler, so defer until after it has run.
 function mpkOnStyleLoad() {
   if (!MPK.active) return;
-  setTimeout(() => { mpkSetSerembanVisible(false); mpkAddLayers(); }, 0);
+  let tries = 0;
+  const attempt = () => {
+    if (!MPK.active) return;
+    mpkSetSerembanVisible(false);
+    if (!mpkAddLayers() && ++tries < 25) setTimeout(attempt, 200);
+  };
+  setTimeout(attempt, 0);
+}
+
+function mpkSetVis(id, vis) {
+  if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
 }
 
 function mpkSetSerembanVisible(on) {
   for (const ds of Object.values(datasets)) {
     for (const info of Object.values(ds.layerVisibility)) {
       const vis = on && info.visible && geoJsonOverlayVisible ? 'visible' : 'none';
-      [info.fillId, info.outlineId].forEach(id => { try { map.setLayoutProperty(id, 'visibility', vis); } catch (e) {} });
-      if (!on && info.extrudeId) { try { map.setLayoutProperty(info.extrudeId, 'visibility', 'none'); } catch (e) {} }
+      mpkSetVis(info.fillId, vis);
+      mpkSetVis(info.outlineId, vis);
+      if (!on && info.extrudeId) mpkSetVis(info.extrudeId, 'none');
     }
   }
   if (on) refresh3DLayers();
-  try { map.setLayoutProperty('lot-highlight-fill', 'visibility', on ? 'visible' : 'none'); } catch (e) {}
-  try { map.setLayoutProperty('lot-highlight-line', 'visibility', on ? 'visible' : 'none'); } catch (e) {}
+  mpkSetVis('lot-highlight-fill', on ? 'visible' : 'none');
+  mpkSetVis('lot-highlight-line', on ? 'visible' : 'none');
 }
 
 function mpkBindEvents() {
@@ -182,6 +196,7 @@ async function mpkEnter() {
   }
   hideLoading();
   MPK.active = true;
+  document.body.classList.add('mpk-mode');
 
   // UZMA-sat imagery only covers Seremban — use Google Satellite over Kemaman
   if (currentBasemap === 'uzma-sat') {
@@ -212,6 +227,7 @@ async function mpkEnter() {
 function mpkExit() {
   if (!MPK.active) return;
   MPK.active = false;
+  document.body.classList.remove('mpk-mode');
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
   mpkSetSerembanVisible(true);

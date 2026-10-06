@@ -1,0 +1,66 @@
+/* MPK Kemaman — suspected illegal construction mode (see mpk.js) */
+.area-mode-select { height:34px; padding:0 28px 0 11px; border:1px solid rgba(232,119,46,0.45); border-radius:7px; background:rgba(232,119,46,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23C75F1C' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 10px center; -webkit-appearance:none; appearance:none; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--orange-dark); cursor:pointer; outline:none; }
+.area-mode-select:focus-visible { border-color:var(--orange); box-shadow:0 0 0 3px rgba(232,119,46,0.2); }
+
+#tab-mpk { padding-bottom:8px; }
+.mpk-hero { background:var(--charcoal-dark); border-radius:12px; padding:14px 15px; margin-bottom:10px; }
+.mpk-eyebrow { font-size:9.5px; letter-spacing:0.08em; color:var(--orange-light); font-weight:600; margin-bottom:4px; }
+.mpk-hero-title { font-size:14px; font-weight:700; color:#fff; line-height:1.3; margin-bottom:5px; }
+.mpk-hero-sub { font-size:11px; color:rgba(255,255,255,0.6); line-height:1.5; }
+
+.mpk-card { background:#fff; border:1px solid rgba(30,44,68,0.08); border-radius:11px; padding:11px 13px; margin-bottom:10px; }
+.mpk-card-title { font-size:11.5px; font-weight:700; color:var(--charcoal-dark); display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+.mpk-tag { font-size:9px; font-weight:600; color:var(--orange-dark); background:rgba(232,119,46,0.12); border-radius:4px; padding:1px 6px; }
+.mpk-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.mpk-label { font-size:11px; color:var(--charcoal-light); }
+.mpk-buffer-val { font-size:14px; font-weight:700; color:var(--red); font-variant-numeric:tabular-nums; }
+.mpk-range { width:100%; accent-color:var(--red); cursor:pointer; }
+.mpk-range-scale { display:flex; justify-content:space-between; font-size:9.5px; color:rgba(66,66,66,0.4); }
+
+.mpk-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:10px; }
+.mpk-kpi { background:#fff; border:1px solid rgba(30,44,68,0.08); border-radius:10px; padding:9px 8px; }
+.mpk-kpi .v { font-size:16px; font-weight:800; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; line-height:1.1; }
+.mpk-kpi .l { font-size:9.5px; color:var(--charcoal-light); margin-top:3px; line-height:1.3; }
+.mpk-kpi.danger { background:rgba(229,57,53,0.07); border-color:rgba(229,57,53,0.25); }
+.mpk-kpi.danger .v { color:var(--red); }
+.mpk-kpi.ok .v { color:#546E7A; }
+
+.mpk-rate-row { display:grid; grid-template-columns:1fr 62px; grid-template-rows:auto auto; gap:2px 8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(30,44,68,0.06); }
+.mpk-rate-row label { font-size:11px; color:var(--charcoal); line-height:1.3; }
+.mpk-rate-row label small { display:block; font-size:9.5px; color:rgba(66,66,66,0.45); }
+.mpk-rate-row input { width:62px; height:26px; border:1px solid rgba(30,44,68,0.15); border-radius:6px; padding:0 6px; font-family:inherit; font-size:11.5px; text-align:right; color:var(--charcoal-dark); outline:none; }
+.mpk-rate-row input:focus { border-color:var(--orange); }
+.mpk-money { grid-column:1 / -1; font-size:13px; font-weight:700; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
+.mpk-total { display:flex; justify-content:space-between; align-items:baseline; padding-top:8px; font-size:11px; color:var(--charcoal-light); }
+.mpk-total strong { font-size:15px; color:var(--orange-dark); font-variant-numeric:tabular-nums; }
+
+.mpk-legend { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:10.5px; color:var(--charcoal); margin:2px 2px 12px; }
+.mpk-legend span { display:flex; align-items:center; gap:5px; }
+.mpk-legend .sw { display:inline-block; width:12px; height:12px; border-radius:3px; }
+.mpk-legend .sw.red { background:#e53935; }
+.mpk-legend .sw.grey { background:#90A4AE; }
+.mpk-legend .sw.line { height:0; border-top:2.5px dashed var(--orange); border-radius:0; width:16px; }
+
+.mpk-list-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.mpk-list-head .mpk-card-title { margin-bottom:0; }
+.mpk-btn { height:28px; padding:0 11px; border:none; border-radius:7px; background:var(--orange); color:#fff; font-family:inherit; font-size:11.5px; font-weight:600; cursor:pointer; }
+.mpk-btn:hover { background:var(--orange-dark); }
+.mpk-list { max-height:280px; overflow-y:auto; border:1px solid rgba(30,44,68,0.08); border-radius:10px; background:#fff; }
+.mpk-item { display:flex; align-items:center; gap:9px; padding:7px 10px; border-bottom:1px solid rgba(30,44,68,0.05); cursor:pointer; transition:background 0.12s; }
+.mpk-item:hover { background:rgba(229,57,53,0.05); }
+.mpk-rank { width:20px; font-size:10px; font-weight:700; color:rgba(66,66,66,0.4); text-align:right; flex-shrink:0; }
+.mpk-item-main { flex:1; min-width:0; }
+.mpk-pc { font-size:11.5px; font-weight:600; color:var(--charcoal-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mpk-meta { font-size:9.5px; color:rgba(66,66,66,0.5); }
+.mpk-area { font-size:11px; font-weight:700; color:var(--red); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.mpk-more, .mpk-empty { padding:9px 10px; font-size:10.5px; color:rgba(66,66,66,0.5); text-align:center; }
+.mpk-note { margin-top:10px; font-size:10px; line-height:1.5; color:rgba(66,66,66,0.5); font-style:italic; }
+
+.popup-header.mpk-popup-danger { background:#b71c1c; }
+
+/* While MPK mode is on, hide Seremban-only chrome so the numbers on screen are MPK's */
+body.mpk-mode .stats-strip,
+body.mpk-mode #layer-badge,
+body.mpk-mode .ptab[onclick*="'parcel'"],
+body.mpk-mode .ptab[onclick*="'roaddata'"] { display:none !important; }
+#ptab-mpk { white-space:nowrap; color:var(--red); font-weight:600; }

@@ -28,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="mpk.css" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -695,6 +696,10 @@
       <input id="search-input" type="text" placeholder="Search address, sub-district, lot..." autocomplete="off"/>
       <div id="search-dropdown" class="search-dd"></div>
     </div>
+    <select id="area-mode" class="area-mode-select" onchange="mpkSetMode(this.value)" title="Kawasan" aria-label="Kawasan">
+      <option value="seremban">Seremban</option>
+      <option value="mpk">MPK Kemaman</option>
+    </select>
     <button class="topbar-btn upload-btn" onclick="openUploadModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Upload GeoJSON
@@ -908,8 +913,12 @@
         <div class="ptab" onclick="switchTab(this,'layers')">Layers</div>
         <div class="ptab" onclick="switchTab(this,'roaddata')">Data</div>
         <div class="ptab" onclick="switchTab(this,'activity')">Activity</div>
+        <div class="ptab" id="ptab-mpk" style="display:none;" onclick="switchTab(this,'mpk')">Binaan Haram</div>
       </div>
       <div class="panel-body">
+
+        <!-- MPK KEMAMAN TAB (built by mpk.js) -->
+        <div id="tab-mpk" style="display:none;"></div>
 
         <!-- OVERVIEW TAB -->
         <div id="tab-overview">
@@ -1858,7 +1867,10 @@ function initMap(view) {
   map.getCanvas().style.cursor = 'grab';
   map.on('load', () => { autoLoadGeoJSON(); });
   // Keep 3D terrain + buildings applied across basemap/style changes
-  map.on('style.load', () => { applyTerrain(); if (is3D) loadOSMBuildings(); });
+  map.on('style.load', () => {
+    applyTerrain(); if (is3D) loadOSMBuildings();
+    if (typeof mpkOnStyleLoad === 'function') mpkOnStyleLoad();
+  });
 
   // --- WebGL context-loss recovery: elak peta jadi putih kekal ---
   const canvas = map.getCanvas();
@@ -2450,6 +2462,7 @@ function refresh3DLayers() {
       try { map.setLayoutProperty(info.extrudeId, 'visibility', vis); } catch(e) {}
     }
   }
+  if (typeof mpkRefresh3D === 'function') mpkRefresh3D();
 }
 
 function toggle3D() { set3DMode(!is3D); }
@@ -4211,5 +4224,6 @@ function showLoading(text, sub) {
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 </script>
+<script src="mpk.js"></script>
 </body>
 </html>
