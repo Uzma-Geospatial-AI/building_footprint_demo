@@ -138,7 +138,7 @@ def main():
             'properties': {
                 'id': len(features) + 1,
                 'status': status,
-                'jarak_m': int(round(dist)),
+                'jarak_m': int(math.ceil(dist)),  # ceil so 'jarak_m <= buffer' never over-counts
                 'area_m2': round(float(row['area_in_meters']), 1),
                 'confidence': round(float(row['confidence']), 2),
                 'plus_code': row['full_plus_code'],
