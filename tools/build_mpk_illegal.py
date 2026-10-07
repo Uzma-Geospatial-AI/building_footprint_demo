@@ -8,6 +8,7 @@ Three study areas from MPK:
          lulus      on an approved lot
          tiada_lot  inside the boundary but on no approved lot
          luar       outside the boundary; jarak_m = distance to it (<= MAX_DIST_M kept)
+       Buildings inside the boundary also get dalam = true.
   bpb  Koridor Bandar Putra – Berenjut     } road corridors from MPK's point lists,
   bbc  Koridor Binjai – Bandar Chukai      } snapped to OpenStreetMap road centrelines.
        Buildings within CORRIDOR_HALF_M of the road are kept as kategori 'koridor' with
@@ -284,15 +285,20 @@ def main():
         if tk_x0 <= x <= tk_x1 and tk_y0 <= y <= tk_y1:
             ring = [to_m(*p) for p in parse_polygon_wkt(row['geometry'])[:-1]]
             on_lot = tk_lots.contains(x, y) or sum(tk_lots.contains(*p) for p in ring) * 2 >= len(ring)
-            if on_lot and (tk_inside.contains(x, y) or dist_to_segments(x, y, tk_edges) <= MAX_DIST_M):
+            inside = tk_inside.contains(x, y)
+            if on_lot and (inside or dist_to_segments(x, y, tk_edges) <= MAX_DIST_M):
                 props = {'kawasan': 'tk', 'kategori': 'lulus'}
-            elif tk_inside.contains(x, y):
+            elif inside:
                 props = {'kawasan': 'tk', 'kategori': 'tiada_lot'}
             else:
                 d = dist_to_segments(x, y, tk_edges)
                 if d <= MAX_DIST_M:
                     # ceil so the browser's 'jarak_m <= buffer' never over-counts
                     props = {'kawasan': 'tk', 'kategori': 'luar', 'jarak_m': int(math.ceil(d))}
+            if inside:
+                # inside the boundary the cadastral data is complete, so "no lot" means
+                # state land / reserve — the browser flags it (mpkJenis 'tiada_kadaster')
+                props['dalam'] = True
 
         if props is None:
             for key, (mpk_segs, snapped, (x0, y0, x1, y1)) in corridors.items():

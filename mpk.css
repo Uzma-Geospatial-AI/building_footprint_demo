@@ -86,7 +86,7 @@ body.mpk-mode .ptab:not(#ptab-mpk) { display:none !important; }
 .mpk-layers .mpk-card-title { margin-bottom:4px; }
 .mpk-layer-row { display:flex; align-items:center; gap:9px; padding:6px 0; }
 .mpk-layer-row + .mpk-layer-row { border-top:1px solid rgba(30,44,68,0.06); }
-.mpk-sw-group { display:flex; gap:2px; width:38px; flex-shrink:0; }
+.mpk-sw-group { display:flex; gap:2px; width:48px; flex-shrink:0; }
 .mpk-layers .sw { display:inline-block; width:10px; height:10px; border-radius:3px; }
 .mpk-layer-main { flex:1; font-size:11.5px; color:var(--charcoal-dark); font-weight:500; }
 .mpk-layer-main small { display:block; font-size:9.5px; font-weight:400; color:rgba(66,66,66,0.5); }

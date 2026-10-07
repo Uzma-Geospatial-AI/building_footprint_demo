@@ -11,15 +11,20 @@
 // ---------- Pure logic (also exported for tools/test_mpk_logic.js) ----------
 // Suspect type of one building under the current settings {buffer, rizab}, or null.
 function mpkJenis(p, s) {
+  // Inside the Teluk Kalong boundary the cadastral data is complete: no lot = state land / reserve
+  if (p.dalam && !p.lot) return 'tiada_kadaster';
   if (p.kategori === 'tiada_lot') return 'tiada_lot';
   if (p.kategori === 'luar' && p.jarak_m <= s.buffer) return 'luar_sempadan';
   if (p.kategori === 'koridor' && p.jarak_jalan_m != null && p.jarak_jalan_m <= s.rizab) return 'rizab';
   return null;
 }
 
+const MPK_NO_CADASTRAL = ['all', ['==', ['get', 'dalam'], true], ['!', ['has', 'lot']]];
+
 // MapLibre filter equivalent of mpkJenis(...) !== null
 function mpkSuspectFilter(s) {
   return ['any',
+    MPK_NO_CADASTRAL,
     ['==', ['get', 'kategori'], 'tiada_lot'],
     ['all', ['==', ['get', 'kategori'], 'luar'], ['<=', ['get', 'jarak_m'], s.buffer]],
     ['all', ['==', ['get', 'kategori'], 'koridor'],
@@ -29,7 +34,7 @@ function mpkSuspectFilter(s) {
 
 function mpkStats(features, s, rates, kawasan) {
   const feats = kawasan === 'all' ? features : features.filter(f => f.properties.kawasan === kawasan);
-  const byJenis = { tiada_lot: 0, luar_sempadan: 0, rizab: 0 };
+  const byJenis = { tiada_kadaster: 0, tiada_lot: 0, luar_sempadan: 0, rizab: 0 };
   const suspects = [];
   let lulus = 0;
   for (const f of feats) {
@@ -63,6 +68,7 @@ const MPK_AREAS = {
   bbc: { name: 'Koridor Binjai – Bandar Chukai', short: 'Binjai – Chukai' },
 };
 const MPK_JENIS = {
+  tiada_kadaster: { label: 'Dalam sempadan, tiada lot kadaster', color: '#6D4C41', areas: ['tk'] },
   tiada_lot:     { label: 'Dalam sempadan, tiada lot lulus', color: '#e53935', areas: ['tk'] },
   luar_sempadan: { label: 'Luar sempadan PBT (dalam penampan)', color: '#FB8C00', areas: ['tk'] },
   rizab:         { label: 'Menceroboh rizab jalan', color: '#C2185B', areas: ['bpb', 'bbc'] },
@@ -71,7 +77,7 @@ const MPK_JENIS = {
 // Map layers the viewer can switch on/off from the panel, in display order.
 const MPK_LAYER_GROUPS = {
   suspect:  { label: 'Binaan disyaki', layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
-              swatch: [MPK_JENIS.tiada_lot.color, MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color] },
+              swatch: Object.values(MPK_JENIS).map(j => j.color) },
   base:     { label: 'Bangunan lain', layers: ['mpk-base-fill'], swatch: ['#7CB342', '#B0BEC5'],
               hint: 'Hijau: atas lot lulus · Kelabu: lain-lain' },
   lots:     { label: 'Lot lulus PBT', layers: ['mpk-lot-fill', 'mpk-lot-line'], swatchClass: 'lot' },
@@ -158,8 +164,9 @@ function mpkAddLayers() {
   if (!map) return false;
   if (map.getSource('mpk-buildings')) return true;
   const suspect = mpkSuspectFilter(MPK.settings);
-  const jenisColor = ['match', ['get', 'kategori'],
-    'tiada_lot', MPK_JENIS.tiada_lot.color, 'luar', MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color];
+  const jenisColor = ['case', MPK_NO_CADASTRAL, MPK_JENIS.tiada_kadaster.color,
+    ['match', ['get', 'kategori'],
+      'tiada_lot', MPK_JENIS.tiada_lot.color, 'luar', MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color]];
   try {
     map.addSource('mpk-lots', { type: 'geojson', data: MPK.data.lots });
     map.addSource('mpk-kadaster', { type: 'geojson', data: MPK.data.kadaster });

@@ -125,14 +125,15 @@ Three study areas from MPK, selectable as chips in the **Binaan Haram** panel ta
 
 | Area | Flagged as suspected |
 |---|---|
-| Kawasan Industri Teluk Kalong | inside the PBT boundary but on no approved lot; or outside the boundary within the buffer slider (100–1000 m) |
+| Kawasan Industri Teluk Kalong | inside the PBT boundary on no NDCDB cadastral lot (state land / reserve); inside the boundary on no approved lot; or outside the boundary within the buffer slider (100–1000 m) |
 | Koridor Bandar Putra – Berenjut | buildings within the road-reserve slider (3–20 m) of the road centreline |
 | Koridor Binjai – Bandar Chukai | same as above |
 
 The panel shows counts per type, suspected area, a revenue estimate (processing fee +
 Cukai Pintu, editable assumption rates saved in the browser), the 50 largest suspected
 buildings (click to zoom) and a CSV export. Labels always say "Disyaki" — results need
-site verification.
+site verification. "No cadastral lot" is only judged inside the boundary, where the lot
+data is meant to be complete; a gap in the NDCDB extract will show up as a false flag.
 
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
