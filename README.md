@@ -140,6 +140,7 @@ site verification.
   digitised from MPK's map by `tools/vectorize_teluk_kalong.py` (georeferenced from the
   coordinates printed on the map; ~6 px ≈ 60 m mean residual)
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
+- `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
 - `mpk_buildings.geojson` — Google Open Buildings v3, classified per area
 
 **Regenerate:**

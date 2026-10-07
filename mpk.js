@@ -44,11 +44,11 @@ function mpkStats(features, s, rates, kawasan) {
 }
 
 function mpkCSV(suspects, rates, s) {
-  const header = 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,anggaran_fee_rm,anggaran_cukai_tahunan_rm';
+  const header = 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,lot,upi,anggaran_fee_rm,anggaran_cukai_tahunan_rm';
   const rows = suspects.map(f => {
     const p = f.properties, jenis = mpkJenis(p, s);
     const jarak = jenis === 'luar_sempadan' ? p.jarak_m : jenis === 'rizab' ? p.jarak_jalan_m : '';
-    return [p.id, p.kawasan, jenis, p.plus_code, p.lng, p.lat, jarak, p.area_m2, p.confidence,
+    return [p.id, p.kawasan, jenis, p.plus_code, p.lng, p.lat, jarak, p.area_m2, p.confidence, p.lot || '', p.upi || '',
       (p.area_m2 * rates.fee).toFixed(2), (p.area_m2 * rates.cukai).toFixed(2)].join(',');
   });
   return [header, ...rows].join('\n') + '\n';
@@ -75,6 +75,8 @@ const MPK_LAYER_GROUPS = {
   base:     { label: 'Bangunan lain', layers: ['mpk-base-fill'], swatch: ['#7CB342', '#B0BEC5'],
               hint: 'Hijau: atas lot lulus · Kelabu: lain-lain' },
   lots:     { label: 'Lot lulus PBT', layers: ['mpk-lot-fill', 'mpk-lot-line'], swatchClass: 'lot' },
+  kadaster: { label: 'Lot kadaster (NDCDB)', layers: ['mpk-kadaster-line'], swatchClass: 'kadaster',
+              hint: 'No. lot & UPI dalam popup bangunan' },
   boundary: { label: 'Sempadan PBT', layers: ['mpk-boundary-fill', 'mpk-boundary-line'], swatchClass: 'line' },
   koridor:  { label: 'Koridor kajian', layers: ['mpk-koridor-band', 'mpk-koridor-line'], swatchClass: 'band' },
 };
@@ -84,15 +86,16 @@ const MPK = {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
     lots: 'mpk/tk_lot_lulus.geojson',
+    kadaster: 'mpk/lot_kadaster.geojson',
     roads: 'mpk/koridor_jalan.geojson',
   },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
-  LAYERS: ['mpk-lot-fill', 'mpk-lot-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-base-fill', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line'],
-  SOURCES: ['mpk-lots', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SOURCES: ['mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -159,6 +162,7 @@ function mpkAddLayers() {
     'tiada_lot', MPK_JENIS.tiada_lot.color, 'luar', MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color];
   try {
     map.addSource('mpk-lots', { type: 'geojson', data: MPK.data.lots });
+    map.addSource('mpk-kadaster', { type: 'geojson', data: MPK.data.kadaster });
     map.addSource('mpk-boundary', { type: 'geojson', data: MPK.data.boundary });
     map.addSource('mpk-roads', { type: 'geojson', data: MPK.data.roads });
     map.addSource('mpk-buildings', { type: 'geojson', data: MPK.data.buildings });
@@ -168,6 +172,9 @@ function mpkAddLayers() {
       paint: { 'fill-color': '#8E24AA', 'fill-opacity': 0.22 } });
     map.addLayer({ id: 'mpk-lot-line', type: 'line', source: 'mpk-lots',
       paint: { 'line-color': '#6A1B9A', 'line-width': 1, 'line-opacity': 0.7 } });
+    map.addLayer({ id: 'mpk-kadaster-line', type: 'line', source: 'mpk-kadaster',
+      paint: { 'line-color': '#00ACC1', 'line-opacity': 0.85,
+               'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.4] } });
     map.addLayer({ id: 'mpk-boundary-fill', type: 'fill', source: 'mpk-boundary',
       paint: { 'fill-color': '#E8772E', 'fill-opacity': 0.04 } });
     map.addLayer({ id: 'mpk-boundary-line', type: 'line', source: 'mpk-boundary',
@@ -431,7 +438,7 @@ function mpkBuildPanel() {
     <div class="mpk-list" id="mpk-list"></div>
 
     <div class="mpk-note">Bangunan: Google Open Buildings. Sempadan & lot lulus Teluk Kalong didigitkan dari peta MPK;
-      garis jalan dari OpenStreetMap. Lebar rizab dan kadar hasil ialah andaian. Semua kes perlu pengesahan tapak.</div>
+      garis jalan dari OpenStreetMap; lot kadaster dari NDCDB. Lebar rizab dan kadar hasil ialah andaian. Semua kes perlu pengesahan tapak.</div>
   `;
 }
 
@@ -476,7 +483,7 @@ function mpkRender() {
       <span class="mpk-rank">${i + 1}</span>
       <i class="mpk-dot" style="background:${j.color}"></i>
       <div class="mpk-item-main"><div class="mpk-pc">${p.plus_code}</div>
-        <div class="mpk-meta">${MPK_AREAS[p.kawasan].short} · ${j.label}</div></div>
+        <div class="mpk-meta">${MPK_AREAS[p.kawasan].short}${p.lot ? ' · Lot ' + p.lot : ''} · ${j.label}</div></div>
       <div class="mpk-area">${mpkNum(p.area_m2)} m²</div>
     </div>`;
   }).join('') + (s.count > MPK.LIST_SIZE
@@ -528,6 +535,8 @@ function mpkShowPopup(p, lngLat) {
       ${p.kategori === 'luar' ? row('Jarak dari sempadan', p.jarak_m + ' m') : ''}
       ${p.kategori === 'koridor' ? row('Jarak dari garis tengah jalan',
         p.jarak_jalan_m == null ? 'tiada data jalan' : p.jarak_jalan_m + ' m') : ''}
+      ${row('No. Lot', p.lot || 'tiada lot kadaster')}
+      ${p.upi ? row('UPI', p.upi) : ''}
       ${row('Keluasan', mpkNum(p.area_m2) + ' m²')}
       ${row('Keyakinan AI', Math.round(p.confidence * 100) + '%')}
       ${jenis ? row('Anggaran fee proses', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}

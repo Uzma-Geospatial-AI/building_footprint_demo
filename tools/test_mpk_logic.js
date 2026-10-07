@@ -6,7 +6,7 @@ const f = (id, kawasan, kategori, extra, area_m2) => ({
 });
 const feats = [
   f(1, 'tk', 'lulus', {}, 100),
-  f(2, 'tk', 'tiada_lot', {}, 50),
+  f(2, 'tk', 'tiada_lot', { lot: '52497', upi: '11030800052497' }, 50),
   f(3, 'tk', 'luar', { jarak_m: 600 }, 200),
   f(4, 'tk', 'luar', { jarak_m: 500 }, 30),
   f(5, 'bpb', 'koridor', { jarak_jalan_m: 8.5 }, 70),
@@ -49,9 +49,9 @@ assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
 // CSV
 const csv = mpkCSV(all.suspects, rates, s).trim().split('\n');
 assert.strictEqual(csv.length, 4);
-assert.strictEqual(csv[0], 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,anggaran_fee_rm,anggaran_cukai_tahunan_rm');
-assert.strictEqual(csv[1], '5,bpb,rizab,X5,103.4,4.2,8.5,70,0.8,140.00,420.00');
-assert.strictEqual(csv[2], '2,tk,tiada_lot,X2,103.4,4.2,,50,0.8,100.00,300.00');
-assert.strictEqual(csv[3], '4,tk,luar_sempadan,X4,103.4,4.2,500,30,0.8,60.00,180.00');
+assert.strictEqual(csv[0], 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,lot,upi,anggaran_fee_rm,anggaran_cukai_tahunan_rm');
+assert.strictEqual(csv[1], '5,bpb,rizab,X5,103.4,4.2,8.5,70,0.8,,,140.00,420.00');
+assert.strictEqual(csv[2], '2,tk,tiada_lot,X2,103.4,4.2,,50,0.8,52497,11030800052497,100.00,300.00');
+assert.strictEqual(csv[3], '4,tk,luar_sempadan,X4,103.4,4.2,500,30,0.8,,,60.00,180.00');
 
 console.log('mpk logic: all tests passed');

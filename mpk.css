@@ -92,3 +92,4 @@ body.mpk-mode .ptab:not(#ptab-mpk) { display:none !important; }
 .mpk-layer-main small { display:block; font-size:9.5px; font-weight:400; color:rgba(66,66,66,0.5); }
 .mpk-layer-row .layer-toggle { border:none; padding:0; }
 .mpk-layer-row .layer-toggle:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
+.mpk-layers .sw.kadaster { background:transparent; border:1.5px solid #00ACC1; }

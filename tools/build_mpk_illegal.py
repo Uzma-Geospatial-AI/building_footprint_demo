@@ -14,10 +14,13 @@ Three study areas from MPK:
        jarak_jalan_m = closest vertex distance to the road centreline. The browser flags
        those within the road-reserve slider as encroaching.
 
-Writes mpk/mpk_buildings.geojson and mpk/koridor_jalan.geojson. Pure Python stdlib.
+Every building whose centroid falls on an NDCDB cadastral lot also gets lot / upi.
+
+Writes mpk/mpk_buildings.geojson, mpk/koridor_jalan.geojson and mpk/lot_kadaster.geojson.
+Pure Python stdlib.
 
 Usage:
-  python tools/build_mpk_illegal.py [--csv OPEN_BUILDINGS.csv] [--osm OVERPASS.json]
+  python tools/build_mpk_illegal.py [--csv OPEN_BUILDINGS.csv] [--osm OVERPASS.json] [--lots LOTS.geojson]
 Without --csv it streams ~980 MB from Google; without --osm it queries Overpass.
 """
 import argparse
@@ -33,6 +36,8 @@ import urllib.request
 
 OPEN_BUILDINGS_URL = ('https://storage.googleapis.com/open-buildings-data/v3/'
                       'polygons_s2_level_4_gzip/31d_buildings.csv.gz')
+LOTS_URL = ('https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/'
+            'building/lots_sempadan_industri_kemaman.geojson')   # NDCDB cadastral lots
 OVERPASS_URLS = ['https://overpass-api.de/api/interpreter',
                  'https://overpass.private.coffee/api/interpreter']
 OVERPASS_QUERY = ('[out:json][timeout:90];way["highway"~"^(trunk|primary|secondary|tertiary|'
@@ -65,6 +70,7 @@ CORRIDORS = {
 
 # Regression checks for the current inputs; update deliberately when inputs change.
 EXPECTED = {'tk': 8740, 'bpb': 451, 'bbc': 1593}
+EXPECTED_LOTS = 4122
 
 KX = 111320 * math.cos(math.radians(4.24))   # metres per degree, local equirectangular
 KY = 110574
@@ -108,8 +114,14 @@ class Polygons:
             self.items.append((min(xs), min(ys), max(xs), max(ys), ring))
 
     def contains(self, x, y):
-        return any(x0 <= x <= x1 and y0 <= y <= y1 and point_in_ring(x, y, r)
-                   for x0, y0, x1, y1, r in self.items)
+        return self.find(x, y) is not None
+
+    def find(self, x, y):
+        """Index of the first ring containing the point, or None."""
+        for i, (x0, y0, x1, y1, r) in enumerate(self.items):
+            if x0 <= x <= x1 and y0 <= y <= y1 and point_in_ring(x, y, r):
+                return i
+        return None
 
 
 def parse_polygon_wkt(wkt):
@@ -125,6 +137,27 @@ def load_ring_file(name):
     with open(os.path.join(MPK_DIR, name), encoding='utf-8') as f:
         return [[to_m(*pt) for pt in feat['geometry']['coordinates'][0]]
                 for feat in json.load(f)['features']]
+
+
+def load_lots(path):
+    """Cadastral lots within the study bbox (drops the Kerteh / Dungun lots)."""
+    if path:
+        with open(path, encoding='utf-8') as f:
+            gj = json.load(f)
+    else:
+        with urllib.request.urlopen(LOTS_URL) as r:
+            gj = json.load(r)
+    w, s, e, n = BBOX
+    lots = []
+    for f in gj['features']:
+        ring = f['geometry']['coordinates'][0]
+        if all(w <= lng <= e and s <= lat <= n for lng, lat in ring):
+            p = f['properties']
+            lots.append({'type': 'Feature',
+                         'properties': {'lot': p['LOT'], 'upi': p['UPI'], 'status': p['STATUS']},
+                         'geometry': {'type': 'Polygon',
+                                      'coordinates': [[[round(a, 6), round(b, 6)] for a, b in ring]]}})
+    return lots
 
 
 def load_osm(path):
@@ -218,6 +251,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--csv', help='pre-filtered Open Buildings CSV (skips the download)')
     ap.add_argument('--osm', help='Overpass JSON with the road ways (skips the query)')
+    ap.add_argument('--lots', help='cadastral lots GeoJSON (skips the download)')
     args = ap.parse_args()
 
     tk_boundary = load_ring_file('tk_sempadan.geojson')
@@ -229,6 +263,8 @@ def main():
     tk_y0 = min(p[1] for r in tk_boundary for p in r) - MAX_DIST_M
     tk_y1 = max(p[1] for r in tk_boundary for p in r) + MAX_DIST_M
 
+    lots = load_lots(args.lots)
+    lot_index = Polygons([[to_m(*p) for p in f['geometry']['coordinates'][0]] for f in lots])
     osm = load_osm(args.osm)
     corridors = {}
     for key, c in CORRIDORS.items():
@@ -283,6 +319,10 @@ def main():
             'lng': round(lng, 6),
             'lat': round(lat, 6),
         })
+        lot_i = lot_index.find(x, y)
+        if lot_i is not None:
+            props['lot'] = lots[lot_i]['properties']['lot']
+            props['upi'] = lots[lot_i]['properties']['upi']
         features.append({'type': 'Feature', 'properties': props,
                          'geometry': {'type': 'Polygon', 'coordinates': [parse_polygon_wkt(row['geometry'])]}})
 
@@ -292,8 +332,11 @@ def main():
         by_cat[k] = by_cat.get(k, 0) + 1
     print('buildings per kawasan:', counts)
     print('per kawasan/kategori:', dict(sorted(by_cat.items())))
+    with_lot = sum('lot' in f['properties'] for f in features)
+    print(f'cadastral lots: {len(lots)}, buildings on a lot: {with_lot}')
     for key, n in EXPECTED.items():
         assert counts.get(key) == n, f'{key}: {counts.get(key)} buildings, expected {n}'
+    assert len(lots) == EXPECTED_LOTS, f'{len(lots)} cadastral lots, expected {EXPECTED_LOTS}'
 
     with open(os.path.join(MPK_DIR, 'mpk_buildings.geojson'), 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': features}, f, separators=(',', ':'))
@@ -308,7 +351,9 @@ def main():
                                    'coordinates': [[to_lnglat(a), to_lnglat(b)] for a, b in segs]}})
     with open(os.path.join(MPK_DIR, 'koridor_jalan.geojson'), 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': roads}, f, separators=(',', ':'))
-    print('wrote mpk/mpk_buildings.geojson and mpk/koridor_jalan.geojson')
+    with open(os.path.join(MPK_DIR, 'lot_kadaster.geojson'), 'w', encoding='utf-8') as f:
+        json.dump({'type': 'FeatureCollection', 'features': lots}, f, separators=(',', ':'))
+    print('wrote mpk/mpk_buildings.geojson, mpk/koridor_jalan.geojson and mpk/lot_kadaster.geojson')
 
 
 if __name__ == '__main__':
