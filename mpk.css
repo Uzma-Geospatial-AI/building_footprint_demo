@@ -33,10 +33,7 @@
 .mpk-total { display:flex; justify-content:space-between; align-items:baseline; padding-top:8px; font-size:11px; color:var(--charcoal-light); }
 .mpk-total strong { font-size:15px; color:var(--orange-dark); font-variant-numeric:tabular-nums; }
 
-.mpk-legend { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:10.5px; color:var(--charcoal); margin:2px 2px 12px; }
-.mpk-legend span { display:flex; align-items:center; gap:5px; }
-.mpk-legend .sw { display:inline-block; width:12px; height:12px; border-radius:3px; }
-.mpk-legend .sw.line { height:0; border-top:2.5px dashed var(--orange); border-radius:0; width:16px; }
+.mpk-layers .sw.line { height:0; border-top:2.5px dashed var(--orange); border-radius:0; width:16px; }
 
 .mpk-list-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
 .mpk-list-head .mpk-card-title { margin-bottom:0; }
@@ -82,5 +79,16 @@ body.mpk-mode .ptab:not(#ptab-mpk) { display:none !important; }
 .mpk-jenis-row span { flex:1; }
 .mpk-jenis-row strong { font-size:13px; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
 .mpk-jenis-row .sw, .mpk-dot { display:inline-block; width:10px; height:10px; border-radius:3px; flex-shrink:0; }
-.mpk-legend .sw.lot { background:rgba(142,36,170,0.35); border:1px solid #6A1B9A; }
-.mpk-legend .sw.band { background:rgba(253,216,53,0.35); border-top:2px solid #F9A825; border-radius:0; height:10px; }
+.mpk-layers .sw.lot { background:rgba(142,36,170,0.35); border:1px solid #6A1B9A; }
+.mpk-layers .sw.band { background:rgba(253,216,53,0.35); border-top:2px solid #F9A825; border-radius:0; height:10px; }
+
+.mpk-layers { padding:10px 13px 6px; }
+.mpk-layers .mpk-card-title { margin-bottom:4px; }
+.mpk-layer-row { display:flex; align-items:center; gap:9px; padding:6px 0; }
+.mpk-layer-row + .mpk-layer-row { border-top:1px solid rgba(30,44,68,0.06); }
+.mpk-sw-group { display:flex; gap:2px; width:38px; flex-shrink:0; }
+.mpk-layers .sw { display:inline-block; width:10px; height:10px; border-radius:3px; }
+.mpk-layer-main { flex:1; font-size:11.5px; color:var(--charcoal-dark); font-weight:500; }
+.mpk-layer-main small { display:block; font-size:9.5px; font-weight:400; color:rgba(66,66,66,0.5); }
+.mpk-layer-row .layer-toggle { border:none; padding:0; }
+.mpk-layer-row .layer-toggle:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }

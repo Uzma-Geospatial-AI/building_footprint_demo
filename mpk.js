@@ -68,6 +68,17 @@ const MPK_JENIS = {
   rizab:         { label: 'Menceroboh rizab jalan', color: '#C2185B', areas: ['bpb', 'bbc'] },
 };
 
+// Map layers the viewer can switch on/off from the panel, in display order.
+const MPK_LAYER_GROUPS = {
+  suspect:  { label: 'Binaan disyaki', layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
+              swatch: [MPK_JENIS.tiada_lot.color, MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color] },
+  base:     { label: 'Bangunan lain', layers: ['mpk-base-fill'], swatch: ['#7CB342', '#B0BEC5'],
+              hint: 'Hijau: atas lot lulus · Kelabu: lain-lain' },
+  lots:     { label: 'Lot lulus PBT', layers: ['mpk-lot-fill', 'mpk-lot-line'], swatchClass: 'lot' },
+  boundary: { label: 'Sempadan PBT', layers: ['mpk-boundary-fill', 'mpk-boundary-line'], swatchClass: 'line' },
+  koridor:  { label: 'Koridor kajian', layers: ['mpk-koridor-band', 'mpk-koridor-line'], swatchClass: 'band' },
+};
+
 const MPK = {
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
@@ -88,6 +99,7 @@ const MPK = {
   bounds: null,
   settings: { buffer: 500, rizab: 10 },
   area: 'all',
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, true])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -184,8 +196,24 @@ function mpkAddLayers() {
     mpkRemoveLayers();
     return false;
   }
-  mpkRefresh3D();
+  mpkApplyLayerVisibility();
   return true;
+}
+
+function mpkApplyLayerVisibility() {
+  for (const [key, g] of Object.entries(MPK_LAYER_GROUPS)) {
+    g.layers.forEach(id => { if (id !== 'mpk-suspect-extrude') mpkSetVis(id, MPK.layerOn[key] ? 'visible' : 'none'); });
+  }
+  mpkRefresh3D();
+}
+
+function mpkToggleLayer(key) {
+  MPK.layerOn = { ...MPK.layerOn, [key]: !MPK.layerOn[key] };
+  const btn = document.getElementById('mpk-tog-' + key);
+  btn.className = 'layer-toggle ' + (MPK.layerOn[key] ? 'on' : 'off');
+  btn.setAttribute('aria-checked', String(MPK.layerOn[key]));
+  if (key === 'suspect' && !MPK.layerOn.suspect && MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
+  if (map) mpkApplyLayerVisibility();
 }
 
 function mpkRemoveLayers() {
@@ -201,7 +229,7 @@ function mpkSetVis(id, vis) {
 // Called from refresh3DLayers() in index.html
 function mpkRefresh3D() {
   if (!map) return;
-  mpkSetVis('mpk-suspect-extrude', MPK.active && is3D ? 'visible' : 'none');
+  mpkSetVis('mpk-suspect-extrude', MPK.active && is3D && MPK.layerOn.suspect ? 'visible' : 'none');
 }
 
 // Called from the style.load handler in index.html. Basemap code re-adds the Seremban
@@ -328,6 +356,16 @@ function mpkBuildPanel() {
     <div class="mpk-jenis-row" id="mpk-jenis-${k}">
       <i class="sw" style="background:${j.color}"></i><span>${j.label}</span><strong id="mpk-j-${k}">—</strong>
     </div>`).join('');
+  const layerRows = Object.entries(MPK_LAYER_GROUPS).map(([k, g]) => {
+    const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>`
+      : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
+    return `<div class="mpk-layer-row">
+      <span class="mpk-sw-group">${sw}</span>
+      <div class="mpk-layer-main"><div>${g.label}</div>${g.hint ? `<small>${g.hint}</small>` : ''}</div>
+      <button type="button" class="layer-toggle ${MPK.layerOn[k] ? 'on' : 'off'}" id="mpk-tog-${k}" role="switch"
+        aria-checked="${MPK.layerOn[k]}" aria-label="${g.label}" onclick="mpkToggleLayer('${k}')"></button>
+    </div>`;
+  }).join('');
   el.innerHTML = `
     <div class="mpk-hero">
       <div class="mpk-eyebrow">MPK Kemaman · Mockup</div>
@@ -336,6 +374,11 @@ function mpkBuildPanel() {
     </div>
 
     <div class="mpk-chips" role="tablist">${chips}</div>
+
+    <div class="mpk-card mpk-layers">
+      <div class="mpk-card-title">Lapisan peta</div>
+      ${layerRows}
+    </div>
 
     <div class="mpk-card">
       <div id="mpk-ctl-buffer">
@@ -379,17 +422,6 @@ function mpkBuildPanel() {
         <div class="mpk-money" id="mpk-r-cukai">—</div>
       </div>
       <div class="mpk-total"><span>Potensi hasil tahun pertama</span><strong id="mpk-r-total">—</strong></div>
-    </div>
-
-    <div class="mpk-legend">
-      <span><i class="sw" style="background:${MPK_JENIS.tiada_lot.color}"></i>Tiada lot lulus</span>
-      <span><i class="sw" style="background:${MPK_JENIS.luar_sempadan.color}"></i>Luar sempadan</span>
-      <span><i class="sw" style="background:${MPK_JENIS.rizab.color}"></i>Ceroboh rizab</span>
-      <span><i class="sw" style="background:#7CB342"></i>Atas lot lulus</span>
-      <span><i class="sw" style="background:#B0BEC5"></i>Lain-lain</span>
-      <span><i class="sw lot"></i>Lot lulus</span>
-      <span><i class="sw line"></i>Sempadan PBT</span>
-      <span><i class="sw band"></i>Koridor kajian</span>
     </div>
 
     <div class="mpk-list-head">
