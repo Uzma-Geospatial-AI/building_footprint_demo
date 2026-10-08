@@ -99,26 +99,26 @@ body.mpk-mode .ptab:not(#ptab-mpk) { display:none !important; }
 .mpk-layers .sw.kadaster { background:transparent; border:1.5px solid #00ACC1; }
 .mpk-layer-legend .sw.line { width:10px; }
 
-/* Historical imagery (Esri Wayback) */
-.mpk-wayback { padding:10px 13px; }
-.mpk-wayback .mpk-layer-main small { display:block; font-size:9.5px; font-weight:400; color:rgba(66,66,66,0.5); }
-.mpk-layers .sw.wayback, .mpk-wayback .sw.wayback { display:inline-block; width:10px; height:10px; border-radius:3px; background:linear-gradient(135deg,#5d7a3a,#c9b27c); }
-#mpk-wb-body { padding-top:8px; }
-.mpk-seg { display:grid; grid-template-columns:1fr 1fr; background:rgba(30,44,68,0.06); border-radius:8px; padding:2px; margin-bottom:10px; }
-.mpk-seg button { height:26px; border:none; border-radius:6px; background:transparent; font-family:inherit; font-size:11px; font-weight:600; color:var(--charcoal-light); cursor:pointer; }
-.mpk-seg button.active { background:#fff; color:var(--charcoal-dark); box-shadow:0 1px 3px rgba(30,44,68,0.12); }
+/* Historical imagery controls */
+.mpk-wb-btn:focus-visible { outline:2px solid var(--orange); outline-offset:1px; }
 .mpk-wb-date { font-size:15px; font-weight:800; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
 .mpk-wb-sub { font-size:10px; color:var(--charcoal-light); margin:2px 0 8px; line-height:1.4; }
 .mpk-wb-controls { display:flex; gap:6px; margin-top:8px; }
 .mpk-wb-btn { height:28px; min-width:34px; padding:0 10px; border:1px solid rgba(30,44,68,0.14); border-radius:7px; background:#fff; font-family:inherit; font-size:11px; font-weight:600; color:var(--charcoal-dark); cursor:pointer; }
 .mpk-wb-btn.play { flex:1; background:var(--charcoal-dark); border-color:var(--charcoal-dark); color:#fff; }
-.mpk-wb-btn:focus-visible, .mpk-seg button:focus-visible { outline:2px solid var(--orange); outline-offset:1px; }
 .mpk-wb-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
 .mpk-wb-row[hidden] { display:none; }
 .mpk-wb-row label { width:34px; font-size:11px; color:var(--charcoal-light); }
 .mpk-wb-row select { flex:1; height:28px; border:1px solid rgba(30,44,68,0.15); border-radius:7px; padding:0 8px; font-family:inherit; font-size:12px; font-weight:600; color:var(--charcoal-dark); background:#fff; }
 .mpk-wb-row select:focus-visible { outline:2px solid var(--orange); outline-offset:1px; }
-.mpk-seg3 { grid-template-columns:repeat(3,1fr); }
-.mpk-seg3 button[hidden] { display:none; }
 .mpk-wb-info { font-size:10px; color:var(--charcoal-light); line-height:1.4; margin:-4px 0 8px; }
 .mpk-wb-row select:disabled { color:var(--charcoal-dark); opacity:1; background:rgba(30,44,68,0.04); }
+
+/* Historical imagery inside the basemap dropdown (MPK mode only) */
+#mpk-basemap-section { display:none; }
+body.mpk-mode #mpk-basemap-section { display:block; }
+body.mpk-mode .basemap-dropdown { min-width:290px; max-height:calc(100vh - 150px); overflow-y:auto; }
+.mpk-hist-head { padding:9px 13px 5px; font-size:9.5px; font-weight:700; letter-spacing:0.06em; color:var(--orange-dark); border-top:2px solid rgba(232,119,46,0.2); text-transform:uppercase; }
+.mpk-hist-thumb { font-size:13px; }
+.mpk-hist-controls { padding:10px 13px 12px; border-top:1px solid rgba(30,44,68,0.08); background:rgba(30,44,68,0.03); }
+.mpk-hist-controls[hidden] { display:none; }

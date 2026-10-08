@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261008l" rel="stylesheet">
+<link href="mpk.css?v=20261008m" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -817,6 +817,8 @@
             <div style="font-size:10px;color:rgba(66,66,66,0.4);">seremban.pmtiles · S3 · zoom 8–17</div>
           </div>
         </div>
+        <!-- MPK historical imagery basemaps + controls (built by mpk.js, MPK mode only) -->
+        <div id="mpk-basemap-section"></div>
         <!-- UZMA-sat inline controls (shown when UZMA-sat is active) -->
         <div class="uzmasat-controls" id="uzmasat-controls" style="display:none;padding:10px 13px 11px;border-top:1px solid rgba(232,119,46,0.15);background:rgba(232,119,46,0.04);">
           <div class="uzmasat-ctrl-row">
@@ -3471,6 +3473,7 @@ function applyTerrain() {
 }
 
 function switchBasemap(key, label, el) {
+  if (typeof mpkHistoricOff === 'function') mpkHistoricOff();   // a regular basemap replaces MPK historical imagery
   document.querySelectorAll('.basemap-option').forEach(o => o.classList.remove('active'));
   if (el) el.classList.add('active');
   document.getElementById('basemap-label').textContent = label;
@@ -4224,6 +4227,6 @@ function showLoading(text, sub) {
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 </script>
-<script src="mpk.js?v=20261008l"></script>
+<script src="mpk.js?v=20261008m"></script>
 </body>
 </html>

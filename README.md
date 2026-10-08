@@ -135,11 +135,12 @@ buildings (click to zoom) and a CSV export. Labels always say "Suspected" — re
 site verification. "No cadastral lot" is only judged inside the boundary, where the lot
 data is meant to be complete; a gap in the NDCDB extract will show up as a false flag.
 
-**Historical imagery**: a panel switch overlays past imagery under the MPK layers, one
-satellite per tab — images from different satellites are never mixed. Each tab's *View*
-menu offers what that archive supports:
+**Historical imagery**: in MPK mode the basemap menu (next to Google Maps / Satellite /
+Hybrid) lists Esri Wayback, Sentinel-2 and Landsat, each on its own — images from different
+satellites are never mixed. The basemap button shows the satellite and image date, and the
+controls under the list offer what that archive supports:
 
-| Tab | Views | Resolution | Since |
+| Basemap | Views | Resolution | Since |
 |---|---|---|---|
 | Esri (World Imagery Wayback) | By image — each distinct capture | ~30 cm, buildings visible | 2007 (TK) / 2011 |
 | Sentinel-2 | By year · By month (pick a year) | 10 m | 2016 |

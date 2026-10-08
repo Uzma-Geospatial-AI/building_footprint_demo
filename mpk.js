@@ -184,7 +184,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008l',
+  VERSION: '20261008m',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -439,6 +439,7 @@ async function mpkEnter() {
   const tab = document.getElementById('ptab-mpk');
   tab.style.display = '';
   mpkBuildPanel();
+  mpkBuildHistoricBasemaps();
   switchTab(tab, 'mpk');
   mpkSelectArea(MPK.area);
   addActivityLog('MPK Kemaman mode', 'Suspected illegal construction');
@@ -448,8 +449,7 @@ function mpkExit() {
   if (!MPK.active) return;
   MPK.active = false;
   document.body.classList.remove('mpk-mode');
-  mpkWaybackStop();
-  mpkImageryZoomCap(null);
+  mpkHistoricOff();
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
   mpkSetSerembanVisible(true);
@@ -511,40 +511,6 @@ function mpkBuildPanel() {
     <div class="mpk-card mpk-layers">
       <div class="mpk-card-title">Map layers</div>
       ${layerRows}
-    </div>
-
-    <div class="mpk-card mpk-wayback"${Object.keys(MPK_SATELLITES).some(k => MPK.data[MPK_SATELLITES[k].data]) ? '' : ' hidden'}>
-      <div class="mpk-layer-row">
-        <span class="mpk-sw-group"><i class="sw wayback"></i></span>
-        <div class="mpk-layer-main">Historical imagery<small>One satellite at a time</small></div>
-        <button type="button" class="layer-toggle off" id="mpk-tog-wayback" role="switch" aria-checked="false"
-          aria-label="Historical imagery" onclick="mpkToggleWayback()"></button>
-      </div>
-      <div id="mpk-wb-body" hidden>
-        <div class="mpk-seg mpk-seg3" role="tablist">
-          ${Object.entries(MPK_SATELLITES).map(([k, sat]) => `<button type="button" data-src="${k}"
-            onclick="mpkWaybackSource('${k}')"${MPK.data[sat.data] ? '' : ' hidden'}>${sat.label}</button>`).join('')}
-        </div>
-        <div class="mpk-wb-info" id="mpk-wb-info"></div>
-        <div class="mpk-wb-row">
-          <label for="mpk-wb-view">View</label>
-          <select id="mpk-wb-view" onchange="mpkWaybackView(this.value)"></select>
-        </div>
-        <div class="mpk-wb-row" id="mpk-wb-yearrow">
-          <label for="mpk-wb-year">Year</label>
-          <select id="mpk-wb-year" onchange="mpkWaybackYear(this.value)"></select>
-        </div>
-        <div class="mpk-wb-date" id="mpk-wb-date">—</div>
-        <div class="mpk-wb-sub" id="mpk-wb-sub"></div>
-        <input type="range" id="mpk-wb-slider" class="mpk-range" min="0" max="0" step="1" value="0"
-          aria-label="Imagery date" oninput="mpkWaybackGo(+this.value)">
-        <div class="mpk-range-scale"><span id="mpk-wb-first"></span><span id="mpk-wb-last"></span></div>
-        <div class="mpk-wb-controls">
-          <button type="button" class="mpk-wb-btn" onclick="mpkWaybackStep(-1)" aria-label="Previous image">◀</button>
-          <button type="button" class="mpk-wb-btn play" id="mpk-wb-play" onclick="mpkWaybackPlay()" aria-label="Play">▶ Play</button>
-          <button type="button" class="mpk-wb-btn" onclick="mpkWaybackStep(1)" aria-label="Next image">▶</button>
-        </div>
-      </div>
     </div>
 
     <div class="mpk-card">
@@ -737,11 +703,14 @@ function mpkExportCSV() {
 // ---------- Historical imagery: one satellite per tab ----------
 // views = what that satellite's archive supports; data = key in MPK.data
 const MPK_SATELLITES = {
-  esri:    { label: 'Esri', data: 'wayback', views: [['image', 'By image']],
+  esri:    { label: 'Esri Wayback', data: 'wayback', views: [['image', 'By image']],
+             thumb: '🏙️', short: 'High-res ~30 cm · 2007 →',
              info: 'Esri World Imagery Wayback · ~30 cm · buildings visible · a few images since 2007' },
   s2:      { label: 'Sentinel-2', data: 'sentinel', views: [['year', 'By year'], ['month', 'By month']],
+             thumb: '🛰️', short: '10 m · 2016 → · year / month',
              info: 'ESA Sentinel-2 · 10 m · every ~5 days since 2016 · least-cloudy image shown' },
   landsat: { label: 'Landsat', data: 'landsat', views: [['year', 'By year'], ['month', 'By month']],
+             thumb: '🌐', short: '30 m · 2000 → · year / month',
              info: 'NASA/USGS Landsat 5–9 · 30 m · every ~8–16 days since 2000 · least-cloudy image shown' },
 };
 
@@ -820,29 +789,77 @@ function mpkHideWaybackImagery() {
   MPK.wayback.kind = null;
 }
 
-function mpkToggleWayback() {
-  const w = MPK.wayback;
-  w.on = !w.on;
-  const btn = document.getElementById('mpk-tog-wayback');
-  btn.className = 'layer-toggle ' + (w.on ? 'on' : 'off');
-  btn.setAttribute('aria-checked', String(w.on));
-  document.getElementById('mpk-wb-body').hidden = !w.on;
-  if (w.on) {
-    const available = Object.keys(MPK_SATELLITES).filter(k => MPK.data[MPK_SATELLITES[k].data]);
-    mpkWaybackSource(available.includes(w.src) ? w.src : available[0]);
-    addActivityLog('Historical imagery on', MPK_SATELLITES[w.src].label);
-  } else {
-    mpkWaybackStop();
-    mpkHideWaybackImagery();
-    mpkImageryZoomCap(null);
-  }
+// The historical satellites are basemap choices (MPK mode only), listed under the Google /
+// OSM basemaps in the basemap dropdown with their controls just below them.
+function mpkBuildHistoricBasemaps() {
+  const box = document.getElementById('mpk-basemap-section');
+  if (!box || box.dataset.built) return;
+  box.dataset.built = '1';
+  const available = Object.entries(MPK_SATELLITES).filter(([, sat]) => MPK.data[sat.data]);
+  if (!available.length) return;
+  box.innerHTML = `
+    <div class="mpk-hist-head">Historical imagery · MPK Kemaman</div>
+    ${available.map(([k, sat]) => `
+      <div class="basemap-option mpk-hist-opt" data-src="${k}" onclick="mpkSelectHistoric('${k}')">
+        <div class="basemap-option-thumb mpk-hist-thumb ${k}">${sat.thumb}</div>
+        <div><div style="font-size:12px;font-weight:500;">${sat.label}</div>
+          <div style="font-size:10px;color:rgba(66,66,66,0.4);">${sat.short}</div></div>
+      </div>`).join('')}
+    <div class="mpk-hist-controls" id="mpk-wb-body" hidden>
+      <div class="mpk-wb-info" id="mpk-wb-info"></div>
+      <div class="mpk-wb-row">
+        <label for="mpk-wb-view">View</label>
+        <select id="mpk-wb-view" onchange="mpkWaybackView(this.value)"></select>
+      </div>
+      <div class="mpk-wb-row" id="mpk-wb-yearrow">
+        <label for="mpk-wb-year">Year</label>
+        <select id="mpk-wb-year" onchange="mpkWaybackYear(this.value)"></select>
+      </div>
+      <div class="mpk-wb-date" id="mpk-wb-date">—</div>
+      <div class="mpk-wb-sub" id="mpk-wb-sub"></div>
+      <input type="range" id="mpk-wb-slider" class="mpk-range" min="0" max="0" step="1" value="0"
+        aria-label="Imagery date" oninput="mpkWaybackGo(+this.value)">
+      <div class="mpk-range-scale"><span id="mpk-wb-first"></span><span id="mpk-wb-last"></span></div>
+      <div class="mpk-wb-controls">
+        <button type="button" class="mpk-wb-btn" onclick="mpkWaybackStep(-1)" aria-label="Previous image">◀</button>
+        <button type="button" class="mpk-wb-btn play" id="mpk-wb-play" onclick="mpkWaybackPlay()" aria-label="Play">▶ Play</button>
+        <button type="button" class="mpk-wb-btn" onclick="mpkWaybackStep(1)" aria-label="Next image">▶</button>
+      </div>
+    </div>`;
 }
 
-// Switch satellite tab: keep the view if this satellite offers it, else its first view
+function mpkSelectHistoric(src) {
+  const w = MPK.wayback;
+  if (!w.on) MPK.prevBasemapLabel = document.getElementById('basemap-label').textContent;
+  w.on = true;
+  document.querySelectorAll('.basemap-option').forEach(o => o.classList.toggle('active', o.dataset.src === src));
+  document.getElementById('mpk-wb-body').hidden = false;
+  mpkWaybackSource(src);
+  addActivityLog('Historical imagery', MPK_SATELLITES[src].label);
+}
+
+// Called by switchBasemap (index.html) and on leaving MPK mode
+function mpkHistoricOff() {
+  const w = MPK.wayback;
+  if (!w.on) return;
+  w.on = false;
+  mpkWaybackStop();
+  mpkHideWaybackImagery();
+  mpkImageryZoomCap(null);
+  document.querySelectorAll('.mpk-hist-opt').forEach(o => o.classList.remove('active'));
+  const body = document.getElementById('mpk-wb-body');
+  if (body) body.hidden = true;
+  const label = document.getElementById('basemap-label');
+  if (MPK.prevBasemapLabel) label.textContent = MPK.prevBasemapLabel;
+  // the underlying basemap option is active again
+  const base = document.querySelector(`.basemap-option[onclick*="'${currentBasemap}'"]`);
+  if (base) base.classList.add('active');
+}
+
+// Switch satellite: keep the view if this satellite offers it, else its first view
 function mpkWaybackSource(src) {
   const w = MPK.wayback, sat = MPK_SATELLITES[src];
   w.src = src;
-  document.querySelectorAll('.mpk-seg3 button').forEach(b => b.classList.toggle('active', b.dataset.src === src));
   document.getElementById('mpk-wb-info').textContent = sat.info;
   const views = sat.views.map(([v]) => v);
   if (!views.includes(w.view)) w.view = views[0];
@@ -897,12 +914,14 @@ function mpkWaybackRender() {
   const period = w.view === 'month' ? MPK_MONTH_NAMES[i] + ' ' + w.year : w.view === 'year' ? entry.year : '';
   const date = document.getElementById('mpk-wb-date'), sub = document.getElementById('mpk-wb-sub');
   if (!entry || !entry.source) {
+    document.getElementById('basemap-label').textContent = `${MPK_SATELLITES[w.src].label} · ${period}`;
     date.textContent = `${period} · no usable image`;
     sub.textContent = `No ${MPK_SATELLITES[w.src].label} image of ${area} with usable coverage`;
     return;
   }
   const cloud = entry.cloud != null ? ` · ${Math.round(entry.cloud)}% cloud` : '';
   date.textContent = mpkDayLabel(entry.date) + cloud;
+  document.getElementById('basemap-label').textContent = `${MPK_SATELLITES[w.src].label} · ${mpkMonthLabel(entry.date)}`;
   sub.textContent = w.view === 'image'
     ? `Image ${i + 1} of ${list.length} · ${area}`
     : `Least-cloudy ${mpkSatName(entry)} image of ${period} · ${area} · zoom limited to keep it sharp`;
