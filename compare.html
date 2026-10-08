@@ -63,6 +63,11 @@
   .handle:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
   .handle svg { width: 22px; height: 22px; }
 
+  .layers { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-right: 10px; margin-right: 2px;
+            border-right: 1px solid var(--line); }
+  .layers:empty { display: none; }
+  .layers .note { font-size: 11px; color: var(--muted); max-width: 260px; line-height: 1.35; }
+  .layers .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
   .error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff;
            font-size: 14px; padding: 24px; text-align: center; }
   @media (max-width: 640px) {
@@ -80,6 +85,7 @@
       <div class="sub" id="sub">—</div>
     </div>
     <div class="spacer"></div>
+    <div class="layers" id="change-layers"></div>
     <label class="toggle"><input type="checkbox" id="tog-imagery" checked> Show historical images</label>
     <label class="toggle"><input type="checkbox" id="tog-overlay" checked> Boundary &amp; suspected buildings</label>
     <button class="btn" type="button" onclick="window.close()">Close</button>
@@ -99,8 +105,8 @@
     </div>
   </main>
 
-<script src="mpk.js?v=20261008z"></script>
-<script src="mpk-change.js?v=20261008z"></script>
+<script src="mpk.js?v=20261009a"></script>
+<script src="mpk-change.js?v=20261009a"></script>
 <script>
 (function () {
   const state = mpkCompareParse(location.search);
@@ -198,6 +204,32 @@
   };
   overlay(before);
   overlay(after);
+
+  // Change-detection layers from the dashboard tab that opened this one, when its result is for
+  // these same two images: one checkbox per detected type, drawn on both sides
+  const box = document.getElementById('change-layers');
+  let change = null;
+  try {
+    const raw = window.opener && window.opener.mpkChangeExport && window.opener.mpkChangeExport();
+    const data = raw && JSON.parse(raw);
+    if (data && mpkResultMatches(data.result, state)) change = data;
+  } catch (e) {}                                   // opener closed or from another origin
+  if (change) {
+    const shown = change.shown;
+    box.innerHTML = Object.keys(change.result.layers).map(type => {
+      const t = MPK_CHANGE_TYPES[type];
+      return `<label class="toggle"><input type="checkbox" data-type="${type}" ${shown[type] !== false ? 'checked' : ''}>
+        <i class="sw" style="background:rgb(${t.rgb})"></i>${t.label}</label>`;
+    }).join('');
+    const draw = m => mpkAddChangeLayers(m, change.result, shown, m.getLayer('suspect') ? 'suspect' : undefined);
+    [before, after].forEach(m => (m.loaded() ? draw(m) : m.once('load', () => draw(m))));
+    box.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
+      shown[cb.dataset.type] = cb.checked;
+      [before, after].forEach(m => mpkSetChangeTypeVisible(m, cb.dataset.type, cb.checked));
+    }));
+  } else {
+    box.innerHTML = '<span class="note">Press <b>Generate</b> in the dashboard’s Change detection card for these dates, then open Compare again to see the analysis layers.</span>';
+  }
   document.getElementById('tog-imagery').addEventListener('change', e => {
     const on = e.target.checked;
     [before, after].forEach(m => {

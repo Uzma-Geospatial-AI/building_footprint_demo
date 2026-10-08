@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { MPK_EXG_TH: MPK_EXG_TH_TEST } = require('../mpk-change.js');
-const { mpkOpenMask, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
+const { mpkMergeBuildings, mpkResultMatches, mpkOpenMask, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
 
 // Sentinel-2 processing baseline 04.00 (from 25 Jan 2022) adds 1000 to every band
 assert.strictEqual(mpkS2Expressions('2021-06-01').ndvi, '(B08-B04)/(B08+B04)');
@@ -125,5 +125,23 @@ for (let y = 4; y < 9; y++) for (let x = 4; x < 9; x++) m9[y * 10 + x] = 1;   //
 const opened = mpkOpenMask(m9, 10, 1);
 assert.strictEqual(opened[11], 0);
 assert.strictEqual(opened.reduce((x, y) => x + y), 25);
+
+// Several detect types at once: one building list, each building tagged with every type that
+// found it, largest first; vegetation gain lists no buildings
+const bld = (id, area_m2) => ({ properties: { id, area_m2 } });
+const merged = mpkMergeBuildings({
+  newbld: { buildings: [bld(1, 50), bld(2, 300)] },
+  cleared: { buildings: [bld(2, 300), bld(3, 120)] },
+  gain: { buildings: [] },
+});
+assert.deepStrictEqual(merged.map(m => [m.feature.properties.id, m.types]), [[2, ['newbld', 'cleared']], [3, ['cleared']], [1, ['newbld']]]);
+
+// The compare page reuses the dashboard's result only when it is for the same two images
+const res = { area: 'tk', before: { source: 's2', item: 'A', date: '2018-07-15' }, after: { source: 's2', item: 'B', date: '2025-02-03' } };
+assert.strictEqual(mpkResultMatches(res, { area: 'tk', before: { source: 's2', item: 'A' }, after: { source: 's2', item: 'B' } }), true);
+assert.strictEqual(mpkResultMatches(res, { area: 'tk', before: { source: 's2', item: 'A' }, after: { source: 's2', item: 'C' } }), false);
+const esriRes = { area: 'tk', before: { source: 'esri', release: 10 }, after: { source: 'esri', release: 20 } };
+assert.strictEqual(mpkResultMatches(esriRes, { area: 'tk', before: { source: 'esri', release: 10 }, after: { source: 'esri', release: 20 } }), true);
+assert.strictEqual(mpkResultMatches(null, { area: 'tk', before: {}, after: {} }), false);
 
 console.log('mpk change: all tests passed');
