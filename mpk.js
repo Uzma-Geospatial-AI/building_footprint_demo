@@ -90,6 +90,14 @@ function mpkSentinelTileUrl(item) {
     + '?collection=sentinel-2-l2a&item=' + item + '&assets=visual&asset_bidx=visual%7C1%2C2%2C3&nodata=0&format=png';
 }
 
+// Month to open a year on: the latest clear month (<= 20% cloud), else the least cloudy one
+function mpkDefaultMonth(months) {
+  for (let j = months.length - 1; j >= 0; j--) if (months[j] && months[j].cloud <= 20) return j;
+  let best = 0;
+  months.forEach((e, j) => { if (e && (!months[best] || e.cloud < months[best].cloud)) best = j; });
+  return best;
+}
+
 // Years that have monthly images for one area, newest first
 function mpkSentinelYears(areaYears) {
   return Object.keys(areaYears || {}).sort().reverse();
@@ -105,7 +113,7 @@ function mpkWaybackHistory(history, area) {
 
 if (typeof module !== 'undefined') {
   module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
-                     mpkWaybackHistory, mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears };
+                     mpkWaybackHistory, mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth };
 }
 
 // ---------- Browser mode ----------
@@ -139,7 +147,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008g',
+  VERSION: '20261008h',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -703,9 +711,7 @@ function mpkWaybackList() {
 function mpkWaybackIndex() {
   const list = mpkWaybackList(), i = MPK.wayback.index[MPK.wayback.mode];
   if (i != null) return i;
-  if (MPK.wayback.mode === 'history') return list.length - 1;           // newest image
-  for (let j = list.length - 1; j >= 0; j--) if (list[j]) return j;      // latest month with an image
-  return 0;
+  return MPK.wayback.mode === 'history' ? list.length - 1 : mpkDefaultMonth(list);
 }
 
 function mpkShowWaybackImagery() {

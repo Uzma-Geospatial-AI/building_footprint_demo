@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl, mpkWaybackHistory,
-  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears } = require('../mpk.js');
+  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -82,5 +82,11 @@ assert.strictEqual(mpkSentinelTileUrl('S2A_X'),
   + '?collection=sentinel-2-l2a&item=S2A_X&assets=visual&asset_bidx=visual%7C1%2C2%2C3&nodata=0&format=png');
 assert.deepStrictEqual(mpkSentinelYears({ '2016': [], '2024': [], '2019': [] }), ['2024', '2019', '2016']);   // newest first
 assert.deepStrictEqual(mpkSentinelYears(undefined), []);
+
+// Default month: latest clear month (<= 20% cloud), else the least cloudy, else January
+const m = c => (c == null ? null : { cloud: c });
+assert.strictEqual(mpkDefaultMonth([m(5), m(30), m(12), m(100), null]), 2);
+assert.strictEqual(mpkDefaultMonth([m(60), m(40), m(90), null]), 1);
+assert.strictEqual(mpkDefaultMonth([null, null]), 0);
 
 console.log('mpk logic: all tests passed');
