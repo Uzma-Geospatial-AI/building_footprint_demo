@@ -259,8 +259,11 @@ const MPK_ZONES = {
   development:   { label: 'Under development', color: '#A1887F' },
 };
 
-// Map layers the viewer can switch on/off from the panel, in display order.
+// Map layers the viewer can switch on/off from the panel, in display order (land use first).
 const MPK_LAYER_GROUPS = {
+  landuse:   { label: 'Land use · Kemaman (OSM)', swatchClass: 'landuse',
+               layers: ['mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line'],
+               legend: [...Object.values(MPK_ZONES).map(z => [z.label, z.color]), ['District boundary', '.district']] },
   suspect:   { label: 'Suspected buildings', swatch: [MPK_SUSPECT_COLOR],
                layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
                legend: [] },
@@ -269,15 +272,12 @@ const MPK_LAYER_GROUPS = {
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
                legend: [['On approved lot', '#7CB342'], ['Other building', '#B0BEC5'], ['Approved lot', '.lot'],
                         ['Cadastral lot', '.kadaster'], ['Planning boundary', '.line'], ['Study corridor', '.band']] },
-  landuse:   { label: 'Land use · Kemaman (OSM)', swatchClass: 'landuse',
-               layers: ['mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line'],
-               legend: [...Object.values(MPK_ZONES).map(z => [z.label, z.color]), ['District boundary', '.district']] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261009d',
+  VERSION: '20261009e',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -375,18 +375,6 @@ function mpkAddLayers() {
     map.addSource('mpk-buildings', { type: 'geojson', data: MPK.data.buildings });
     map.addSource('mpk-highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-    if (MPK.data.landuse) {
-      // under every other MPK layer
-      map.addSource('mpk-landuse', { type: 'geojson', data: MPK.data.landuse });
-      const zoneColor = ['match', ['get', 'zone'], ...Object.entries(MPK_ZONES).flatMap(([k, z]) => [k, z.color]), '#9E9E9E'];
-      const notDistrict = ['!=', ['get', 'zone'], 'district'];
-      map.addLayer({ id: 'mpk-landuse-fill', type: 'fill', source: 'mpk-landuse', filter: notDistrict,
-        paint: { 'fill-color': zoneColor, 'fill-opacity': 0.3 } });
-      map.addLayer({ id: 'mpk-landuse-line', type: 'line', source: 'mpk-landuse', filter: notDistrict,
-        paint: { 'line-color': zoneColor, 'line-width': 1, 'line-opacity': 0.9 } });
-      map.addLayer({ id: 'mpk-district-line', type: 'line', source: 'mpk-landuse', filter: ['==', ['get', 'zone'], 'district'],
-        paint: { 'line-color': '#1E2C44', 'line-width': 2.5, 'line-dasharray': [4, 2, 1, 2] } });
-    }
     map.addLayer({ id: 'mpk-lot-fill', type: 'fill', source: 'mpk-lots',
       paint: { 'fill-color': '#8E24AA', 'fill-opacity': 0.22 } });
     map.addLayer({ id: 'mpk-lot-line', type: 'line', source: 'mpk-lots',
@@ -405,6 +393,18 @@ function mpkAddLayers() {
                'line-width': ['interpolate', ['exponential', 2], ['zoom'], 10, 0.66, 20, 672] } });
     map.addLayer({ id: 'mpk-koridor-line', type: 'line', source: 'mpk-roads',
       paint: { 'line-color': '#F9A825', 'line-width': 2 } });
+    if (MPK.data.landuse) {
+      // in front of the imagery, lots and boundaries; only the buildings are drawn over it
+      map.addSource('mpk-landuse', { type: 'geojson', data: MPK.data.landuse });
+      const zoneColor = ['match', ['get', 'zone'], ...Object.entries(MPK_ZONES).flatMap(([k, z]) => [k, z.color]), '#9E9E9E'];
+      const notDistrict = ['!=', ['get', 'zone'], 'district'];
+      map.addLayer({ id: 'mpk-landuse-fill', type: 'fill', source: 'mpk-landuse', filter: notDistrict,
+        paint: { 'fill-color': zoneColor, 'fill-opacity': 0.4 } });
+      map.addLayer({ id: 'mpk-landuse-line', type: 'line', source: 'mpk-landuse', filter: notDistrict,
+        paint: { 'line-color': zoneColor, 'line-width': 1, 'line-opacity': 0.9 } });
+      map.addLayer({ id: 'mpk-district-line', type: 'line', source: 'mpk-landuse', filter: ['==', ['get', 'zone'], 'district'],
+        paint: { 'line-color': '#1E2C44', 'line-width': 2.5, 'line-dasharray': [4, 2, 1, 2] } });
+    }
     map.addLayer({ id: 'mpk-base-fill', type: 'fill', source: 'mpk-buildings', filter: ['!', suspect],
       paint: { 'fill-color': ['match', ['get', 'kategori'], 'lulus', '#7CB342', '#B0BEC5'], 'fill-opacity': 0.6 } });
     map.addLayer({ id: 'mpk-suspect-fill', type: 'fill', source: 'mpk-buildings', filter: suspect,
@@ -904,7 +904,7 @@ function mpkShowWaybackImagery() {
     // a little contrast lifts the haze of 10-30 m imagery; Esri photos are left as they are
     map.addLayer({ id: 'mpk-wayback-layer', type: 'raster', source: 'mpk-wayback',
       paint: src.kind === 'esri' ? {} : { 'raster-contrast': 0.15, 'raster-saturation': 0.1 } },
-      map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
+      mpkBottomLayer());
     w.kind = src.kind;
   } catch (e) {}                                    // style reloading — mpkAddLayers re-adds it
 }
@@ -915,6 +915,11 @@ function mpkImageryZoomCap(maxView) {
   const cap = maxView == null ? (currentBasemap === 'uzma-sat' ? UZMASAT_MAXZOOM : GLOBAL_MAXZOOM) : maxView;
   map.setMaxZoom(cap);
   if (map.getZoom() > cap) map.easeTo({ zoom: cap, duration: 600 });
+}
+
+// The lowest MPK layer: imagery is inserted under it so every MPK overlay stays visible
+function mpkBottomLayer() {
+  return map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined;
 }
 
 function mpkHideWaybackImagery() {

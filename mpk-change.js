@@ -797,7 +797,7 @@ function mpkChangeView(view) {
                                     attribution: src.attribution });
   map.addLayer({ id: 'mpk-change-img-layer', type: 'raster', source: 'mpk-change-img',
                  layout: { visibility: MPK_CHANGE.overlayOn ? 'visible' : 'none' } },
-               map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
+               mpkBottomLayer());
   mpkImageryZoomCap(MPK_CHANGE.overlayOn ? src.maxView : null);
 }
 
