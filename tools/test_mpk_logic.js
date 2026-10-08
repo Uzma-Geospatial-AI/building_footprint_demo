@@ -1,6 +1,7 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
-  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource } = require('../mpk.js');
+  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
+  mpkYearBest, mpkEsriImages } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -79,7 +80,7 @@ assert.strictEqual(mpkDefaultMonth([m(5), m(30), m(12), m(100), null]), 2);
 assert.strictEqual(mpkDefaultMonth([m(60), m(40), m(90), null]), 1);
 assert.strictEqual(mpkDefaultMonth([null, null]), 0);
 
-// One tile source per imagery kind (yearly entries can come from any of the three)
+// One tile source per satellite (Esri, Sentinel-2, Landsat)
 const esri = mpkImagerySource({ source: 'esri', release: 10 });
 assert.strictEqual(esri.kind, 'esri'); assert.strictEqual(esri.maxzoom, 19);
 assert.strictEqual(esri.tiles[0], mpkWaybackTileUrl(10));
@@ -90,5 +91,25 @@ assert.strictEqual(ls.kind, 'landsat');
 assert.ok(ls.tiles[0].includes('collection=landsat-c2-l2&item=LT05_X&assets=red&assets=green&assets=blue'));
 assert.strictEqual(mpkImagerySource(null), null);
 assert.strictEqual(mpkImagerySource({ year: 2001, source: null }), null);
+
+// By year within one satellite: the clearest month of each year, oldest year first;
+// striped Landsat 7 (after May 2003) only wins when 20 points clearer
+const yrs = {
+  '2012': [null, { item: 'L7a', date: '2012-02-01', cloud: 5, platform: 'landsat-7' }, null],
+  '2008': [{ item: 'A', date: '2008-01-03', cloud: 30 }, { item: 'B', date: '2008-02-03', cloud: 4 }, null],
+  '2014': [{ item: 'L7b', date: '2014-01-01', cloud: 0, platform: 'landsat-7' },
+           { item: 'L8', date: '2014-03-01', cloud: 10, platform: 'landsat-8' }],
+  '2015': [null, null],
+};
+assert.deepStrictEqual(mpkYearBest(yrs, 'landsat').map(e => [e.year, e.item, e.source]),
+  [['2008', 'B', 'landsat'], ['2012', 'L7a', 'landsat'], ['2014', 'L8', 'landsat'], ['2015', undefined, null]]);
+
+// Esri images over one area: one per distinct capture date, oldest first
+const hist = [
+  { release: 10, capture: { tk: '2007-03-16' } }, { release: 15045, capture: { tk: '2019-05-03' } },
+  { release: 15423, capture: { tk: '2020-08-27' } }, { release: 13851, capture: { tk: '2019-05-03' } },
+];
+assert.deepStrictEqual(mpkEsriImages(hist, 'tk').map(e => [e.release, e.date, e.source]),
+  [[10, '2007-03-16', 'esri'], [15045, '2019-05-03', 'esri'], [15423, '2020-08-27', 'esri']]);
 
 console.log('mpk logic: all tests passed');

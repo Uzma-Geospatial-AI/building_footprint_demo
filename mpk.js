@@ -103,7 +103,31 @@ function mpkSentinelYears(areaYears) {
   return Object.keys(areaYears || {}).sort().reverse();
 }
 
-// Raster source for one imagery entry from yearly.json / sentinel.json, or null when none.
+// Each satellite is shown on its own, never mixed. Landsat 7 images after its scan-line
+// corrector failed (31 May 2003) have empty stripes, so in "by year" they only win a year
+// when every other scene is this many cloud points worse (same rule as tools/build_landsat.py).
+const MPK_SLC_OFF_PENALTY = 20;
+
+// By year within one satellite: the clearest month of each year, oldest year first.
+// years = { '2024': [12 month entries or null], ... } from sentinel.json / landsat.json
+function mpkYearBest(years, source) {
+  const score = e => e.cloud + (e.platform === 'landsat-7' && e.date >= '2003-05-31' ? MPK_SLC_OFF_PENALTY : 0);
+  return Object.keys(years || {}).sort().map(year => {
+    const best = years[year].filter(Boolean).reduce((a, e) => (!a || score(e) < score(a) ? e : a), null);
+    return best ? { year, source, ...best } : { year, source: null };
+  });
+}
+
+// Esri high-res images over one area: one per distinct capture date, oldest first, using the
+// first release that showed it (a later release can fall back to an older image)
+function mpkEsriImages(history, area) {
+  const byCapture = new Map();
+  for (const e of history || []) if (!byCapture.has(e.capture[area])) byCapture.set(e.capture[area], e);
+  return [...byCapture.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, e]) => ({ source: 'esri', release: e.release, date }));
+}
+
+// Raster source for one imagery entry (Esri, Sentinel-2 or Landsat), or null when none.
 // kind changes the source settings (max zoom, credit), so it must be rebuilt per kind.
 function mpkImagerySource(entry) {
   if (!entry || !entry.source) return null;
@@ -122,7 +146,8 @@ function mpkImagerySource(entry) {
 
 if (typeof module !== 'undefined') {
   module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
-                     mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource };
+                     mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
+                     mpkYearBest, mpkEsriImages };
 }
 
 // ---------- Browser mode ----------
@@ -156,7 +181,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008i',
+  VERSION: '20261008j',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -165,7 +190,7 @@ const MPK = {
     roads: 'mpk/koridor_jalan.geojson',
   },
   // Optional imagery indexes: if one fails to load, only its imagery mode is hidden
-  OPTIONAL_FILES: { yearly: 'mpk/yearly.json', sentinel: 'mpk/sentinel.json' },
+  OPTIONAL_FILES: { wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
@@ -184,9 +209,9 @@ const MPK = {
   boundMap: null,
   prevTitle: null,
   popup: null,
-  // Historical imagery: mode 'yearly' (one image per year from 2000) or 'monthly' (least-cloudy
-  // Sentinel-2 image per month of `year`); a null index means the mode's default position
-  wayback: { on: false, mode: 'yearly', year: null, index: { yearly: null, monthly: null }, kind: null, timer: null },
+  // Historical imagery, one satellite at a time: src 'esri' | 's2' | 'landsat', view 'image' |
+  // 'year' | 'month' (month needs `year`); index per src:view, null = that list's default
+  wayback: { on: false, src: null, view: null, year: null, index: {}, kind: null, timer: null },
   lastStats: null,
 };
 
@@ -484,19 +509,24 @@ function mpkBuildPanel() {
       ${layerRows}
     </div>
 
-    <div class="mpk-card mpk-wayback"${MPK.data.yearly || MPK.data.sentinel ? '' : ' hidden'}>
+    <div class="mpk-card mpk-wayback"${Object.keys(MPK_SATELLITES).some(k => MPK.data[MPK_SATELLITES[k].data]) ? '' : ' hidden'}>
       <div class="mpk-layer-row">
         <span class="mpk-sw-group"><i class="sw wayback"></i></span>
-        <div class="mpk-layer-main">Historical imagery<small>Esri · Sentinel-2 · Landsat</small></div>
+        <div class="mpk-layer-main">Historical imagery<small>One satellite at a time</small></div>
         <button type="button" class="layer-toggle off" id="mpk-tog-wayback" role="switch" aria-checked="false"
           aria-label="Historical imagery" onclick="mpkToggleWayback()"></button>
       </div>
       <div id="mpk-wb-body" hidden>
-        <div class="mpk-seg" role="tablist">
-          <button type="button" data-mode="yearly" onclick="mpkWaybackMode('yearly')"${MPK.data.yearly ? '' : ' hidden'}>By year</button>
-          <button type="button" data-mode="monthly" onclick="mpkWaybackMode('monthly')"${MPK.data.sentinel ? '' : ' hidden'}>By month</button>
+        <div class="mpk-seg mpk-seg3" role="tablist">
+          ${Object.entries(MPK_SATELLITES).map(([k, sat]) => `<button type="button" data-src="${k}"
+            onclick="mpkWaybackSource('${k}')"${MPK.data[sat.data] ? '' : ' hidden'}>${sat.label}</button>`).join('')}
         </div>
-        <div class="mpk-wb-year" id="mpk-wb-yearrow">
+        <div class="mpk-wb-info" id="mpk-wb-info"></div>
+        <div class="mpk-wb-row">
+          <label for="mpk-wb-view">View</label>
+          <select id="mpk-wb-view" onchange="mpkWaybackView(this.value)"></select>
+        </div>
+        <div class="mpk-wb-row" id="mpk-wb-yearrow">
           <label for="mpk-wb-year">Year</label>
           <select id="mpk-wb-year" onchange="mpkWaybackYear(this.value)"></select>
         </div>
@@ -586,8 +616,8 @@ function mpkSelectArea(area) {
   if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
   mpkRender();
   if (MPK.wayback.on) {
-    MPK.wayback.index.history = null;
-    mpkWaybackMode(MPK.wayback.mode);
+    MPK.wayback.index = {};                    // lists differ per area: start each on its default
+    mpkWaybackSource(MPK.wayback.src);
   }
 }
 
@@ -700,37 +730,55 @@ function mpkExportCSV() {
   addActivityLog('MPK CSV export', mpkNum(s.count) + ' buildings · ' + (MPK_AREAS[MPK.area]?.short || 'All areas'));
 }
 
-// ---------- Historical imagery (Sentinel-2 monthly · Esri Wayback high-res) ----------
+// ---------- Historical imagery: one satellite per tab ----------
+// views = what that satellite's archive supports; data = key in MPK.data
+const MPK_SATELLITES = {
+  esri:    { label: 'Esri', data: 'wayback', views: [['image', 'By image']],
+             info: 'Esri World Imagery Wayback · ~30 cm · buildings visible · a few images since 2007' },
+  s2:      { label: 'Sentinel-2', data: 'sentinel', views: [['year', 'By year'], ['month', 'By month']],
+             info: 'ESA Sentinel-2 · 10 m · every ~5 days since 2016 · least-cloudy image shown' },
+  landsat: { label: 'Landsat', data: 'landsat', views: [['year', 'By year'], ['month', 'By month']],
+             info: 'NASA/USGS Landsat 5–9 · 30 m · every ~8–16 days since 2000 · least-cloudy image shown' },
+};
+
 // Area whose imagery is listed; 'All' uses Teluk Kalong
 function mpkWaybackArea() {
   return MPK.area === 'all' ? 'tk' : MPK.area;
 }
 
-function mpkSentinelAreaYears() {
-  return MPK.data.sentinel.areas[mpkWaybackArea()] || {};
+function mpkSatYears() {
+  const w = MPK.wayback;
+  return (MPK.data[MPK_SATELLITES[w.src].data].areas || {})[mpkWaybackArea()] || {};
 }
 
-// Entries the slider steps through: the 12 months of the chosen year (Sentinel-2 entry or
-// null), or one entry per year from 2000 (source null when the year has no image)
+// Entries the slider steps through for the current satellite and view
 function mpkWaybackList() {
-  if (MPK.wayback.mode === 'monthly') {
-    return (mpkSentinelAreaYears()[MPK.wayback.year] || Array(12).fill(null)).map(e => e && { source: 's2', ...e });
-  }
-  return MPK.data.yearly.areas[mpkWaybackArea()];
+  const w = MPK.wayback;
+  if (w.view === 'image') return mpkEsriImages(MPK.data.wayback.history, mpkWaybackArea());
+  if (w.view === 'year') return mpkYearBest(mpkSatYears(), w.src);
+  return (mpkSatYears()[w.year] || Array(12).fill(null)).map(e => e && { source: w.src, ...e });
+}
+
+function mpkWaybackKey() {
+  const w = MPK.wayback;
+  return w.src + ':' + w.view + (w.view === 'month' ? ':' + w.year : '');
 }
 
 function mpkWaybackIndex() {
-  const list = mpkWaybackList(), i = MPK.wayback.index[MPK.wayback.mode];
+  const w = MPK.wayback, list = mpkWaybackList(), i = w.index[mpkWaybackKey()];
   if (i != null) return i;
-  if (MPK.wayback.mode === 'monthly') return mpkDefaultMonth(list);
-  for (let j = list.length - 1; j >= 0; j--) if (list[j].source) return j;   // latest year with an image
-  return 0;
+  if (w.view === 'month') return mpkDefaultMonth(list);
+  if (w.view === 'year') {                         // latest clear year, else the latest with an image
+    for (let j = list.length - 1; j >= 0; j--) if (list[j].source && list[j].cloud <= 20) return j;
+    for (let j = list.length - 1; j >= 0; j--) if (list[j].source) return j;
+  }
+  return list.length - 1;
 }
 
 function mpkShowWaybackImagery() {
-  if (!map) return;
+  if (!map || !MPK.wayback.src) return;
   const w = MPK.wayback, src = mpkImagerySource(mpkWaybackList()[mpkWaybackIndex()]);
-  if (!src) {                                         // no usable image for this month/year: show none
+  if (!src) {                                       // no usable image here: show none
     if (map.getLayer('mpk-wayback-layer')) map.setLayoutProperty('mpk-wayback-layer', 'visibility', 'none');
     return;
   }
@@ -739,7 +787,7 @@ function mpkShowWaybackImagery() {
     map.setLayoutProperty('mpk-wayback-layer', 'visibility', 'visible');
     return;
   }
-  mpkHideWaybackImagery();                            // source settings differ per kind
+  mpkHideWaybackImagery();                          // source settings differ per satellite
   try {
     map.addSource('mpk-wayback', { type: 'raster', tiles: src.tiles, tileSize: 256, maxzoom: src.maxzoom,
       attribution: src.attribution });
@@ -747,7 +795,7 @@ function mpkShowWaybackImagery() {
     map.addLayer({ id: 'mpk-wayback-layer', type: 'raster', source: 'mpk-wayback' },
       map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
     w.kind = src.kind;
-  } catch (e) {}                                      // style reloading — mpkAddLayers re-adds it
+  } catch (e) {}                                    // style reloading — mpkAddLayers re-adds it
 }
 
 function mpkHideWaybackImagery() {
@@ -765,68 +813,83 @@ function mpkToggleWayback() {
   btn.setAttribute('aria-checked', String(w.on));
   document.getElementById('mpk-wb-body').hidden = !w.on;
   if (w.on) {
-    if (w.mode === 'monthly' && !MPK.data.sentinel) w.mode = 'yearly';
-    if (w.mode === 'yearly' && !MPK.data.yearly) w.mode = 'monthly';
-    mpkWaybackMode(w.mode);
-    addActivityLog('Historical imagery on', w.mode === 'monthly' ? 'By month (Sentinel-2)' : 'By year (2000 onwards)');
+    const available = Object.keys(MPK_SATELLITES).filter(k => MPK.data[MPK_SATELLITES[k].data]);
+    mpkWaybackSource(available.includes(w.src) ? w.src : available[0]);
+    addActivityLog('Historical imagery on', MPK_SATELLITES[w.src].label);
   } else {
     mpkWaybackStop();
     mpkHideWaybackImagery();
   }
 }
 
-function mpkWaybackMode(mode) {
+// Switch satellite tab: keep the view if this satellite offers it, else its first view
+function mpkWaybackSource(src) {
+  const w = MPK.wayback, sat = MPK_SATELLITES[src];
+  w.src = src;
+  document.querySelectorAll('.mpk-seg3 button').forEach(b => b.classList.toggle('active', b.dataset.src === src));
+  document.getElementById('mpk-wb-info').textContent = sat.info;
+  const views = sat.views.map(([v]) => v);
+  if (!views.includes(w.view)) w.view = views[0];
+  document.getElementById('mpk-wb-view').innerHTML =
+    sat.views.map(([v, label]) => `<option value="${v}"${v === w.view ? ' selected' : ''}>${label}</option>`).join('');
+  document.getElementById('mpk-wb-view').disabled = sat.views.length < 2;
+  mpkWaybackView(w.view);
+}
+
+function mpkWaybackView(view) {
   const w = MPK.wayback;
   mpkWaybackStop();
-  w.mode = mode;
-  document.querySelectorAll('.mpk-seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  const yearRow = document.getElementById('mpk-wb-yearrow');
-  yearRow.hidden = mode !== 'monthly';
-  if (mode === 'monthly') {
-    const years = mpkSentinelYears(mpkSentinelAreaYears());
-    if (!years.includes(w.year)) { w.year = years[0]; w.index.monthly = null; }
+  w.view = view;
+  document.getElementById('mpk-wb-yearrow').hidden = view !== 'month';
+  if (view === 'month') {
+    const years = mpkSentinelYears(mpkSatYears());
+    if (!years.includes(w.year)) w.year = years[0];
     document.getElementById('mpk-wb-year').innerHTML =
       years.map(y => `<option value="${y}"${y === w.year ? ' selected' : ''}>${y}</option>`).join('');
   }
-  const list = mpkWaybackList(), slider = document.getElementById('mpk-wb-slider');
-  slider.max = list.length - 1;
-  document.getElementById('mpk-wb-first').textContent = mode === 'monthly' ? 'Jan' : list[0].year;
-  document.getElementById('mpk-wb-last').textContent = mode === 'monthly' ? 'Dec' : list[list.length - 1].year;
+  const list = mpkWaybackList();
+  document.getElementById('mpk-wb-slider').max = list.length - 1;
+  const ends = view === 'month' ? ['Jan', 'Dec']
+    : view === 'year' ? [list[0].year, list[list.length - 1].year]
+    : [mpkMonthLabel(list[0].date), mpkMonthLabel(list[list.length - 1].date)];
+  document.getElementById('mpk-wb-first').textContent = ends[0];
+  document.getElementById('mpk-wb-last').textContent = ends[1];
   mpkWaybackGo(mpkWaybackIndex());
 }
 
 function mpkWaybackYear(year) {
   MPK.wayback.year = year;
-  MPK.wayback.index.monthly = null;
-  mpkWaybackMode('monthly');
+  mpkWaybackView('month');
 }
 
 function mpkWaybackGo(i) {
-  MPK.wayback.index[MPK.wayback.mode] = i;
+  MPK.wayback.index[mpkWaybackKey()] = i;
   document.getElementById('mpk-wb-slider').value = i;
   mpkShowWaybackImagery();
   mpkWaybackRender();
 }
 
+function mpkSatName(entry) {
+  return entry.source === 'landsat' && entry.platform ? entry.platform.replace('landsat-', 'Landsat ')
+    : MPK_SATELLITES[entry.source].label;
+}
+
 function mpkWaybackRender() {
   if (!MPK.wayback.on) return;
-  const list = mpkWaybackList(), i = mpkWaybackIndex(), entry = list[i], area = MPK_AREAS[mpkWaybackArea()].short;
+  const w = MPK.wayback, list = mpkWaybackList(), i = mpkWaybackIndex(), entry = list[i];
+  const area = MPK_AREAS[mpkWaybackArea()].short;
+  const period = w.view === 'month' ? MPK_MONTH_NAMES[i] + ' ' + w.year : w.view === 'year' ? entry.year : '';
   const date = document.getElementById('mpk-wb-date'), sub = document.getElementById('mpk-wb-sub');
-  if (MPK.wayback.mode === 'monthly') {
-    const month = MPK_MONTH_NAMES[i] + ' ' + MPK.wayback.year;
-    date.textContent = entry ? `${mpkDayLabel(entry.date)} · ${Math.round(entry.cloud)}% cloud` : `${month} · no usable image`;
-    sub.textContent = `Least-cloudy Sentinel-2 image of ${month} over ${area} · 10 m resolution`;
-  } else if (!entry.source) {
-    date.textContent = `${entry.year} · no usable image`;
-    sub.textContent = `No cloud-free image of ${area} found for ${entry.year}`;
-  } else {
-    const cloud = entry.cloud != null ? ` · ${Math.round(entry.cloud)}% cloud` : '';
-    date.textContent = `${entry.year} · ${mpkDayLabel(entry.date)}${cloud}`;
-    const what = entry.source === 'esri' ? 'Esri high-resolution image (~30 cm) · buildings visible'
-      : entry.source === 's2' ? 'Least-cloudy Sentinel-2 image of the year · 10 m'
-      : `Least-cloudy ${entry.platform.replace('landsat-', 'Landsat ')} image of the year · 30 m`;
-    sub.textContent = `${what} · ${area}`;
+  if (!entry || !entry.source) {
+    date.textContent = `${period} · no usable image`;
+    sub.textContent = `No ${MPK_SATELLITES[w.src].label} image of ${area} with usable coverage`;
+    return;
   }
+  const cloud = entry.cloud != null ? ` · ${Math.round(entry.cloud)}% cloud` : '';
+  date.textContent = mpkDayLabel(entry.date) + cloud;
+  sub.textContent = w.view === 'image'
+    ? `Image ${i + 1} of ${list.length} · ${area}`
+    : `Least-cloudy ${mpkSatName(entry)} image of ${period} · ${area}`;
 }
 
 function mpkWaybackStep(d) {

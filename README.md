@@ -135,19 +135,21 @@ buildings (click to zoom) and a CSV export. Labels always say "Suspected" — re
 site verification. "No cadastral lot" is only judged inside the boundary, where the lot
 data is meant to be complete; a gap in the NDCDB extract will show up as a false flag.
 
-**Historical imagery**: a panel switch overlays past imagery under the MPK layers.
+**Historical imagery**: a panel switch overlays past imagery under the MPK layers, one
+satellite per tab — images from different satellites are never mixed. Each tab's *View*
+menu offers what that archive supports:
 
-- *By year* — one image per year from 2000 to today for the selected area, step or play
-  year by year. Each year uses the most detailed clear image available: an Esri World
-  Imagery Wayback image captured that year (~30 cm, buildings visible), else the
-  least-cloudy Sentinel-2 image (10 m, 2016 onwards), else the least-cloudy Landsat 5/8
-  image (30 m; striped Landsat 7 only when nothing else exists, e.g. 2012).
-- *By month* — pick a year (2016 onwards), then step or play through its 12 months; each
-  month shows the least-cloudy Sentinel-2 scene over the area.
+| Tab | Views | Resolution | Since |
+|---|---|---|---|
+| Esri (World Imagery Wayback) | By image — each distinct capture | ~30 cm, buildings visible | 2007 (TK) / 2011 |
+| Sentinel-2 | By year · By month (pick a year) | 10 m | 2016 |
+| Landsat 5/7/8/9 | By year · By month (pick a year) | 30 m | 2000 |
 
-Cloud is always measured over the study area itself (Sentinel-2 SCL, Landsat QA_PIXEL),
-not the whole satellite tile. Landsat and Sentinel-2 show land clearing and large
-buildings, not individual houses.
+For Sentinel-2 and Landsat each month (and each year) shows the least-cloudy scene, with
+cloud measured over the study area itself (Sentinel-2 SCL, Landsat QA_PIXEL), not the
+whole satellite tile. Striped Landsat 7 images (after May 2003) are used only when no
+other Landsat scene is reasonably clear. No other free imagery source can be shown in
+the browser; Planet NICFI monthly mosaics would need an API key.
 
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
@@ -157,9 +159,9 @@ buildings, not individual houses.
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
 - `mpk_buildings.geojson` — Google Open Buildings v3, classified per area
-- `wayback.json` — distinct Esri Wayback images per area (input to `yearly.json`), built by `tools/build_wayback.py`
+- `wayback.json` — distinct Esri Wayback images per area, built by `tools/build_wayback.py`
 - `sentinel.json` — least-cloudy Sentinel-2 scene per area and month, built by `tools/build_sentinel.py`
-- `yearly.json` — one image per area and year from 2000, built by `tools/build_yearly.py`
+- `landsat.json` — least-cloudy Landsat scene per area and month, built by `tools/build_landsat.py`
 
 **Regenerate:**
 
@@ -168,7 +170,7 @@ python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, s
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)
-python tools/build_yearly.py                                           # stdlib; needs the two above + ~1,200 Landsat scenes
+python tools/build_landsat.py                                          # stdlib; cloud check on ~3,000 Landsat scenes
 node tools/test_mpk_logic.js                                           # pure-logic tests
 ```
 
