@@ -6,7 +6,7 @@ land-use classification over **Seremban, Negeri Sembilan**, served entirely as
 static files and themed with the Uzma brand palette
 (`#E8772E` orange · `#1E2C44` navy · `#F5F5F7` canvas).
 
-Live demo: https://uzma-geospatial-ai.github.io/building_footprint_demo/
+Live demo: https://buildvision.uzmadigitalearth.app/login/
 
 Part of the Geospatial AI showcase — https://showcase.uzmadigitalearth.app/
 
@@ -258,7 +258,7 @@ and 12–16 px radii. Type is the system stack
 
 ### Production server (current)
 
-The site runs at **https://buildvision.uzmadigitalearth.app/** on the shared UZMA EC2 host, served as
+The site runs at **https://buildvision.uzmadigitalearth.app/** (sign in at **https://buildvision.uzmadigitalearth.app/login/**) on the shared UZMA EC2 host, served as
 static files by the host nginx (Cloudflare TLS) from `/var/www/buildvision` — no build step, no
 container. `.geojson` / `.geojsonn` are served as `application/json` so nginx gzips them.
 
