@@ -3,12 +3,9 @@
 Esri republishes its world mosaic every few weeks, but an area only changes when new
 imagery arrives, so most releases look identical over Kemaman. For each release this
 script asks the release's metadata service for the imagery capture date at one point
-per MPK study area, then writes two lists:
-
-  history  every release that shows a capture combination not seen before (oldest
-           first) — the distinct images available over the study areas
-  monthly  the last 12 calendar months up to the newest release: the latest release
-           in each month, or null when Esri published none that month
+per MPK study area, then keeps every release that shows a capture combination not seen
+before (oldest first) — the distinct high-resolution images over the study areas. Monthly
+imagery comes from Sentinel-2 instead (tools/build_sentinel.py).
 
 Each entry carries the release number (for the tile URL), the release date and the
 capture date per area (tk / bpb / bbc). Pure Python stdlib.
@@ -81,26 +78,12 @@ def main():
             seen.add(key)
             history.append(r)
 
-    last = datetime.date.fromisoformat(done[-1]['date'])
-    months = []
-    y, m = last.year, last.month
-    for _ in range(12):
-        months.append(f'{y:04d}-{m:02d}')
-        y, m = (y, m - 1) if m > 1 else (y - 1, 12)
-    by_month = {}
-    for r in done:
-        by_month[r['date'][:7]] = r          # releases are sorted, so the latest wins
-    monthly = [{'month': mo, **by_month[mo]} if mo in by_month else {'month': mo, 'release': None}
-               for mo in reversed(months)]
-
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:
-        json.dump({'generated': datetime.date.today().isoformat(), 'history': history, 'monthly': monthly},
-                  f, indent=1)
+        json.dump({'generated': datetime.date.today().isoformat(), 'history': history}, f, indent=1)
     print(f'history: {len(history)} distinct images')
     for r in history:
         print(f'  {r["date"]} r{r["release"]}  {r["capture"]}')
-    print(f'monthly: {sum(1 for r in monthly if r["release"])}/12 months have a release')
     print('wrote mpk/wayback.json')
 
 

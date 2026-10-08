@@ -1,5 +1,6 @@
 const assert = require('assert');
-const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl, mpkWaybackShown, mpkWaybackHistory } = require('../mpk.js');
+const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl, mpkWaybackHistory,
+  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -64,12 +65,6 @@ assert.strictEqual(mpkMonthLabel('2024-08-30'), 'Aug 2024');
 assert.strictEqual(mpkMonthLabel('2026-07'), 'Jul 2026');
 assert.strictEqual(mpkWaybackTileUrl(10842),
   'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10842/{z}/{y}/{x}');
-const months = [{ month: '2026-05', release: 1 }, { month: '2026-06', release: 2 }, { month: '2026-07', release: null },
-                { month: '2026-08', release: 3 }];
-assert.strictEqual(mpkWaybackShown(months, 1).release, 2);
-assert.strictEqual(mpkWaybackShown(months, 2).release, 2);          // no release that month: keep the previous one
-assert.strictEqual(mpkWaybackShown([{ month: '2026-01', release: null }, ...months], 0).release, 1);  // none before: next one
-
 // History per area: one entry per distinct capture date, oldest first, first release that showed it
 const hist = [
   { release: 10, date: '2014-02-20', capture: { tk: '2007-03-16', bpb: '2011-01-19' } },
@@ -79,5 +74,13 @@ const hist = [
 ];
 assert.deepStrictEqual(mpkWaybackHistory(hist, 'tk').map(e => e.release), [10, 15045, 15423]);
 assert.deepStrictEqual(mpkWaybackHistory(hist, 'bpb').map(e => e.release), [10, 15045]);
+
+// Sentinel-2 monthly helpers
+assert.strictEqual(mpkDayLabel('2024-10-21'), '21 Oct 2024');
+assert.strictEqual(mpkSentinelTileUrl('S2A_X'),
+  'https://planetarycomputer.microsoft.com/api/data/v1/item/tiles/WebMercatorQuad/{z}/{x}/{y}@1x'
+  + '?collection=sentinel-2-l2a&item=S2A_X&assets=visual&asset_bidx=visual%7C1%2C2%2C3&nodata=0&format=png');
+assert.deepStrictEqual(mpkSentinelYears({ '2016': [], '2024': [], '2019': [] }), ['2024', '2019', '2016']);   // newest first
+assert.deepStrictEqual(mpkSentinelYears(undefined), []);
 
 console.log('mpk logic: all tests passed');

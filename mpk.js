@@ -78,12 +78,21 @@ function mpkWaybackTileUrl(release) {
     + release + '/{z}/{y}/{x}';
 }
 
-// The entry whose imagery is shown at slider position i. A month with no Esri release keeps
-// the previous release on screen (or the next one when there is none before it).
-function mpkWaybackShown(list, i) {
-  for (let j = i; j >= 0; j--) if (list[j].release) return list[j];
-  for (let j = i + 1; j < list.length; j++) if (list[j].release) return list[j];
-  return null;
+// '2024-10-21' -> '21 Oct 2024'
+function mpkDayLabel(d) {
+  const [y, m, day] = d.split('-');
+  return +day + ' ' + MPK_MONTH_NAMES[+m - 1] + ' ' + y;
+}
+
+// Sentinel-2 L2A true-colour tiles rendered by Microsoft Planetary Computer
+function mpkSentinelTileUrl(item) {
+  return 'https://planetarycomputer.microsoft.com/api/data/v1/item/tiles/WebMercatorQuad/{z}/{x}/{y}@1x'
+    + '?collection=sentinel-2-l2a&item=' + item + '&assets=visual&asset_bidx=visual%7C1%2C2%2C3&nodata=0&format=png';
+}
+
+// Years that have monthly images for one area, newest first
+function mpkSentinelYears(areaYears) {
+  return Object.keys(areaYears || {}).sort().reverse();
 }
 
 // Distinct images over one area, oldest capture first. A later release can fall back to an
@@ -95,8 +104,8 @@ function mpkWaybackHistory(history, area) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl, mpkWaybackShown,
-                     mpkWaybackHistory };
+  module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+                     mpkWaybackHistory, mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears };
 }
 
 // ---------- Browser mode ----------
@@ -130,7 +139,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008f',
+  VERSION: '20261008g',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -138,8 +147,8 @@ const MPK = {
     kadaster: 'mpk/lot_kadaster.geojson',
     roads: 'mpk/koridor_jalan.geojson',
   },
-  // Optional: if it fails to load, only the historical-imagery card is hidden
-  WAYBACK_FILE: 'mpk/wayback.json',
+  // Optional imagery indexes: if one fails to load, only its imagery mode is hidden
+  OPTIONAL_FILES: { sentinel: 'mpk/sentinel.json', wayback: 'mpk/wayback.json' },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
@@ -158,8 +167,9 @@ const MPK = {
   boundMap: null,
   prevTitle: null,
   popup: null,
-  // Esri Wayback viewer: mode 'history' (distinct images) or 'monthly' (last 12 months)
-  wayback: { on: false, mode: 'history', index: { history: null, monthly: null }, timer: null },
+  // Historical imagery: mode 'monthly' (least-cloudy Sentinel-2 image per month of `year`)
+  // or 'history' (distinct high-resolution Esri Wayback images); null index = default position
+  wayback: { on: false, mode: 'monthly', year: null, index: { history: null, monthly: null }, kind: null, timer: null },
   lastStats: null,
 };
 
@@ -196,12 +206,14 @@ async function mpkEnsureData() {
     return [key, await res.json()];
   }));
   const data = Object.fromEntries(entries);
-  try {
-    const res = await fetch(MPK.WAYBACK_FILE + '?v=' + MPK.VERSION);
-    data.wayback = res.ok ? await res.json() : null;
-  } catch (e) {
-    data.wayback = null;
-  }
+  await Promise.all(Object.entries(MPK.OPTIONAL_FILES).map(async ([key, url]) => {
+    try {
+      const res = await fetch(url + '?v=' + MPK.VERSION);
+      data[key] = res.ok ? await res.json() : null;
+    } catch (e) {
+      data[key] = null;
+    }
+  }));
   const b = data.buildings.features;
   MPK.bounds = {
     all: mpkBoundsOf([...b, ...data.boundary.features, ...data.roads.features]),
@@ -455,17 +467,21 @@ function mpkBuildPanel() {
       ${layerRows}
     </div>
 
-    <div class="mpk-card mpk-wayback"${MPK.data.wayback ? '' : ' hidden'}>
+    <div class="mpk-card mpk-wayback"${MPK.data.sentinel || MPK.data.wayback ? '' : ' hidden'}>
       <div class="mpk-layer-row">
         <span class="mpk-sw-group"><i class="sw wayback"></i></span>
-        <div class="mpk-layer-main">Historical imagery<small>Esri World Imagery Wayback</small></div>
+        <div class="mpk-layer-main">Historical imagery<small>Sentinel-2 monthly · Esri high-res</small></div>
         <button type="button" class="layer-toggle off" id="mpk-tog-wayback" role="switch" aria-checked="false"
           aria-label="Historical imagery" onclick="mpkToggleWayback()"></button>
       </div>
       <div id="mpk-wb-body" hidden>
         <div class="mpk-seg" role="tablist">
-          <button type="button" data-mode="history" onclick="mpkWaybackMode('history')">Imagery history</button>
-          <button type="button" data-mode="monthly" onclick="mpkWaybackMode('monthly')">Last 12 months</button>
+          <button type="button" data-mode="monthly" onclick="mpkWaybackMode('monthly')"${MPK.data.sentinel ? '' : ' hidden'}>Monthly (Sentinel-2)</button>
+          <button type="button" data-mode="history" onclick="mpkWaybackMode('history')"${MPK.data.wayback ? '' : ' hidden'}>High-res (Esri)</button>
+        </div>
+        <div class="mpk-wb-year" id="mpk-wb-yearrow">
+          <label for="mpk-wb-year">Year</label>
+          <select id="mpk-wb-year" onchange="mpkWaybackYear(this.value)"></select>
         </div>
         <div class="mpk-wb-date" id="mpk-wb-date">—</div>
         <div class="mpk-wb-sub" id="mpk-wb-sub"></div>
@@ -667,30 +683,55 @@ function mpkExportCSV() {
   addActivityLog('MPK CSV export', mpkNum(s.count) + ' buildings · ' + (MPK_AREAS[MPK.area]?.short || 'All areas'));
 }
 
-// ---------- Historical imagery (Esri World Imagery Wayback) ----------
+// ---------- Historical imagery (Sentinel-2 monthly · Esri Wayback high-res) ----------
+// Area whose imagery is listed; 'All' uses Teluk Kalong
+function mpkWaybackArea() {
+  return MPK.area === 'all' ? 'tk' : MPK.area;
+}
+
+function mpkSentinelAreaYears() {
+  return MPK.data.sentinel.areas[mpkWaybackArea()] || {};
+}
+
+// Entries the slider steps through: 12 months (entry or null) or the distinct Esri images
 function mpkWaybackList() {
-  return MPK.wayback.mode === 'history'
-    ? mpkWaybackHistory(MPK.data.wayback.history, mpkWaybackArea())
-    : MPK.data.wayback.monthly;
+  return MPK.wayback.mode === 'monthly'
+    ? mpkSentinelAreaYears()[MPK.wayback.year] || Array(12).fill(null)
+    : mpkWaybackHistory(MPK.data.wayback.history, mpkWaybackArea());
 }
 
 function mpkWaybackIndex() {
   const list = mpkWaybackList(), i = MPK.wayback.index[MPK.wayback.mode];
-  return i == null ? list.length - 1 : i;          // start on the newest
+  if (i != null) return i;
+  if (MPK.wayback.mode === 'history') return list.length - 1;           // newest image
+  for (let j = list.length - 1; j >= 0; j--) if (list[j]) return j;      // latest month with an image
+  return 0;
 }
 
 function mpkShowWaybackImagery() {
-  const shown = mpkWaybackShown(mpkWaybackList(), mpkWaybackIndex());
-  if (!map || !shown) return;
-  const tiles = [mpkWaybackTileUrl(shown.release)];
-  const src = map.getSource('mpk-wayback');
-  if (src) { src.setTiles(tiles); return; }
+  if (!map) return;
+  const w = MPK.wayback, entry = mpkWaybackList()[mpkWaybackIndex()];
+  if (!entry) {                                       // month without a usable image: show none
+    if (map.getLayer('mpk-wayback-layer')) map.setLayoutProperty('mpk-wayback-layer', 'visibility', 'none');
+    return;
+  }
+  const kind = w.mode;
+  const tiles = [kind === 'monthly' ? mpkSentinelTileUrl(entry.item) : mpkWaybackTileUrl(entry.release)];
+  if (map.getSource('mpk-wayback') && w.kind === kind) {
+    map.getSource('mpk-wayback').setTiles(tiles);
+    map.setLayoutProperty('mpk-wayback-layer', 'visibility', 'visible');
+    return;
+  }
+  mpkHideWaybackImagery();                            // source settings differ per kind
   try {
-    map.addSource('mpk-wayback', { type: 'raster', tiles, tileSize: 256, maxzoom: 19,
-      attribution: 'Esri World Imagery Wayback' });
+    map.addSource('mpk-wayback', kind === 'monthly'
+      ? { type: 'raster', tiles, tileSize: 256, minzoom: 8, maxzoom: 16,
+          attribution: 'Sentinel-2 (Copernicus) via Microsoft Planetary Computer' }
+      : { type: 'raster', tiles, tileSize: 256, maxzoom: 19, attribution: 'Esri World Imagery Wayback' });
     // under every MPK overlay, above the basemap
     map.addLayer({ id: 'mpk-wayback-layer', type: 'raster', source: 'mpk-wayback' },
       map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
+    w.kind = kind;
   } catch (e) {}                                      // style reloading — mpkAddLayers re-adds it
 }
 
@@ -698,6 +739,7 @@ function mpkHideWaybackImagery() {
   if (!map) return;
   if (map.getLayer('mpk-wayback-layer')) map.removeLayer('mpk-wayback-layer');
   if (map.getSource('mpk-wayback')) map.removeSource('mpk-wayback');
+  MPK.wayback.kind = null;
 }
 
 function mpkToggleWayback() {
@@ -708,8 +750,10 @@ function mpkToggleWayback() {
   btn.setAttribute('aria-checked', String(w.on));
   document.getElementById('mpk-wb-body').hidden = !w.on;
   if (w.on) {
+    if (w.mode === 'monthly' && !MPK.data.sentinel) w.mode = 'history';
+    if (w.mode === 'history' && !MPK.data.wayback) w.mode = 'monthly';
     mpkWaybackMode(w.mode);
-    addActivityLog('Historical imagery on', 'Esri World Imagery Wayback');
+    addActivityLog('Historical imagery on', w.mode === 'monthly' ? 'Sentinel-2 monthly' : 'Esri Wayback high-res');
   } else {
     mpkWaybackStop();
     mpkHideWaybackImagery();
@@ -717,20 +761,29 @@ function mpkToggleWayback() {
 }
 
 function mpkWaybackMode(mode) {
-  MPK.wayback.mode = mode;
+  const w = MPK.wayback;
+  mpkWaybackStop();
+  w.mode = mode;
   document.querySelectorAll('.mpk-seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  const yearRow = document.getElementById('mpk-wb-yearrow');
+  yearRow.hidden = mode !== 'monthly';
+  if (mode === 'monthly') {
+    const years = mpkSentinelYears(mpkSentinelAreaYears());
+    if (!years.includes(w.year)) { w.year = years[0]; w.index.monthly = null; }
+    document.getElementById('mpk-wb-year').innerHTML =
+      years.map(y => `<option value="${y}"${y === w.year ? ' selected' : ''}>${y}</option>`).join('');
+  }
   const list = mpkWaybackList(), slider = document.getElementById('mpk-wb-slider');
   slider.max = list.length - 1;
-  slider.value = mpkWaybackIndex();
-  const label = e => mode === 'monthly' ? mpkMonthLabel(e.month) : mpkMonthLabel(e.capture[mpkWaybackArea()]);
-  document.getElementById('mpk-wb-first').textContent = label(list[0]);
-  document.getElementById('mpk-wb-last').textContent = label(list[list.length - 1]);
+  document.getElementById('mpk-wb-first').textContent = mode === 'monthly' ? 'Jan' : mpkMonthLabel(list[0].capture[mpkWaybackArea()]);
+  document.getElementById('mpk-wb-last').textContent = mode === 'monthly' ? 'Dec' : mpkMonthLabel(list[list.length - 1].capture[mpkWaybackArea()]);
   mpkWaybackGo(mpkWaybackIndex());
 }
 
-// Area whose capture date is shown; 'All' uses Teluk Kalong as the headline
-function mpkWaybackArea() {
-  return MPK.area === 'all' ? 'tk' : MPK.area;
+function mpkWaybackYear(year) {
+  MPK.wayback.year = year;
+  MPK.wayback.index.monthly = null;
+  mpkWaybackMode('monthly');
 }
 
 function mpkWaybackGo(i) {
@@ -742,19 +795,16 @@ function mpkWaybackGo(i) {
 
 function mpkWaybackRender() {
   if (!MPK.wayback.on) return;
-  const list = mpkWaybackList(), i = mpkWaybackIndex(), entry = list[i], shown = mpkWaybackShown(list, i);
-  const area = mpkWaybackArea();
-  document.getElementById('mpk-wb-date').textContent = 'Captured ' + mpkMonthLabel(shown.capture[area]);
-  const others = MPK.area === 'all'
-    ? ' · ' + Object.entries(MPK_AREAS).filter(([k]) => k !== 'tk')
-        .map(([k, a]) => a.short + ' ' + mpkMonthLabel(shown.capture[k])).join(' · ')
-    : '';
-  const sub = MPK.wayback.mode === 'history'
-    ? `Image ${i + 1} of ${list.length} for ${MPK_AREAS[area].short} · Esri release ${shown.date}`
-    : entry.release
-      ? `${mpkMonthLabel(entry.month)} release (${shown.date})`
-      : `No Esri release in ${mpkMonthLabel(entry.month)} · showing ${shown.date}`;
-  document.getElementById('mpk-wb-sub').textContent = sub + (MPK.area === 'all' ? ' · Teluk Kalong' + others : '');
+  const list = mpkWaybackList(), i = mpkWaybackIndex(), entry = list[i], area = MPK_AREAS[mpkWaybackArea()].short;
+  const date = document.getElementById('mpk-wb-date'), sub = document.getElementById('mpk-wb-sub');
+  if (MPK.wayback.mode === 'monthly') {
+    const month = MPK_MONTH_NAMES[i] + ' ' + MPK.wayback.year;
+    date.textContent = entry ? `${mpkDayLabel(entry.date)} · ${Math.round(entry.cloud)}% cloud` : `${month} · no usable image`;
+    sub.textContent = `Least-cloudy Sentinel-2 image of ${month} over ${area} · 10 m resolution`;
+  } else {
+    date.textContent = 'Captured ' + mpkMonthLabel(entry.capture[mpkWaybackArea()]);
+    sub.textContent = `High-res image ${i + 1} of ${list.length} for ${area} · Esri release ${entry.date}`;
+  }
 }
 
 function mpkWaybackStep(d) {
