@@ -82,16 +82,20 @@ const MPK_JENIS = {
 // Map layers the viewer can switch on/off from the panel, in display order.
 const MPK_LAYER_GROUPS = {
   suspect:   { label: 'Suspected buildings', swatch: [MPK_JENIS.tiada_lot.color],
-               layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'] },
+               layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
+               legend: [['No cadastral lot', MPK_JENIS.tiada_kadaster.color], ['No approved lot', MPK_JENIS.tiada_lot.color],
+                        ['Outside boundary', MPK_JENIS.luar_sempadan.color], ['Road reserve', MPK_JENIS.rizab.color]] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-base-fill', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill',
-                        'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'] },
+                        'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
+               legend: [['On approved lot', '#7CB342'], ['Other building', '#B0BEC5'], ['Approved lot', '.lot'],
+                        ['Cadastral lot', '.kadaster'], ['Planning boundary', '.line'], ['Study corridor', '.band']] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008b',
+  VERSION: '20261008c',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -230,6 +234,7 @@ function mpkToggleLayer(key) {
   const btn = document.getElementById('mpk-tog-' + key);
   btn.className = 'layer-toggle ' + (MPK.layerOn[key] ? 'on' : 'off');
   btn.setAttribute('aria-checked', String(MPK.layerOn[key]));
+  document.getElementById('mpk-group-' + key).classList.toggle('is-off', !MPK.layerOn[key]);
   if (key === 'suspect' && !MPK.layerOn.suspect && MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   if (map) mpkApplyLayerVisibility();
 }
@@ -377,11 +382,19 @@ function mpkBuildPanel() {
   const layerRows = Object.entries(MPK_LAYER_GROUPS).map(([k, g]) => {
     const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>`
       : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
-    return `<div class="mpk-layer-row">
-      <span class="mpk-sw-group">${sw}</span>
-      <div class="mpk-layer-main"><div>${g.label}</div>${g.hint ? `<small>${g.hint}</small>` : ''}</div>
-      <button type="button" class="layer-toggle ${MPK.layerOn[k] ? 'on' : 'off'}" id="mpk-tog-${k}" role="switch"
-        aria-checked="${MPK.layerOn[k]}" aria-label="${g.label}" onclick="mpkToggleLayer('${k}')"></button>
+    // legend swatch: a colour, or '.class' for a styled swatch (lot outline, dashed line, band)
+    const legend = g.legend.map(([label, v]) => {
+      const item = v[0] === '.' ? `<i class="sw ${v.slice(1)}"></i>` : `<i class="sw" style="background:${v}"></i>`;
+      return `<span>${item}${label}</span>`;
+    }).join('');
+    return `<div class="mpk-layer-group${MPK.layerOn[k] ? '' : ' is-off'}" id="mpk-group-${k}">
+      <div class="mpk-layer-row">
+        <span class="mpk-sw-group">${sw}</span>
+        <div class="mpk-layer-main">${g.label}</div>
+        <button type="button" class="layer-toggle ${MPK.layerOn[k] ? 'on' : 'off'}" id="mpk-tog-${k}" role="switch"
+          aria-checked="${MPK.layerOn[k]}" aria-label="${g.label}" onclick="mpkToggleLayer('${k}')"></button>
+      </div>
+      <div class="mpk-layer-legend">${legend}</div>
     </div>`;
   }).join('');
   el.innerHTML = `
