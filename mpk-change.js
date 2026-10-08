@@ -276,6 +276,44 @@ function mpkMaskHectares(mask, pixelMetres) {
   return Math.round(n * pixelMetres * pixelMetres / 100) / 100;
 }
 
+// Vegetation heatmap: per-pixel intensity 0..1 of the NDVI change in one direction ('gain' up,
+// 'cleared' down). Below half the detection threshold it is noise (0); it saturates at 2.5x.
+function mpkHeatValues(type, before, after, th) {
+  const n = before.ndvi.length, out = new Float32Array(n), start = th.delta * 0.5, span = th.delta * 2;
+  for (let i = 0; i < n; i++) {
+    if (!before.valid[i] || !after.valid[i]) continue;
+    const d = (after.ndvi[i] - before.ndvi[i]) * (type === 'gain' ? 1 : -1);
+    if (d > start) out[i] = Math.min(1, (d - start) / span);
+  }
+  return out;
+}
+
+// Heatmap colour [r, g, b, a] for an intensity 0..1: transparent → light → dark
+const MPK_HEAT_RAMPS = {
+  gain:    [[198, 239, 156], [102, 189, 99], [26, 152, 80], [0, 90, 50]],     // light → deep green
+  cleared: [[255, 237, 160], [254, 178, 76], [240, 59, 32], [140, 20, 20]],   // yellow → dark red
+};
+function mpkHeatColor(type, t) {
+  if (t <= 0) return [0, 0, 0, 0];
+  const ramp = MPK_HEAT_RAMPS[type], x = Math.min(1, t) * (ramp.length - 1), i = Math.min(ramp.length - 2, Math.floor(x));
+  const f = x - i, c = ramp[i].map((v, k) => Math.round(v + (ramp[i + 1][k] - v) * f));
+  return [...c, Math.round(70 + 185 * Math.min(1, t))];
+}
+
+// Heatmap as a transparent PNG (data URL) over the grid
+function mpkHeatImage(values, grid, type) {
+  const c = document.createElement('canvas');
+  c.width = grid.w; c.height = grid.h;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(grid.w, grid.h);
+  for (let i = 0, p = 0; i < values.length; i++, p += 4) {
+    if (!values[i]) continue;
+    const col = mpkHeatColor(type, values[i]);
+    img.data[p] = col[0]; img.data[p + 1] = col[1]; img.data[p + 2] = col[2]; img.data[p + 3] = col[3];
+  }
+  ctx.putImageData(img, 0, 0);
+  return c.toDataURL();
+}
+
 // One building list from several detect types: each building once, tagged with every type
 // that found it, largest first. layers = { type: { buildings } }
 function mpkMergeBuildings(layers) {
@@ -312,7 +350,7 @@ function mpkCompareParse(search) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkMergeBuildings, mpkResultMatches, mpkOpenMask, MPK_EXG_TH, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
+  module.exports = { mpkHeatValues, mpkHeatColor, mpkMergeBuildings, mpkResultMatches, mpkOpenMask, MPK_EXG_TH, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
                      mpkBuildingsInMask, mpkExg, mpkMaskHectares };
 }
 
@@ -666,10 +704,13 @@ async function mpkChangeGenerate() {
         // a neighbouring pixel only on fine grids — on 30 m Landsat it would reach ~90 m away
         buildings = type === 'gain' ? [] : mpkBuildingsInMask(feats, mask, grid, pixelMetres >= 20 ? 0 : 1);
         hectares = mpkMaskHectares(mask, pixelMetres);
-        dataUrl = mpkMaskImage(mask, grid, MPK_CHANGE_TYPES[type].rgb);
+        // vegetation change as a smooth heatmap of its strength; built-up as solid pixels
+        dataUrl = type === 'gain' || type === 'cleared'
+          ? mpkHeatImage(mpkHeatValues(type, b, a, th), grid, type)
+          : mpkMaskImage(mask, grid, MPK_CHANGE_TYPES[type].rgb);
       }
       buildings.sort((x, y) => y.properties.area_m2 - x.properties.area_m2);
-      layers[type] = { buildings, hectares, dataUrl };
+      layers[type] = { buildings, hectares, dataUrl, heat: type === 'gain' || type === 'cleared' };
     }
     MPK_CHANGE.shown = Object.fromEntries(Object.keys(layers).map(t => [t, true]));
     MPK_CHANGE.result = { sat, before, after, area, esriDates, usable: usable / b.valid.length, layers,
@@ -719,7 +760,8 @@ function mpkAddChangeLayers(m, result, shown, beforeId) {
     if (layer.dataUrl) {
       m.addSource(ids.src, { type: 'image', url: layer.dataUrl, coordinates: result.coordinates });
       m.addLayer({ id: ids.layers[0], type: 'raster', source: ids.src, layout,
-                   paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.85 } }, beforeId);
+                   // heatmaps are smoothed (linear) so they read as a continuous surface
+                   paint: { 'raster-resampling': layer.heat ? 'linear' : 'nearest', 'raster-opacity': layer.heat ? 0.9 : 0.85 } }, beforeId);
     } else {
       m.addSource(ids.src, { type: 'geojson', data: { type: 'FeatureCollection', features: layer.buildings } });
       m.addLayer({ id: ids.layers[1], type: 'fill', source: ids.src, layout,
@@ -810,11 +852,15 @@ function mpkChangeRender() {
     const t = MPK_CHANGE_TYPES[type];
     const amount = type === 'newbld' ? `${mpkNum(l.buildings.length)} · ${l.hectares.toLocaleString('en-MY')} ha`
       : `${l.hectares.toLocaleString('en-MY')} ha`;
-    const sub = type === 'gain' ? '' : type === 'newbld' ? 'green land before, built now'
+    const sub = l.heat ? `heatmap: darker = stronger ${type === 'gain' ? 'greening' : 'loss of vegetation'}`
+      : type === 'newbld' ? 'green land before, built now'
       : `${mpkNum(l.buildings.length)} buildings on ${type === 'built' ? 'new built-up' : 'cleared'} land`;
+    const swatch = l.heat
+      ? `<i class="sw heat" style="background:linear-gradient(90deg,${MPK_HEAT_RAMPS[type].map(c => `rgb(${c})`).join(',')})"></i>`
+      : `<i class="sw" style="background:rgb(${t.rgb})"></i>`;
     return `<label class="mpk-cd-row">
       <input type="checkbox" ${MPK_CHANGE.shown[type] ? 'checked' : ''} onchange="mpkChangeShowType('${type}', this.checked)">
-      <i class="sw" style="background:rgb(${t.rgb})"></i>
+      ${swatch}
       <span class="mpk-cd-row-main">${t.label}${sub ? `<small>${sub}</small>` : ''}</span>
       <strong>${amount}</strong></label>`;
   }).join('');

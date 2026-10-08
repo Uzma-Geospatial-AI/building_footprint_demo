@@ -156,7 +156,8 @@ the browser; Planet NICFI monthly mosaics would need an API key.
 tick one or more things to detect (each becomes its own coloured layer with a show/hide
 checkbox, and the same layers appear on the Compare page) — *New buildings* (footprints on land that was green before and is built
 now, judged per footprint), *New built-up* (vegetation → hard surface), *Land cleared*
-(vegetation → bare) or *Vegetation gain* — then **Generate**. A switch hides the result to
+(vegetation → bare) or *Vegetation gain* — then **Generate**. *Land cleared* and *Vegetation gain* are drawn as a
+smooth heatmap of the NDVI change (darker = stronger change), not as solid pixels. A switch hides the result to
 show the regular basemap, and **Compare ↗** opens `/compare/` in a new tab: a swipe
 slider with Before on the left and After on the right (Google Satellite underneath). Index maps (NDVI, NDBI) for the area are
 fetched from Planetary Computer at native resolution, clouds masked (Sentinel-2 SCL +
@@ -175,6 +176,13 @@ not individual houses. Logic in `mpk-change.js`, tests in `tools/test_mpk_change
 place names in Kemaman via OpenStreetMap Nominatim, and coordinates — decimal degrees in
 either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 (`4°16'05"N 103°27'07"E`); a pin marks the point.
+
+**Building status** — every building is shown in one of three statuses, each with its own
+map layer, switch and count (with a share bar) in the panel:
+*Suspected illegal* (red: the API suspect list in Teluk Kalong, road-reserve encroachment in
+the corridors), *Legal · on approved lot* (green: stands on an MPK-approved lot) and
+*Not verified* (grey: no approval record to confirm either way). Popups are coloured and
+worded by status.
 
 **Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
 for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,

@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
   mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
-  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords, mpkZoneAt } = require('../mpk.js');
+  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords, mpkZoneAt, mpkStatus } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -40,6 +40,12 @@ const bpb = mpkStats(feats, s, rates, 'bpb');
 assert.strictEqual(bpb.total, 2);
 assert.strictEqual(bpb.count, 1);
 assert.deepStrictEqual(bpb.byJenis, { mockup: 0, rizab: 1 });
+
+// Three clear statuses: suspected (red), legal = on an MPK-approved lot (green), not verified
+assert.deepStrictEqual(feats.map(x => mpkStatus(x.properties, s)),
+  ['legal', 'suspected', 'unverified', 'unverified', 'suspected', 'unverified', 'unverified', 'suspected']);
+assert.deepStrictEqual(all.byStatus, { suspected: 3, legal: 1, unverified: 4 });
+assert.deepStrictEqual(bpb.byStatus, { suspected: 1, legal: 0, unverified: 1 });
 
 // map filter mirrors mpkJenis
 assert.deepStrictEqual(mpkSuspectFilter(s), ['any',

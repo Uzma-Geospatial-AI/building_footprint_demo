@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { MPK_EXG_TH: MPK_EXG_TH_TEST } = require('../mpk-change.js');
-const { mpkMergeBuildings, mpkResultMatches, mpkOpenMask, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
+const { mpkHeatValues, mpkHeatColor, mpkMergeBuildings, mpkResultMatches, mpkOpenMask, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
 
 // Sentinel-2 processing baseline 04.00 (from 25 Jan 2022) adds 1000 to every band
 assert.strictEqual(mpkS2Expressions('2021-06-01').ndvi, '(B08-B04)/(B08+B04)');
@@ -143,5 +143,25 @@ assert.strictEqual(mpkResultMatches(res, { area: 'tk', before: { source: 's2', i
 const esriRes = { area: 'tk', before: { source: 'esri', release: 10 }, after: { source: 'esri', release: 20 } };
 assert.strictEqual(mpkResultMatches(esriRes, { area: 'tk', before: { source: 'esri', release: 10 }, after: { source: 'esri', release: 20 } }), true);
 assert.strictEqual(mpkResultMatches(null, { area: 'tk', before: {}, after: {} }), false);
+
+// Vegetation heatmap: intensity 0..1 grows with the NDVI change in the chosen direction;
+// unchanged, opposite-direction and invalid pixels stay 0 (transparent)
+const hb = { ndvi: [0.1, 0.1, 0.1, 0.7, 0.4, 0.1], valid: [1, 1, 1, 1, 1, 0] };
+const ha = { ndvi: [0.15, 0.4, 0.8, 0.1, 0.4, 0.9], valid: [1, 1, 1, 1, 1, 1] };
+const heatGain = mpkHeatValues('gain', hb, ha, { delta: 0.25 });
+assert.strictEqual(heatGain[0], 0);                     // +0.05: noise
+assert.ok(heatGain[1] > 0 && heatGain[1] < heatGain[2]); // +0.3 weaker than +0.7
+assert.strictEqual(heatGain[2], 1);                     // +0.7 saturates
+assert.strictEqual(heatGain[3], 0);                     // loss is not gain
+assert.strictEqual(heatGain[4], 0);                     // unchanged
+assert.strictEqual(heatGain[5], 0);                     // invalid
+const heatLoss = mpkHeatValues('cleared', hb, ha, { delta: 0.25 });
+assert.ok(heatLoss[3] > 0.9);                           // -0.6: almost saturated (full at -0.625)
+assert.strictEqual(heatLoss[2], 0);
+// colour ramps: transparent at 0, opaque and darker at 1
+assert.strictEqual(mpkHeatColor('gain', 0)[3], 0);
+assert.ok(mpkHeatColor('gain', 1)[3] > mpkHeatColor('gain', 0.3)[3]);
+assert.ok(mpkHeatColor('gain', 1)[1] > mpkHeatColor('gain', 1)[0]);       // green
+assert.ok(mpkHeatColor('cleared', 1)[0] > mpkHeatColor('cleared', 1)[2]); // red/brown
 
 console.log('mpk change: all tests passed');
