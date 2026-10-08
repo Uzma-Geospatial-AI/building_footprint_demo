@@ -1,6 +1,6 @@
 const assert = require('assert');
-const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl, mpkWaybackHistory,
-  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth } = require('../mpk.js');
+const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+  mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -65,16 +65,6 @@ assert.strictEqual(mpkMonthLabel('2024-08-30'), 'Aug 2024');
 assert.strictEqual(mpkMonthLabel('2026-07'), 'Jul 2026');
 assert.strictEqual(mpkWaybackTileUrl(10842),
   'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10842/{z}/{y}/{x}');
-// History per area: one entry per distinct capture date, oldest first, first release that showed it
-const hist = [
-  { release: 10, date: '2014-02-20', capture: { tk: '2007-03-16', bpb: '2011-01-19' } },
-  { release: 15045, date: '2020-04-29', capture: { tk: '2019-05-03', bpb: '2019-04-06' } },
-  { release: 15423, date: '2021-05-19', capture: { tk: '2020-08-27', bpb: '2019-04-06' } },
-  { release: 13851, date: '2022-07-21', capture: { tk: '2019-05-03', bpb: '2019-04-06' } },   // regression to 2019
-];
-assert.deepStrictEqual(mpkWaybackHistory(hist, 'tk').map(e => e.release), [10, 15045, 15423]);
-assert.deepStrictEqual(mpkWaybackHistory(hist, 'bpb').map(e => e.release), [10, 15045]);
-
 // Sentinel-2 monthly helpers
 assert.strictEqual(mpkDayLabel('2024-10-21'), '21 Oct 2024');
 assert.strictEqual(mpkSentinelTileUrl('S2A_X'),
@@ -88,5 +78,17 @@ const m = c => (c == null ? null : { cloud: c });
 assert.strictEqual(mpkDefaultMonth([m(5), m(30), m(12), m(100), null]), 2);
 assert.strictEqual(mpkDefaultMonth([m(60), m(40), m(90), null]), 1);
 assert.strictEqual(mpkDefaultMonth([null, null]), 0);
+
+// One tile source per imagery kind (yearly entries can come from any of the three)
+const esri = mpkImagerySource({ source: 'esri', release: 10 });
+assert.strictEqual(esri.kind, 'esri'); assert.strictEqual(esri.maxzoom, 19);
+assert.strictEqual(esri.tiles[0], mpkWaybackTileUrl(10));
+const s2 = mpkImagerySource({ source: 's2', item: 'S2A_X' });
+assert.strictEqual(s2.kind, 's2'); assert.strictEqual(s2.tiles[0], mpkSentinelTileUrl('S2A_X'));
+const ls = mpkImagerySource({ source: 'landsat', item: 'LT05_X' });
+assert.strictEqual(ls.kind, 'landsat');
+assert.ok(ls.tiles[0].includes('collection=landsat-c2-l2&item=LT05_X&assets=red&assets=green&assets=blue'));
+assert.strictEqual(mpkImagerySource(null), null);
+assert.strictEqual(mpkImagerySource({ year: 2001, source: null }), null);
 
 console.log('mpk logic: all tests passed');

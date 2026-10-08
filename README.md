@@ -137,14 +137,17 @@ data is meant to be complete; a gap in the NDCDB extract will show up as a false
 
 **Historical imagery**: a panel switch overlays past imagery under the MPK layers.
 
-- *Monthly (Sentinel-2)* — pick a year (2016 onwards), then step or play through its 12
-  months. Each month shows the least-cloudy Sentinel-2 scene over the selected area, with
-  cloud measured from the scene classification (SCL) over the area itself, not the whole
-  100 km tile. 10 m resolution: land clearing and large buildings show, small houses do not.
-- *High-res (Esri)* — every distinct Esri World Imagery Wayback image over the area
-  (Teluk Kalong back to March 2007), labelled with its capture date.
+- *By year* — one image per year from 2000 to today for the selected area, step or play
+  year by year. Each year uses the most detailed clear image available: an Esri World
+  Imagery Wayback image captured that year (~30 cm, buildings visible), else the
+  least-cloudy Sentinel-2 image (10 m, 2016 onwards), else the least-cloudy Landsat 5/8
+  image (30 m; striped Landsat 7 only when nothing else exists, e.g. 2012).
+- *By month* — pick a year (2016 onwards), then step or play through its 12 months; each
+  month shows the least-cloudy Sentinel-2 scene over the area.
 
-No free imagery that shows buildings exists for Kemaman before 2007.
+Cloud is always measured over the study area itself (Sentinel-2 SCL, Landsat QA_PIXEL),
+not the whole satellite tile. Landsat and Sentinel-2 show land clearing and large
+buildings, not individual houses.
 
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
@@ -154,8 +157,9 @@ No free imagery that shows buildings exists for Kemaman before 2007.
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
 - `mpk_buildings.geojson` — Google Open Buildings v3, classified per area
-- `wayback.json` — Wayback releases with the capture date per area, built by `tools/build_wayback.py`
+- `wayback.json` — distinct Esri Wayback images per area (input to `yearly.json`), built by `tools/build_wayback.py`
 - `sentinel.json` — least-cloudy Sentinel-2 scene per area and month, built by `tools/build_sentinel.py`
+- `yearly.json` — one image per area and year from 2000, built by `tools/build_yearly.py`
 
 **Regenerate:**
 
@@ -164,6 +168,7 @@ python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, s
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)
+python tools/build_yearly.py                                           # stdlib; needs the two above + ~1,200 Landsat scenes
 node tools/test_mpk_logic.js                                           # pure-logic tests
 ```
 
