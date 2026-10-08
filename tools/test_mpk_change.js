@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
+const { mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
 
 // Sentinel-2 processing baseline 04.00 (from 25 Jan 2022) adds 1000 to every band
 assert.strictEqual(mpkS2Expressions('2021-06-01').ndvi, '(B08-B04)/(B08+B04)');
@@ -46,5 +46,32 @@ assert.strictEqual(mpkMaskHectares(new Uint8Array([1, 1, 0, 1]), 10), 0.03);
 assert.strictEqual(mpkFlag(1), true);
 assert.strictEqual(mpkFlag(255), true);
 assert.strictEqual(mpkFlag(0), false);
+
+// Compare page link: the state survives the trip to the new tab
+const state = { area: 'tk', before: { source: 's2', item: 'S2A_X', date: '2018-07-15', cloud: 1 },
+                after: { source: 's2', item: 'S2B_Y', date: '2025-02-03', cloud: 0.5 },
+                center: [103.452, 4.268], zoom: 13.5 };
+const url = mpkCompareUrl(state);
+assert.ok(url.startsWith('compare.html?d='));
+assert.deepStrictEqual(mpkCompareParse(url.slice(url.indexOf('?'))), state);
+assert.strictEqual(mpkCompareParse('?d=not-json'), null);
+assert.strictEqual(mpkCompareParse(''), null);
+
+// New buildings, judged per footprint (mean of the pixels inside it)
+const g10 = { west: 103, east: 104, north: 5, south: 4, w: 10, h: 10, proj: 'geo' };
+const arr = v => Array(100).fill(v);
+const sq = (id, w, s, e, n) => ({ properties: { id, lng: (w + e) / 2, lat: (s + n) / 2 },
+  geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } });
+const bf = { ndvi: arr(0.1), ndbi: arr(0.1), valid: arr(1) }, af = { ndvi: arr(0.1), ndbi: arr(0.1), valid: arr(1) };
+bf.ndvi[55] = 0.7; bf.ndbi[55] = -0.3; af.ndvi[55] = 0.1; af.ndbi[55] = 0.1;    // pixel col 5,row 5: green -> built
+bf.ndvi[22] = 0.7; af.ndvi[22] = 0.7;                                           // pixel col 2,row 2: stays green
+const fp = [sq(1, 103.5, 4.4, 103.6, 4.5),          // covers pixel (5,5): new
+            sq(2, 103.2, 4.7, 103.3, 4.8),          // covers pixel (2,2): unchanged
+            sq(3, 103.52, 4.42, 103.53, 4.43)];     // too small for a pixel centre: centroid pixel (5,5)
+assert.deepStrictEqual(mpkNewBuildings(fp, g10, bf, af, 'spectral').map(f => f.properties.id), [1, 3]);
+// Esri photos: green before (excess-green) and not green after
+const eb = { ndvi: arr(0.0), valid: arr(1) }, ea = { ndvi: arr(0.0), valid: arr(1) };
+eb.ndvi[55] = 0.2; ea.ndvi[55] = 0.0;
+assert.deepStrictEqual(mpkNewBuildings(fp, g10, eb, ea, 'exg').map(f => f.properties.id), [1, 3]);
 
 console.log('mpk change: all tests passed');

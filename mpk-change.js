@@ -91,33 +91,101 @@ function mpkBuildingsInMask(features, mask, grid, radius = 1) {
   });
 }
 
+// lng/lat of a pixel centre
+function mpkPixelCenter(c, r, grid) {
+  const lng = grid.west + (c + 0.5) / grid.w * (grid.east - grid.west);
+  if (grid.proj !== 'merc') return [lng, grid.north - (r + 0.5) / grid.h * (grid.north - grid.south)];
+  const y = mpkMercY(grid.north) - (r + 0.5) / grid.h * (mpkMercY(grid.north) - mpkMercY(grid.south));
+  return [lng, Math.atan(Math.sinh(y)) * 180 / Math.PI];
+}
+
+function mpkInRing(x, y, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+// Valid pixels whose centre lies inside a footprint (the centroid pixel when none does)
+function mpkFootprintPixels(f, grid, valid) {
+  const ring = f.geometry.coordinates[0];
+  const lngs = ring.map(p => p[0]), lats = ring.map(p => p[1]);
+  const a = mpkPixelOf(Math.min(...lngs), Math.max(...lats), grid), b = mpkPixelOf(Math.max(...lngs), Math.min(...lats), grid);
+  const out = [];
+  if (a && b) {
+    for (let r = a[1]; r <= b[1]; r++) {
+      for (let c = a[0]; c <= b[0]; c++) {
+        const [x, y] = mpkPixelCenter(c, r, grid);
+        if (mpkInRing(x, y, ring) && valid[r * grid.w + c]) out.push(r * grid.w + c);
+      }
+    }
+  }
+  if (!out.length) {
+    const px = mpkPixelOf(f.properties.lng, f.properties.lat, grid);
+    if (px && valid[px[1] * grid.w + px[0]]) out.push(px[1] * grid.w + px[0]);
+  }
+  return out;
+}
+
+// Buildings that are new between the two images, judged on the mean of their footprint
+// pixels. 'spectral' (Sentinel-2/Landsat): green before, not green after, built-up index up.
+// 'exg' (Esri photos): green before, not green after (bare soil → roof is not detectable).
+function mpkNewBuildings(features, grid, before, after, kind) {
+  const valid = before.valid.map((v, i) => v && after.valid[i]);
+  const mean = (arr, px) => px.reduce((s, i) => s + arr[i], 0) / px.length;
+  return features.filter(f => {
+    const px = mpkFootprintPixels(f, grid, valid);
+    if (!px.length) return false;
+    const vB = mean(before.ndvi, px), vA = mean(after.ndvi, px);
+    if (kind === 'exg') return vB >= MPK_EXG_TH.veg * 0.75 && vA <= MPK_EXG_TH.bare;
+    return vB >= 0.35 && vA <= 0.25 && mean(after.ndbi, px) - mean(before.ndbi, px) >= 0.1;
+  });
+}
+
 function mpkMaskHectares(mask, pixelMetres) {
   let n = 0;
   for (const v of mask) n += v;
   return Math.round(n * pixelMetres * pixelMetres / 100) / 100;
 }
 
+// Link to the before/after swipe page (compare.html) carrying the whole comparison
+function mpkCompareUrl(state) {
+  return 'compare.html?d=' + encodeURIComponent(JSON.stringify(state));
+}
+
+function mpkCompareParse(search) {
+  try {
+    const d = new URLSearchParams(search).get('d');
+    return d ? JSON.parse(d) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
+  module.exports = { mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
                      mpkBuildingsInMask, mpkExg, mpkMaskHectares };
 }
 
 // ---------- Browser ----------
 const MPK_CHANGE_TYPES = {
+  newbld:  { label: 'New buildings', rgb: [170, 0, 255], hint: 'Building footprints on land that was green in the Before image and is built now' },
   built:   { label: 'New built-up', rgb: [41, 98, 255], hint: 'Bare land or vegetation → hard surface (buildings, concrete, roads)' },
   cleared: { label: 'Land cleared', rgb: [255, 145, 0], hint: 'Vegetation → bare land' },
   gain:    { label: 'Vegetation gain', rgb: [0, 200, 83], hint: 'Bare land → grass or vegetation' },
 };
 const MPK_CHANGE_SATS = {
-  s2:      { label: 'Sentinel-2 (10 m)', res: 10, types: ['built', 'cleared', 'gain'] },
-  landsat: { label: 'Landsat (30 m)', res: 30, types: ['built', 'cleared', 'gain'] },
-  esri:    { label: 'Esri Wayback (high-res)', res: null, types: ['cleared', 'gain'] },
+  s2:      { label: 'Sentinel-2 (10 m)', res: 10, types: ['newbld', 'built', 'cleared', 'gain'] },
+  landsat: { label: 'Landsat (30 m)', res: 30, types: ['newbld', 'built', 'cleared', 'gain'] },
+  esri:    { label: 'Esri Wayback (high-res)', res: null, types: ['newbld', 'cleared', 'gain'] },
 };
 const MPK_PC_BBOX = 'https://planetarycomputer.microsoft.com/api/data/v1/item/bbox/';
 const MPK_S2_CLOUD = new Set([0, 3, 8, 9, 10]);         // no data, shadow, cloud, cirrus
 const MPK_CHANGE_MAX_CLOUD = 30;                         // % — cloudier images are not offered
 
-const MPK_CHANGE = { sat: 's2', type: 'built', result: null, view: 'after', busy: false };
+const MPK_CHANGE = { sat: 's2', type: 'newbld', result: null, view: 'after', overlayOn: true, busy: false };
 
 function mpkChangeCardHTML() {
   const sats = Object.entries(MPK_CHANGE_SATS)
@@ -135,13 +203,22 @@ function mpkChangeCardHTML() {
       <div class="mpk-wb-row"><label for="mpk-cd-after">After</label><select id="mpk-cd-after"></select></div>
       <div class="mpk-cd-label">Detect</div>
       <div class="mpk-cd-types">${types}</div>
-      <button type="button" class="mpk-btn mpk-cd-go" id="mpk-cd-go" onclick="mpkChangeGenerate()">Generate</button>
+      <div class="mpk-cd-actions">
+        <button type="button" class="mpk-btn mpk-cd-go" id="mpk-cd-go" onclick="mpkChangeGenerate()">Generate</button>
+        <button type="button" class="mpk-wb-btn mpk-cd-compare" onclick="mpkChangeCompare()"
+          title="Open a new tab with a swipe slider: Before on the left, After on the right">Compare ↗</button>
+      </div>
       <div class="mpk-cd-status" id="mpk-cd-status" role="status"></div>
       <div id="mpk-cd-result" hidden>
         <div class="mpk-cd-views" role="tablist">
           <button type="button" data-view="before" onclick="mpkChangeView('before')">Before</button>
           <button type="button" data-view="after" onclick="mpkChangeView('after')">After</button>
           <button type="button" data-view="map" onclick="mpkChangeView('map')">Basemap</button>
+        </div>
+        <div class="mpk-layer-row mpk-cd-overlay">
+          <div class="mpk-layer-main">Show change result on the map</div>
+          <button type="button" class="layer-toggle on" id="mpk-cd-tog" role="switch" aria-checked="true"
+            aria-label="Show change result on the map" onclick="mpkChangeToggleOverlay()"></button>
         </div>
         <div class="mpk-cd-stats" id="mpk-cd-stats"></div>
         <div class="mpk-list mpk-cd-list" id="mpk-cd-list"></div>
@@ -304,15 +381,30 @@ async function mpkEsriExg(entry, grid) {
   return { ndvi, valid };
 }
 
-async function mpkChangeGenerate() {
-  if (MPK_CHANGE.busy) return;
-  const sat = MPK_CHANGE.sat, opts = mpkChangeOptions(sat);
+// Selected Before / After entries, or an error message
+function mpkChangePicked() {
+  const opts = mpkChangeOptions(MPK_CHANGE.sat);
   const before = opts[+document.getElementById('mpk-cd-before').value];
   const after = opts[+document.getElementById('mpk-cd-after').value];
-  if (!before || !after || before.date >= after.date) {
-    mpkChangeStatus('Pick a "Before" date earlier than the "After" date.', true);
-    return;
-  }
+  if (!before || !after || before.date >= after.date) return { error: 'Pick a "Before" date earlier than the "After" date.' };
+  return { before, after };
+}
+
+// Before/after swipe view in a new tab, at the current map position
+function mpkChangeCompare() {
+  const pick = mpkChangePicked();
+  if (pick.error) { mpkChangeStatus(pick.error, true); return; }
+  mpkChangeStatus('');
+  const c = map.getCenter();
+  window.open(mpkCompareUrl({ area: mpkChangeArea(), before: pick.before, after: pick.after,
+    center: [+c.lng.toFixed(5), +c.lat.toFixed(5)], zoom: +map.getZoom().toFixed(2) }), '_blank');
+}
+
+async function mpkChangeGenerate() {
+  if (MPK_CHANGE.busy) return;
+  const sat = MPK_CHANGE.sat, pick = mpkChangePicked();
+  if (pick.error) { mpkChangeStatus(pick.error, true); return; }
+  const { before, after } = pick;
   MPK_CHANGE.busy = true;
   document.getElementById('mpk-cd-go').disabled = true;
   mpkChangeStatus(`Fetching ${MPK_CHANGE_SATS[sat].label} data for both dates…`);
@@ -329,16 +421,24 @@ async function mpkChangeGenerate() {
       [b, a] = await Promise.all([mpkSpectral(before, grid), mpkSpectral(after, grid)]);
     }
     mpkChangeStatus('Analysing…');
-    const mask = mpkClassifyChange(MPK_CHANGE.type, b, a, th);
+    const type = MPK_CHANGE.type, area = mpkChangeArea();
     let usable = 0;
-    for (let i = 0; i < mask.length; i++) usable += b.valid[i] && a.valid[i];
-    const area = mpkChangeArea();
+    for (let i = 0; i < b.valid.length; i++) usable += b.valid[i] && a.valid[i];
     const feats = MPK.data.buildings.features.filter(f => f.properties.kawasan === area);
-    // a neighbouring pixel only on fine grids — on 30 m Landsat it would reach ~90 m away
-    const buildings = MPK_CHANGE.type === 'gain' ? [] : mpkBuildingsInMask(feats, mask, grid, pixelMetres >= 20 ? 0 : 1)
-      .sort((x, y) => y.properties.area_m2 - x.properties.area_m2);
-    MPK_CHANGE.result = { sat, type: MPK_CHANGE.type, before, after, grid, mask, buildings,
-                          hectares: mpkMaskHectares(mask, pixelMetres), usable: usable / mask.length, area };
+    let mask = null, buildings, hectares;
+    if (type === 'newbld') {
+      // judged per footprint, drawn as footprints
+      buildings = mpkNewBuildings(feats, grid, b, a, sat === 'esri' ? 'exg' : 'spectral');
+      hectares = Math.round(buildings.reduce((sum, f) => sum + f.properties.area_m2, 0) / 100) / 100;
+    } else {
+      mask = mpkClassifyChange(type, b, a, th);
+      // a neighbouring pixel only on fine grids — on 30 m Landsat it would reach ~90 m away
+      buildings = type === 'gain' ? [] : mpkBuildingsInMask(feats, mask, grid, pixelMetres >= 20 ? 0 : 1);
+      hectares = mpkMaskHectares(mask, pixelMetres);
+    }
+    buildings.sort((x, y) => y.properties.area_m2 - x.properties.area_m2);
+    MPK_CHANGE.result = { sat, type, before, after, grid, mask, buildings, hectares,
+                          usable: usable / b.valid.length, area };
     if (MPK.wayback && MPK.wayback.on) mpkHistoricOff();     // one imagery layer at a time
     mpkChangeDraw();
     mpkChangeView('after');
@@ -354,10 +454,29 @@ async function mpkChangeGenerate() {
 }
 
 // Changed pixels as a coloured overlay on the map
+const MPK_CHANGE_RESULT_LAYERS = ['mpk-change-mask-layer', 'mpk-change-bld-fill', 'mpk-change-bld-line'];
+
+function mpkChangeRemoveResult() {
+  if (!map) return;
+  MPK_CHANGE_RESULT_LAYERS.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
+  ['mpk-change-mask', 'mpk-change-bld'].forEach(id => { if (map.getSource(id)) map.removeSource(id); });
+}
+
 function mpkChangeDraw() {
   const r = MPK_CHANGE.result;
   if (!r || !map) return;
-  const { grid, mask } = r, rgb = MPK_CHANGE_TYPES[r.type].rgb;
+  mpkChangeRemoveResult();
+  const rgb = MPK_CHANGE_TYPES[r.type].rgb, above = map.getLayer('mpk-suspect-line') ? 'mpk-suspect-line' : undefined;
+  if (r.type === 'newbld') {
+    map.addSource('mpk-change-bld', { type: 'geojson', data: { type: 'FeatureCollection', features: r.buildings } });
+    map.addLayer({ id: 'mpk-change-bld-fill', type: 'fill', source: 'mpk-change-bld',
+                   paint: { 'fill-color': `rgb(${rgb})`, 'fill-opacity': 0.55 } }, above);
+    map.addLayer({ id: 'mpk-change-bld-line', type: 'line', source: 'mpk-change-bld',
+                   paint: { 'line-color': '#4A0072', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.8, 17, 2.2] } }, above);
+    mpkChangeOverlayVisibility();
+    return;
+  }
+  const { grid, mask } = r;
   const c = document.createElement('canvas');
   c.width = grid.w; c.height = grid.h;
   const ctx = c.getContext('2d'), img = ctx.createImageData(grid.w, grid.h);
@@ -367,11 +486,31 @@ function mpkChangeDraw() {
   }
   ctx.putImageData(img, 0, 0);
   const coordinates = [[grid.west, grid.north], [grid.east, grid.north], [grid.east, grid.south], [grid.west, grid.south]];
-  mpkChangeRemoveLayer('mpk-change-mask', 'mpk-change-mask-layer');
   map.addSource('mpk-change-mask', { type: 'image', url: c.toDataURL(), coordinates });
   map.addLayer({ id: 'mpk-change-mask-layer', type: 'raster', source: 'mpk-change-mask',
-                 paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.85 } },
-               map.getLayer('mpk-suspect-line') ? 'mpk-suspect-line' : undefined);   // over the building fills
+                 paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.85 } }, above);   // over the building fills
+  mpkChangeOverlayVisibility();
+}
+
+// The result switch hides the detected pixels / footprints and the Before-After image, so
+// the regular basemap (Google etc.) shows; switching it on brings both back
+function mpkChangeOverlayVisibility() {
+  const vis = MPK_CHANGE.overlayOn ? 'visible' : 'none';
+  [...MPK_CHANGE_RESULT_LAYERS, 'mpk-change-img-layer'].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+  });
+}
+
+function mpkChangeToggleOverlay() {
+  MPK_CHANGE.overlayOn = !MPK_CHANGE.overlayOn;
+  const btn = document.getElementById('mpk-cd-tog');
+  btn.className = 'layer-toggle ' + (MPK_CHANGE.overlayOn ? 'on' : 'off');
+  btn.setAttribute('aria-checked', String(MPK_CHANGE.overlayOn));
+  mpkChangeOverlayVisibility();
+  const r = MPK_CHANGE.result;
+  if (r && MPK_CHANGE.view !== 'map') {
+    mpkImageryZoomCap(MPK_CHANGE.overlayOn ? mpkImagerySource(MPK_CHANGE.view === 'before' ? r.before : r.after).maxView : null);
+  }
 }
 
 function mpkChangeRemoveLayer(source, layer) {
@@ -390,9 +529,10 @@ function mpkChangeView(view) {
   const src = mpkImagerySource(view === 'before' ? r.before : r.after);
   map.addSource('mpk-change-img', { type: 'raster', tiles: src.tiles, tileSize: 256, maxzoom: src.maxzoom,
                                     attribution: src.attribution });
-  map.addLayer({ id: 'mpk-change-img-layer', type: 'raster', source: 'mpk-change-img' },
+  map.addLayer({ id: 'mpk-change-img-layer', type: 'raster', source: 'mpk-change-img',
+                 layout: { visibility: MPK_CHANGE.overlayOn ? 'visible' : 'none' } },
                map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
-  mpkImageryZoomCap(src.maxView);
+  mpkImageryZoomCap(MPK_CHANGE.overlayOn ? src.maxView : null);
 }
 
 function mpkChangeRender() {
@@ -404,11 +544,13 @@ function mpkChangeRender() {
   const label = e => (e.source === 'esri' ? mpkMonthLabel(e.date) : mpkDayLabel(e.date));
   document.getElementById('mpk-cd-stats').innerHTML = `
     <div class="mpk-cd-headline"><i class="sw" style="background:rgb(${t.rgb})"></i>${t.label}:
-      <strong>${r.hectares.toLocaleString('en-MY')} ha</strong></div>
+      <strong>${r.type === 'newbld' ? mpkNum(r.buildings.length) + ' · ' : ''}${r.hectares.toLocaleString('en-MY')} ha</strong></div>
     <div class="mpk-cd-meta">${label(r.before)} → ${label(r.after)} · ${MPK_AREAS[r.area].short} ·
       ${Math.round(r.usable * 100)}% of the area cloud-free in both images</div>
-    ${r.type === 'gain' ? '' : `<div class="mpk-cd-meta"><strong>${mpkNum(r.buildings.length)}</strong> buildings on
-      ${r.type === 'built' ? 'new built-up' : 'cleared'} land · <strong class="danger">${mpkNum(suspected)}</strong> of them suspected</div>`}`;
+    ${r.type === 'gain' ? '' : `<div class="mpk-cd-meta"><strong>${mpkNum(r.buildings.length)}</strong> ${
+      r.type === 'newbld' ? 'new buildings (green land before, built now)'
+        : `buildings on ${r.type === 'built' ? 'new built-up' : 'cleared'} land`} ·
+      <strong class="danger">${mpkNum(suspected)}</strong> of them suspected</div>`}`;
   const list = document.getElementById('mpk-cd-list');
   list.hidden = r.type === 'gain';
   list.innerHTML = r.buildings.length
@@ -420,12 +562,13 @@ function mpkChangeRender() {
             <div class="mpk-meta">${sus ? 'Suspected' : 'Not flagged'}${p.lot ? ' · Lot ' + p.lot : ''}</div></div>
           <div class="mpk-area">${mpkNum(p.area_m2)} m²</div></div>`;
       }).join('')
-    : '<div class="mpk-empty">No building footprints on the changed pixels.</div>';
+    : `<div class="mpk-empty">${r.type === 'newbld' ? 'No new buildings found between these dates.'
+        : 'No building footprints on the changed pixels.'}</div>`;
 }
 
 function mpkChangeClear() {
   MPK_CHANGE.result = null;
-  mpkChangeRemoveLayer('mpk-change-mask', 'mpk-change-mask-layer');
+  mpkChangeRemoveResult();
   mpkChangeRemoveLayer('mpk-change-img', 'mpk-change-img-layer');
   if (!(MPK.wayback && MPK.wayback.on)) mpkImageryZoomCap(null);
   if (document.getElementById('mpk-cd-result')) mpkChangeRender();

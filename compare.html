@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geospatial AI - Before / After</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<script>
+  /* Same sign-in as the dashboard (a tab opened from it shares the session) */
+  (function () {
+    try {
+      if (sessionStorage.getItem('uzma_auth') !== '1') window.location.replace('login.html');
+    } catch (e) { window.location.replace('login.html'); }
+  })();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root {
+    --navy: #1E2C44;
+    --orange: #E8772E;
+    --red: #e53935;
+    --ink: #34465F;
+    --muted: #5E6E84;
+    --bar: #FFFFFF;
+    --line: rgba(30, 44, 68, 0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: var(--navy); color: var(--ink);
+         display: flex; flex-direction: column; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+  .bar { flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: var(--bar);
+         border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .bar img { height: 26px; }
+  .bar h1 { font-size: 15px; font-weight: 700; color: var(--navy); }
+  .bar .sub { font-size: 11.5px; color: var(--muted); }
+  .bar .spacer { flex: 1; }
+  .toggle { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink); cursor: pointer; user-select: none; }
+  .toggle input { accent-color: var(--orange); width: 15px; height: 15px; cursor: pointer; }
+  .btn { height: 32px; padding: 0 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit;
+         font-size: 12px; font-weight: 600; color: var(--navy); cursor: pointer; }
+  .btn:hover { border-color: var(--orange); color: var(--orange); }
+  .btn:focus-visible, .toggle input:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+  .stage { position: relative; flex: 1; min-height: 0; }
+  .map { position: absolute; inset: 0; }
+  #map-after { clip-path: inset(0 0 0 50%); }
+
+  .label { position: absolute; top: 14px; z-index: 3; padding: 7px 12px; border-radius: 9px; background: rgba(30, 44, 68, 0.88);
+           color: #fff; font-size: 12px; line-height: 1.35; pointer-events: none; max-width: 42%; }
+  .label b { display: block; font-size: 10px; letter-spacing: 0.08em; color: #F4A368; }
+  #label-before { left: 14px; }
+  #label-after { right: 14px; text-align: right; }
+
+  .swipe { position: absolute; top: 0; bottom: 0; left: 50%; z-index: 4; width: 0; }
+  .swipe::before { content: ''; position: absolute; top: 0; bottom: 0; left: -1.5px; width: 3px; background: #fff;
+                   box-shadow: 0 0 8px rgba(0, 0, 0, 0.45); }
+  .handle { position: absolute; top: 50%; left: -21px; width: 42px; height: 42px; margin-top: -21px; border-radius: 50%;
+            background: #fff; border: none; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35); cursor: ew-resize; display: flex;
+            align-items: center; justify-content: center; touch-action: none; color: var(--navy); }
+  .handle:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+  .handle svg { width: 22px; height: 22px; }
+
+  .error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff;
+           font-size: 14px; padding: 24px; text-align: center; }
+  @media (max-width: 640px) {
+    .bar { gap: 8px; padding: 8px 12px; }
+    .bar .sub { display: none; }
+    .label { font-size: 11px; max-width: 46%; }
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <img src="GeoAILogo.png" alt="Geospatial AI">
+    <div>
+      <h1>Before / After</h1>
+      <div class="sub" id="sub">—</div>
+    </div>
+    <div class="spacer"></div>
+    <label class="toggle"><input type="checkbox" id="tog-imagery" checked> Show historical images</label>
+    <label class="toggle"><input type="checkbox" id="tog-overlay" checked> Boundary &amp; suspected buildings</label>
+    <button class="btn" type="button" onclick="window.close()">Close</button>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="map" id="map-before"></div>
+    <div class="map" id="map-after"></div>
+    <div class="label" id="label-before"><b>BEFORE</b><span></span></div>
+    <div class="label" id="label-after"><b>AFTER</b><span></span></div>
+    <div class="swipe" id="swipe">
+      <button class="handle" id="handle" type="button" role="slider" aria-label="Before / after divider"
+              aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 6 3 12 9 18"/><polyline points="15 6 21 12 15 18"/></svg>
+      </button>
+    </div>
+  </main>
+
+<script src="mpk.js?v=20261008t"></script>
+<script src="mpk-change.js?v=20261008t"></script>
+<script>
+(function () {
+  const state = mpkCompareParse(location.search);
+  const stage = document.getElementById('stage');
+  if (!state || !state.before || !state.after) {
+    stage.innerHTML = '<div class="error">Nothing to compare. Open this page from the Change detection card on the dashboard.</div>';
+    return;
+  }
+
+  const srcB = mpkImagerySource(state.before), srcA = mpkImagerySource(state.after);
+  const caps = [srcB.maxView, srcA.maxView].filter(v => v != null);
+  const maxZoom = caps.length ? Math.min(...caps) : 20;      // sharpest zoom both images support
+  const dateText = e => (e.source === 'esri' ? 'captured ' + mpkMonthLabel(e.date) : mpkDayLabel(e.date))
+    + (e.cloud != null ? ` · ${Math.round(e.cloud)}% cloud` : '');
+  const satName = e => (e.source === 'landsat' && e.platform ? e.platform.replace('landsat-', 'Landsat ')
+    : { esri: 'Esri Wayback', s2: 'Sentinel-2' }[e.source]);
+  document.getElementById('label-before').querySelector('span').textContent = `${satName(state.before)} · ${dateText(state.before)}`;
+  document.getElementById('label-after').querySelector('span').textContent = `${satName(state.after)} · ${dateText(state.after)}`;
+  document.getElementById('sub').textContent =
+    `${(MPK_AREAS[state.area] || {}).name || ''} · drag the divider to compare`;
+  document.title = `Geospatial AI - Before / After · ${satName(state.after)}`;
+
+  // Google Satellite underneath, so switching the historical images off shows today's basemap
+  const style = src => ({
+    version: 8,
+    sources: {
+      google: { type: 'raster', tileSize: 256, maxzoom: 20, attribution: 'Google',
+                tiles: ['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'] },
+      img: { type: 'raster', tiles: src.tiles, tileSize: 256, maxzoom: src.maxzoom, attribution: src.attribution },
+    },
+    layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#1E2C44' } },
+             { id: 'google', type: 'raster', source: 'google' },
+             { id: 'img', type: 'raster', source: 'img' }],
+  });
+  const view = { center: state.center, zoom: Math.min(state.zoom, maxZoom), maxZoom };
+  const before = new maplibregl.Map({ container: 'map-before', style: style(srcB), ...view, attributionControl: false });
+  const after = new maplibregl.Map({ container: 'map-after', style: style(srcA), ...view });
+  after.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+  // Keep both maps on the same view
+  let syncing = false;
+  const sync = (from, to) => from.on('move', () => {
+    if (syncing) return;
+    syncing = true;
+    to.jumpTo({ center: from.getCenter(), zoom: from.getZoom(), bearing: from.getBearing(), pitch: from.getPitch() });
+    syncing = false;
+  });
+  sync(before, after);
+  sync(after, before);
+
+  // Divider: Before on the left of it, After on the right
+  const mapAfter = document.getElementById('map-after'), swipe = document.getElementById('swipe');
+  const handle = document.getElementById('handle');
+  let frac = 0.5;
+  const place = f => {
+    frac = Math.max(0, Math.min(1, f));
+    const x = frac * stage.clientWidth;
+    swipe.style.left = x + 'px';
+    mapAfter.style.clipPath = `inset(0 0 0 ${x}px)`;
+    handle.setAttribute('aria-valuenow', Math.round(frac * 100));
+  };
+  const fromEvent = e => place((e.clientX - stage.getBoundingClientRect().left) / stage.clientWidth);
+  handle.addEventListener('pointerdown', e => {
+    handle.setPointerCapture(e.pointerId);
+    const move = ev => fromEvent(ev);
+    const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+  });
+  handle.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 0.1 : 0.02;
+    if (e.key === 'ArrowLeft') { place(frac - step); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { place(frac + step); e.preventDefault(); }
+    if (e.key === 'Home') { place(0); e.preventDefault(); }
+    if (e.key === 'End') { place(1); e.preventDefault(); }
+  });
+  window.addEventListener('resize', () => place(frac));
+  place(0.5);
+
+  // Same reference overlays on both sides: planning boundary + suspected buildings
+  const overlay = async (m) => {
+    const get = async f => (await fetch(`mpk/${f}?v=${MPK.VERSION}`)).json();
+    try {
+      const [boundary, buildings] = await Promise.all([get('tk_sempadan.geojson'), get('mpk_buildings.geojson')]);
+      const add = () => {
+        m.addSource('boundary', { type: 'geojson', data: boundary });
+        m.addSource('buildings', { type: 'geojson', data: buildings });
+        m.addLayer({ id: 'suspect', type: 'line', source: 'buildings', filter: mpkSuspectFilter(MPK.settings),
+                     paint: { 'line-color': '#ff5252', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.4, 17, 1.8] } });
+        m.addLayer({ id: 'boundary', type: 'line', source: 'boundary',
+                     paint: { 'line-color': '#E8772E', 'line-width': 2.5, 'line-dasharray': [3, 2] } });
+      };
+      m.loaded() ? add() : m.once('load', add);
+    } catch (e) {}
+  };
+  overlay(before);
+  overlay(after);
+  document.getElementById('tog-imagery').addEventListener('change', e => {
+    const on = e.target.checked;
+    [before, after].forEach(m => {
+      if (m.getLayer('img')) m.setLayoutProperty('img', 'visibility', on ? 'visible' : 'none');
+      m.setMaxZoom(on ? maxZoom : 20);            // Google stays sharp deeper than 10-30 m imagery
+    });
+    document.querySelectorAll('.label').forEach(l => { l.style.opacity = on ? 1 : 0.35; });
+  });
+  document.getElementById('tog-overlay').addEventListener('change', e => {
+    const vis = e.target.checked ? 'visible' : 'none';
+    [before, after].forEach(m => ['suspect', 'boundary'].forEach(id => { if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis); }));
+  });
+})();
+</script>
+</body>
+</html>

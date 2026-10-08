@@ -134,7 +134,9 @@ body.mpk-mode .basemap-dropdown { min-width:290px; max-height:calc(100vh - 150px
 .mpk-cd-type .sw { display:inline-block; width:9px; height:9px; border-radius:2px; }
 .mpk-cd-type.active { border-color:var(--charcoal-dark); background:var(--charcoal-dark); color:#fff; }
 .mpk-cd-type:focus-visible, .mpk-cd-views button:focus-visible { outline:2px solid var(--orange); outline-offset:1px; }
-.mpk-cd-go { width:100%; height:32px; font-size:12.5px; }
+.mpk-cd-actions { display:flex; gap:6px; }
+.mpk-cd-go { flex:1; height:32px; font-size:12.5px; }
+.mpk-cd-compare { height:32px; white-space:nowrap; }
 .mpk-cd-go:disabled { opacity:0.6; cursor:progress; }
 .mpk-cd-status { font-size:10.5px; color:var(--charcoal-light); margin-top:6px; min-height:0; }
 .mpk-cd-status.error { color:var(--red); }
@@ -155,3 +157,6 @@ body.mpk-mode .basemap-dropdown { min-width:290px; max-height:calc(100vh - 150px
 /* MPK search box (topbar, MPK mode only) */
 body:not(.mpk-mode) .mpk-search { display:none !important; }
 .mpk-search input::-webkit-search-cancel-button { cursor:pointer; }
+.mpk-cd-overlay { padding:0 0 8px; }
+.mpk-cd-overlay .layer-toggle { border:none; padding:0; }
+.mpk-cd-overlay .layer-toggle:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
