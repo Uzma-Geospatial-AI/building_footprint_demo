@@ -276,6 +276,46 @@ function mpkMaskHectares(mask, pixelMetres) {
   return Math.round(n * pixelMetres * pixelMetres / 100) / 100;
 }
 
+// NDVI heatmap of the whole area in classes, from no vegetation to dense vegetation
+const MPK_NDVI_CLASSES = [
+  { max: 0,    color: [74, 144, 217], label: 'Water (or metal roof)' },
+  { max: 0.15, color: [215, 48, 39],  label: 'Built-up / bare land' },
+  { max: 0.3,  color: [252, 141, 89], label: 'Very sparse vegetation' },
+  { max: 0.45, color: [254, 224, 139], label: 'Grass / shrub' },
+  { max: 0.6,  color: [217, 239, 139], label: 'Moderate vegetation' },
+  { max: 0.75, color: [145, 207, 96], label: 'Dense vegetation' },
+  { max: 1,    color: [26, 152, 80],  label: 'Very dense vegetation / forest' },
+];
+
+// NDVI tile URL for a Sentinel-2 / Landsat image (Planetary Computer, classed colormap), or
+// null for Esri photos, which have no near-infrared band
+function mpkNdviTileUrl(entry) {
+  let collection, expression;
+  if (entry.source === 's2') {
+    collection = 'sentinel-2-l2a';
+    expression = mpkS2Expressions(entry.date).ndvi;
+  } else if (entry.source === 'landsat') {
+    collection = 'landsat-c2-l2';
+    expression = mpkLandsatExpressions().ndvi;
+  } else {
+    return null;
+  }
+  // NDVI -1..1 is rescaled to 0..255; each class is an interval of that range
+  const at = v => Math.round((v + 1) * 127.5);
+  const colormap = MPK_NDVI_CLASSES.map((c, i) =>
+    [[i ? at(MPK_NDVI_CLASSES[i - 1].max) : 0, i === MPK_NDVI_CLASSES.length - 1 ? 256 : at(c.max)], [...c.color, 255]]);
+  return 'https://planetarycomputer.microsoft.com/api/data/v1/item/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?'
+    + `collection=${collection}&item=${entry.item}&`
+    + new URLSearchParams({ expression, asset_as_band: 'true', rescale: '-1,1', colormap: JSON.stringify(colormap),
+                            nodata: '0', format: 'png' }).toString();
+}
+
+// Legend HTML for the NDVI classes (dashboard result card and compare page)
+function mpkNdviLegendHTML() {
+  return `<div class="mpk-ndvi-legend"><div class="mpk-ndvi-title">Vegetation index (NDVI)</div>`
+    + MPK_NDVI_CLASSES.map(c => `<span><i style="background:rgb(${c.color})"></i>${c.label}</span>`).join('') + '</div>';
+}
+
 // Vegetation heatmap: per-pixel intensity 0..1 of the NDVI change in one direction ('gain' up,
 // 'cleared' down). Below half the detection threshold it is noise (0); it saturates at 2.5x.
 function mpkHeatValues(type, before, after, th) {
@@ -350,7 +390,7 @@ function mpkCompareParse(search) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkHeatValues, mpkHeatColor, mpkMergeBuildings, mpkResultMatches, mpkOpenMask, MPK_EXG_TH, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
+  module.exports = { MPK_NDVI_CLASSES, mpkNdviTileUrl, mpkNdviLegendHTML, mpkHeatValues, mpkHeatColor, mpkMergeBuildings, mpkResultMatches, mpkOpenMask, MPK_EXG_TH, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
                      mpkBuildingsInMask, mpkExg, mpkMaskHectares };
 }
 
@@ -370,7 +410,7 @@ const MPK_PC_BBOX = 'https://planetarycomputer.microsoft.com/api/data/v1/item/bb
 const MPK_S2_CLOUD = new Set([0, 3, 8, 9, 10]);         // no data, shadow, cloud, cirrus
 const MPK_CHANGE_MAX_CLOUD = 30;                         // % — cloudier images are not offered
 
-const MPK_CHANGE = { sat: 's2', types: new Set(['newbld']), result: null, view: 'after', overlayOn: true,
+const MPK_CHANGE = { sat: 's2', types: new Set(['newbld']), result: null, view: 'after', overlayOn: true, ndvi: false,
                      shown: {}, busy: false };   // shown: per-type map visibility of the result
 
 function mpkChangeCardHTML() {
@@ -401,6 +441,13 @@ function mpkChangeCardHTML() {
           <button type="button" data-view="after" onclick="mpkChangeView('after')">After</button>
           <button type="button" data-view="map" onclick="mpkChangeView('map')">Basemap</button>
         </div>
+        <div class="mpk-layer-row mpk-cd-overlay" id="mpk-cd-ndvi-row">
+          <div class="mpk-layer-main">Show Before / After as vegetation index (NDVI)
+            <small id="mpk-cd-ndvi-note"></small></div>
+          <button type="button" class="layer-toggle off" id="mpk-cd-ndvi" role="switch" aria-checked="false"
+            aria-label="Show Before / After as vegetation index" onclick="mpkChangeToggleNdvi()"></button>
+        </div>
+        <div id="mpk-cd-ndvi-legend"></div>
         <div class="mpk-layer-row mpk-cd-overlay">
           <div class="mpk-layer-main">Show change result on the map</div>
           <button type="button" class="layer-toggle on" id="mpk-cd-tog" role="switch" aria-checked="true"
@@ -718,6 +765,8 @@ async function mpkChangeGenerate() {
                                         [grid.east, grid.south], [grid.west, grid.south]] };
     if (MPK.wayback && MPK.wayback.on) mpkHistoricOff();     // one imagery layer at a time
     mpkChangeDraw();
+    // vegetation analyses open on the NDVI heatmap of the After image
+    mpkChangeSetNdvi('gain' in layers || 'cleared' in layers);
     mpkChangeView('after');
     mpkChangeRender();
     mpkChangeStatus('');
@@ -834,13 +883,33 @@ function mpkChangeView(view) {
   document.querySelectorAll('.mpk-cd-views button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   mpkChangeRemoveLayer('mpk-change-img', 'mpk-change-img-layer');
   if (!r || view === 'map') { mpkImageryZoomCap(null); return; }
-  const src = mpkImagerySource(view === 'before' ? r.before : r.after);
-  map.addSource('mpk-change-img', { type: 'raster', tiles: src.tiles, tileSize: 256, maxzoom: src.maxzoom,
+  const entry = view === 'before' ? r.before : r.after, src = mpkImagerySource(entry);
+  const ndvi = MPK_CHANGE.ndvi && mpkNdviTileUrl(entry);
+  map.addSource('mpk-change-img', { type: 'raster', tiles: ndvi ? [ndvi] : src.tiles, tileSize: 256, maxzoom: src.maxzoom,
                                     attribution: src.attribution });
   map.addLayer({ id: 'mpk-change-img-layer', type: 'raster', source: 'mpk-change-img',
                  layout: { visibility: MPK_CHANGE.overlayOn ? 'visible' : 'none' } },
                mpkBottomLayer());
   mpkImageryZoomCap(MPK_CHANGE.overlayOn ? src.maxView : null);
+}
+
+function mpkChangeToggleNdvi() {
+  mpkChangeSetNdvi(!MPK_CHANGE.ndvi);
+  if (MPK_CHANGE.view === 'map') mpkChangeView('after'); else mpkChangeView(MPK_CHANGE.view);
+}
+
+// NDVI exists for Sentinel-2 / Landsat only; the legend shows while it is on
+function mpkChangeSetNdvi(on) {
+  const r = MPK_CHANGE.result, available = !!(r && mpkNdviTileUrl(r.after));
+  MPK_CHANGE.ndvi = on && available;
+  const btn = document.getElementById('mpk-cd-ndvi');
+  btn.className = 'layer-toggle ' + (MPK_CHANGE.ndvi ? 'on' : 'off');
+  btn.setAttribute('aria-checked', String(MPK_CHANGE.ndvi));
+  btn.disabled = !available;
+  document.getElementById('mpk-cd-ndvi-note').textContent = available
+    ? 'whole area: red = built-up / bare, yellow = grass, green = trees, blue = water'
+    : 'not available for Esri photos (no infrared band)';
+  document.getElementById('mpk-cd-ndvi-legend').innerHTML = MPK_CHANGE.ndvi ? mpkNdviLegendHTML() : '';
 }
 
 function mpkChangeRender() {
@@ -903,7 +972,7 @@ function mpkChangeClear() {
 // For the /compare/ page (opened from this tab): the current result as plain data, or null.
 // Top-level consts are not window properties, so the compare page calls this function.
 function mpkChangeExport() {
-  return MPK_CHANGE.result ? JSON.stringify({ result: MPK_CHANGE.result, shown: MPK_CHANGE.shown }) : null;
+  return MPK_CHANGE.result ? JSON.stringify({ result: MPK_CHANGE.result, shown: MPK_CHANGE.shown, ndvi: MPK_CHANGE.ndvi }) : null;
 }
 
 // Hooks called from mpk.js

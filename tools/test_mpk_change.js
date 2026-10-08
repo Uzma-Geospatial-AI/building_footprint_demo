@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { MPK_EXG_TH: MPK_EXG_TH_TEST } = require('../mpk-change.js');
-const { mpkHeatValues, mpkHeatColor, mpkMergeBuildings, mpkResultMatches, mpkOpenMask, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
+const { MPK_NDVI_CLASSES, mpkNdviTileUrl, mpkHeatValues, mpkHeatColor, mpkMergeBuildings, mpkResultMatches, mpkOpenMask, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkPixelOf, mpkBuildingsInMask, mpkExg, mpkMaskHectares } = require('../mpk-change.js');
 
 // Sentinel-2 processing baseline 04.00 (from 25 Jan 2022) adds 1000 to every band
 assert.strictEqual(mpkS2Expressions('2021-06-01').ndvi, '(B08-B04)/(B08+B04)');
@@ -163,5 +163,19 @@ assert.strictEqual(mpkHeatColor('gain', 0)[3], 0);
 assert.ok(mpkHeatColor('gain', 1)[3] > mpkHeatColor('gain', 0.3)[3]);
 assert.ok(mpkHeatColor('gain', 1)[1] > mpkHeatColor('gain', 1)[0]);       // green
 assert.ok(mpkHeatColor('cleared', 1)[0] > mpkHeatColor('cleared', 1)[2]); // red/brown
+
+// NDVI heatmap tiles: the whole area in classes (water, built/bare, grass ... dense vegetation)
+const ndviS2 = mpkNdviTileUrl({ source: 's2', item: 'S2B_X', date: '2025-02-03' });
+assert.ok(ndviS2.includes('collection=sentinel-2-l2a&item=S2B_X'));
+assert.ok(decodeURIComponent(ndviS2).includes('expression=(B08-B04)/(B08+B04-2000)'));
+assert.ok(decodeURIComponent(ndviS2).includes('rescale=-1,1'));
+const cmap = JSON.parse(new URLSearchParams(ndviS2.split('?')[1]).get('colormap'));
+assert.strictEqual(cmap.length, MPK_NDVI_CLASSES.length);
+assert.deepStrictEqual(cmap[0][0], [0, 128]);                         // NDVI < 0 (water) first
+assert.strictEqual(cmap[cmap.length - 1][0][1], 256);                 // top class reaches the end
+const ndviOld = decodeURIComponent(mpkNdviTileUrl({ source: 's2', item: 'S2A_Y', date: '2018-07-15' }));
+assert.ok(ndviOld.includes('expression=(B08-B04)/(B08+B04)&'));      // pre-2022 baseline: no offset
+assert.ok(decodeURIComponent(mpkNdviTileUrl({ source: 'landsat', item: 'LT05_Z' })).includes('nir08'));
+assert.strictEqual(mpkNdviTileUrl({ source: 'esri', release: 10 }), null);   // photos have no near-infrared
 
 console.log('mpk change: all tests passed');

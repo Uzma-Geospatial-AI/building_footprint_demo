@@ -157,7 +157,12 @@ tick one or more things to detect (each becomes its own coloured layer with a sh
 checkbox, and the same layers appear on the Compare page) — *New buildings* (footprints on land that was green before and is built
 now, judged per footprint), *New built-up* (vegetation → hard surface), *Land cleared*
 (vegetation → bare) or *Vegetation gain* — then **Generate**. *Land cleared* and *Vegetation gain* are drawn as a
-smooth heatmap of the NDVI change (darker = stronger change), not as solid pixels. A switch hides the result to
+smooth heatmap of the NDVI change (darker = stronger change), not as solid pixels.
+For Sentinel-2 and Landsat the Before / After image can be shown as a classed **NDVI map of
+the whole area** (blue water or metal roof, red built-up / bare, orange-yellow grass, greens
+for vegetation up to forest) with its legend; it switches on by itself for vegetation analyses,
+and the Compare page has the same switch plus a legend over the map. Esri photos have no
+near-infrared band, so NDVI is not offered for them. A switch hides the result to
 show the regular basemap, and **Compare ↗** opens `/compare/` in a new tab: a swipe
 slider with Before on the left and After on the right (Google Satellite underneath). Index maps (NDVI, NDBI) for the area are
 fetched from Planetary Computer at native resolution, clouds masked (Sentinel-2 SCL +

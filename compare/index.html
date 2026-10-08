@@ -68,6 +68,19 @@
   .layers:empty { display: none; }
   .layers .note { font-size: 11px; color: var(--muted); max-width: 260px; line-height: 1.35; }
   .layers .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+  .legend { position: absolute; left: 14px; bottom: 30px; z-index: 3; background: rgba(255, 255, 255, 0.94);
+            border-radius: 10px; padding: 9px 11px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); font-size: 11px;
+            color: var(--ink); max-width: 250px; }
+  .legend:empty { display: none; }
+  .legend .row { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+  .legend .row i { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .legend .row i.ramp { width: 28px; height: 9px; }
+  .legend b { display: block; font-size: 10.5px; letter-spacing: 0.03em; color: var(--navy); margin: 6px 0 2px; }
+  .legend b:first-child { margin-top: 0; }
+  .mpk-ndvi-legend span { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+  .mpk-ndvi-legend span i { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .mpk-ndvi-title { font-weight: 700; font-size: 10.5px; color: var(--navy); margin-bottom: 2px; }
+  .toggle.disabled { opacity: 0.45; cursor: not-allowed; }
   .error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff;
            font-size: 14px; padding: 24px; text-align: center; }
   @media (max-width: 640px) {
@@ -86,6 +99,7 @@
     </div>
     <div class="spacer"></div>
     <div class="layers" id="change-layers"></div>
+    <label class="toggle" id="ndvi-toggle"><input type="checkbox" id="tog-ndvi"> Vegetation index (NDVI)</label>
     <label class="toggle"><input type="checkbox" id="tog-imagery" checked> Show historical images</label>
     <label class="toggle"><input type="checkbox" id="tog-overlay" checked> Boundary &amp; suspected buildings</label>
     <button class="btn" type="button" onclick="window.close()">Close</button>
@@ -94,6 +108,7 @@
   <main class="stage" id="stage">
     <div class="map" id="map-before"></div>
     <div class="map" id="map-after"></div>
+    <div class="legend" id="legend"></div>
     <div class="label" id="label-before"><b>BEFORE</b><span></span></div>
     <div class="label" id="label-after"><b>AFTER</b><span></span></div>
     <div class="swipe" id="swipe">
@@ -105,8 +120,8 @@
     </div>
   </main>
 
-<script src="/mpk.js?v=20261009g"></script>
-<script src="/mpk-change.js?v=20261009g"></script>
+<script src="/mpk.js?v=20261009h"></script>
+<script src="/mpk-change.js?v=20261009h"></script>
 <script>
 (function () {
   const state = mpkCompareParse(location.search);
@@ -205,16 +220,53 @@
   overlay(before);
   overlay(after);
 
+  // Vegetation index (NDVI): both sides become a classed NDVI heatmap of the whole area
+  const ndviOk = !!(mpkNdviTileUrl(state.before) && mpkNdviTileUrl(state.after));
+  const togNdvi = document.getElementById('tog-ndvi');
+  const setImagery = () => {
+    const ndvi = togNdvi.checked;
+    [[before, state.before, srcB], [after, state.after, srcA]].forEach(([m, entry, src]) => {
+      const apply = () => m.getSource('img').setTiles(ndvi ? [mpkNdviTileUrl(entry)] : src.tiles);
+      m.loaded() ? apply() : m.once('load', apply);
+    });
+    renderLegend();
+  };
+  if (!ndviOk) {
+    togNdvi.disabled = true;
+    document.getElementById('ndvi-toggle').classList.add('disabled');
+    document.getElementById('ndvi-toggle').title = 'Not available for Esri photos (no infrared band)';
+  }
+  togNdvi.addEventListener('change', setImagery);
+
+  // Legend over the map: NDVI classes when shown, then every visible change layer
+  let change = null;
+  function renderLegend() {
+    let html = togNdvi.checked ? mpkNdviLegendHTML() : '';
+    if (change) {
+      const rows = Object.keys(change.result.layers).filter(t => change.shown[t] !== false).map(t => {
+        const ty = MPK_CHANGE_TYPES[t];
+        const sw = MPK_HEAT_RAMPS[t]
+          ? `<i class="ramp" style="background:linear-gradient(90deg,${MPK_HEAT_RAMPS[t].map(c => `rgb(${c})`).join(',')})"></i>`
+          : `<i style="background:rgb(${ty.rgb})"></i>`;
+        return `<div class="row">${sw}${ty.label}${MPK_HEAT_RAMPS[t] ? ' (light → strong)' : ''}</div>`;
+      }).join('');
+      if (rows) html += `<b>Change detected</b>${rows}`;
+    }
+    html += '<b>Reference</b><div class="row"><i style="border:2px dashed #E8772E;background:none"></i>Planning boundary</div>'
+      + '<div class="row"><i style="border:1.5px solid #ff5252;background:none"></i>Suspected building</div>';
+    document.getElementById('legend').innerHTML = html;
+  }
+
   // Change-detection layers from the dashboard tab that opened this one, when its result is for
   // these same two images: one checkbox per detected type, drawn on both sides
   const box = document.getElementById('change-layers');
-  let change = null;
   try {
     const raw = window.opener && window.opener.mpkChangeExport && window.opener.mpkChangeExport();
     const data = raw && JSON.parse(raw);
     if (data && mpkResultMatches(data.result, state)) change = data;
   } catch (e) {}                                   // opener closed or from another origin
   if (change) {
+    if (change.ndvi && ndviOk) { togNdvi.checked = true; setImagery(); }
     const shown = change.shown;
     box.innerHTML = Object.keys(change.result.layers).map(type => {
       const t = MPK_CHANGE_TYPES[type];
@@ -226,8 +278,11 @@
     box.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
       shown[cb.dataset.type] = cb.checked;
       [before, after].forEach(m => mpkSetChangeTypeVisible(m, cb.dataset.type, cb.checked));
+      renderLegend();
     }));
-  } else {
+  }
+  renderLegend();
+  if (!change) {
     box.innerHTML = '<span class="note">Press <b>Generate</b> in the dashboard’s Change detection card for these dates, then open Compare again to see the analysis layers.</span>';
   }
   document.getElementById('tog-imagery').addEventListener('change', e => {
