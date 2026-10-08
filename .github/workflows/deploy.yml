@@ -1,45 +1,28 @@
-name: Deploy to GitHub Pages
+name: Deploy to EC2
 
-# OPTIONAL. The site also deploys fine without this workflow — login.html
-# already ships a working password digest.
+# Every push to main publishes the site to the production server, served as static
+# files by the host nginx at https://buildvision.uzmadigitalearth.app/ (no build
+# step, no container). Manual runs via "Run workflow".
 #
-# Enable this only if you want to rotate the demo password from a GitHub
-# Secret instead of committing a new digest:
-#
-#   1. Settings -> Secrets and variables -> Actions -> New repository secret
-#        Name:  DEMO_PASSWORD
-#        Value: the new plaintext password
-#   2. Settings -> Pages -> Source -> "GitHub Actions"
-#
-# Step 2 is required. While Pages is still set to "Deploy from a branch",
-# the deploy job below will fail.
-#
-# If DEMO_PASSWORD is not set, the digest already in login.html is left
-# untouched and the site deploys unchanged.
-
-# Manual-only on purpose. While Pages is set to "Deploy from a branch", the
-# deploy job below cannot succeed — a push trigger would just fail on every
-# commit. Once you have switched Settings -> Pages -> Source to "GitHub
-# Actions", add the push trigger back:
-#
-#   push:
-#     branches: [main]
-#
+# Optional: set a DEMO_PASSWORD repository secret to rotate the demo password at
+# deploy time instead of committing a new digest. If it is not set, the digest
+# already in login.html is deployed unchanged.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: deploy-buildvision
+  cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,17 +51,32 @@ jobs:
           fi
           echo "Digest injected (${#HASH} hex chars)"
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Rsync site to the server
+        # Only what the browser needs: repo tooling, docs and dotfiles stay behind.
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gitattributes' \
+            --exclude='.gitignore' \
+            --exclude='docs' \
+            --exclude='tools' \
+            --exclude='__pycache__' \
+            --chmod=D755,F644 \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/buildvision/"
+
+      - name: Health check
+        run: |
+          for page in login.html index.html; do
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "https://buildvision.uzmadigitalearth.app/$page")
+            echo "$page -> HTTP $code"
+            [ "$code" = "200" ] || exit 1
+          done

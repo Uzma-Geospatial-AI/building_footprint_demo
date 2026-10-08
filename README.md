@@ -91,11 +91,9 @@ printf '%s' 'uzma-geoai::NEW_PASSWORD' | sha256sum
 # paste the hex into PASS_HASH in login.html
 ```
 
-…or set a `DEMO_PASSWORD` repository secret and enable
-`.github/workflows/deploy.yml`, which injects the digest at deploy time so the
-plaintext never enters the repo. That workflow requires switching
-**Settings → Pages → Source** to *GitHub Actions*; see the comments at the top
-of the file.
+…or set a `DEMO_PASSWORD` repository secret;
+`.github/workflows/deploy.yml` injects the digest at deploy time so the
+plaintext never enters the repo (see *Deployment*).
 
 ---
 
@@ -243,17 +241,25 @@ and 12–16 px radii. Type is the system stack
 
 ## Deployment
 
-### GitHub Pages (current)
+### Production server (current)
 
-Pages serves the repository root from `main` — pushing to `main` triggers the
-`pages-build-deployment` workflow, no build step required.
+The site runs at **https://buildvision.uzmadigitalearth.app/** on the shared UZMA EC2 host, served as
+static files by the host nginx (Cloudflare TLS) from `/var/www/buildvision` — no build step, no
+container. `.geojson` / `.geojsonn` are served as `application/json` so nginx gzips them.
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on every push to `main` (or
+manually: *Actions → Deploy to EC2 → Run workflow*):
+
+1. optionally inject the `DEMO_PASSWORD` digest into `login.html` (see *Sign in*)
+2. rsync the repository to `/var/www/buildvision/`, excluding `.git`, `.github`, `docs/` and `tools/`
+3. check that `login.html` and `index.html` answer 200
 
 ```bash
 git push origin main
 ```
 
-To land visitors on the sign-in page first, either link to `login.html`
-directly or swap it in as the entry point.
+The workflow needs the repository secrets `SSH_PRIVATE_KEY`, `SSH_HOST` and `SSH_USER`.
+To land visitors on the sign-in page first, link to `login.html` directly.
 
 ### Static hosts (S3, Netlify, Cloudflare Pages, Vercel)
 
