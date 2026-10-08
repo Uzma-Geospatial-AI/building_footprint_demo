@@ -125,7 +125,7 @@ Three study areas from MPK, selectable as chips in the **Illegal Construction** 
 
 | Area | Flagged as suspected |
 |---|---|
-| Kawasan Industri Teluk Kalong | the buildings flagged `is_mockup` in the [building API](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/buildings_industri.geojson) (49 buildings) — the MPK mockup list |
+| Kawasan Industri Teluk Kalong | the buildings flagged `is_mockup` in the [building API](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/kemaman_buildings_industri_filled.geojson) (49 buildings) — the MPK mockup list |
 | Koridor Bandar Putra – Berenjut | buildings within the road-reserve slider (3–20 m) of the road centreline |
 | Koridor Binjai – Bandar Chukai | same as above |
 

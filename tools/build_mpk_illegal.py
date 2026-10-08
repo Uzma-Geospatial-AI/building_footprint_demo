@@ -16,7 +16,7 @@ Three study areas from MPK:
        those within the road-reserve slider as encroaching.
 
 Every building whose centroid falls on an NDCDB cadastral lot also gets lot / upi.
-The API's `is_mockup` buildings (buildings_industri.geojson) are added to Teluk Kalong as
+The API's `is_mockup` buildings (kemaman_buildings_industri_filled.geojson) are added to Teluk Kalong as
 kategori 'mockup': these are the suspected buildings shown for Teluk Kalong.
 
 Writes mpk/mpk_buildings.geojson, mpk/koridor_jalan.geojson and mpk/lot_kadaster.geojson.
@@ -42,7 +42,7 @@ OPEN_BUILDINGS_URL = ('https://storage.googleapis.com/open-buildings-data/v3/'
 # Uzma/MPK building API: the buildings flagged `is_mockup` are THE suspected buildings of
 # Teluk Kalong for the MPK mockup (replacing the rule-based Teluk Kalong flags)
 API_BUILDINGS_URL = ('https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/'
-                     'building/buildings_industri.geojson')
+                     'kemaman_buildings_industri_filled.geojson')
 LOTS_URL = ('https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/'
             'building/lots_sempadan_industri_kemaman.geojson')   # NDCDB cadastral lots
 OVERPASS_URLS = ['https://overpass-api.de/api/interpreter',

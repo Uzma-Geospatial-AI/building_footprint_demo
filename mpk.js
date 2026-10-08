@@ -675,7 +675,7 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
     <div class="mpk-note">Land use: OpenStreetMap landuse polygons for Kemaman district — community-mapped and
       incomplete, not the official RTD zoning (PLANMalaysia i-Plan); to be replaced with MPK's zoning layer.
       Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
-      (buildings_industri.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
+      (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
       road centrelines from OpenStreetMap; cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
       Every case needs site verification.</div>
   `;
