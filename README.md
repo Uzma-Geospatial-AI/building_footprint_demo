@@ -121,7 +121,7 @@ of the file.
 A mockup for Majlis Perbandaran Kemaman. Pick **MPK Kemaman** in the topbar area
 switcher: every Seremban control is hidden and only MPK content is shown.
 
-Three study areas from MPK, selectable as chips in the **Binaan Haram** panel tab:
+Three study areas from MPK, selectable as chips in the **Illegal Construction** panel tab:
 
 | Area | Flagged as suspected |
 |---|---|
@@ -131,7 +131,7 @@ Three study areas from MPK, selectable as chips in the **Binaan Haram** panel ta
 
 The panel shows counts per type, suspected area, a revenue estimate (processing fee +
 Cukai Pintu, editable assumption rates saved in the browser), the 50 largest suspected
-buildings (click to zoom) and a CSV export. Labels always say "Disyaki" — results need
+buildings (click to zoom) and a CSV export. Labels always say "Suspected" — results need
 site verification. "No cadastral lot" is only judged inside the boundary, where the lot
 data is meant to be complete; a gap in the NDCDB extract will show up as a false flag.
 

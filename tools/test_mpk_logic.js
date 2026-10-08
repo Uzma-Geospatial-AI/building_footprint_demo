@@ -50,13 +50,13 @@ assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
     ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], 10]],
 ]);
 
-// CSV
+// CSV (English header and codes for the people who receive the export)
 const csv = mpkCSV(all.suspects, rates, s).trim().split('\n');
 assert.strictEqual(csv.length, 6);
-assert.strictEqual(csv[0], 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,lot,upi,anggaran_fee_rm,anggaran_cukai_tahunan_rm');
-assert.strictEqual(csv[1], '5,bpb,rizab,X5,103.4,4.2,8.5,70,0.8,,,140.00,420.00');
-assert.strictEqual(csv[2], '2,tk,tiada_lot,X2,103.4,4.2,,50,0.8,52497,11030800052497,100.00,300.00');
-assert.strictEqual(csv[3], '4,tk,luar_sempadan,X4,103.4,4.2,500,30,0.8,,,60.00,180.00');
-assert.strictEqual(csv[4], '8,tk,tiada_kadaster,X8,103.4,4.2,,20,0.8,,,40.00,120.00');
+assert.strictEqual(csv[0], 'id,area,type,plus_code,lng,lat,distance_m,area_m2,confidence,lot,upi,est_processing_fee_rm,est_annual_assessment_tax_rm');
+assert.strictEqual(csv[1], '5,bandar_putra_berenjut,road_reserve,X5,103.4,4.2,8.5,70,0.8,,,140.00,420.00');
+assert.strictEqual(csv[2], '2,teluk_kalong,no_approved_lot,X2,103.4,4.2,,50,0.8,52497,11030800052497,100.00,300.00');
+assert.strictEqual(csv[3], '4,teluk_kalong,outside_boundary,X4,103.4,4.2,500,30,0.8,,,60.00,180.00');
+assert.strictEqual(csv[4], '8,teluk_kalong,no_cadastral_lot,X8,103.4,4.2,,20,0.8,,,40.00,120.00');
 
 console.log('mpk logic: all tests passed');

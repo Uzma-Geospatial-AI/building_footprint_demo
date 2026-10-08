@@ -1,7 +1,7 @@
 // ============================================================
 // MPK KEMAMAN — SUSPECTED ILLEGAL CONSTRUCTION MODE
 // Three study areas from MPK:
-//   tk   Kawasan Industri Teluk Kalong — buildings inside the PBT boundary on no approved
+//   tk   Teluk Kalong Industrial Area — buildings inside the PBT boundary on no approved
 //        lot, or outside the boundary within the buffer
 //   bpb  Koridor Bandar Putra – Berenjut } buildings within the road-reserve distance of
 //   bbc  Koridor Binjai – Bandar Chukai  } the road centreline
@@ -48,12 +48,17 @@ function mpkStats(features, s, rates, kawasan) {
            fee: area * rates.fee, cukai: area * rates.cukai, suspects };
 }
 
+// English codes written to the CSV export
+const MPK_CSV_AREA = { tk: 'teluk_kalong', bpb: 'bandar_putra_berenjut', bbc: 'binjai_bandar_chukai' };
+const MPK_CSV_TYPE = { tiada_kadaster: 'no_cadastral_lot', tiada_lot: 'no_approved_lot',
+                       luar_sempadan: 'outside_boundary', rizab: 'road_reserve' };
+
 function mpkCSV(suspects, rates, s) {
-  const header = 'id,kawasan,jenis,plus_code,lng,lat,jarak_m,area_m2,confidence,lot,upi,anggaran_fee_rm,anggaran_cukai_tahunan_rm';
+  const header = 'id,area,type,plus_code,lng,lat,distance_m,area_m2,confidence,lot,upi,est_processing_fee_rm,est_annual_assessment_tax_rm';
   const rows = suspects.map(f => {
     const p = f.properties, jenis = mpkJenis(p, s);
     const jarak = jenis === 'luar_sempadan' ? p.jarak_m : jenis === 'rizab' ? p.jarak_jalan_m : '';
-    return [p.id, p.kawasan, jenis, p.plus_code, p.lng, p.lat, jarak, p.area_m2, p.confidence, p.lot || '', p.upi || '',
+    return [p.id, MPK_CSV_AREA[p.kawasan], MPK_CSV_TYPE[jenis], p.plus_code, p.lng, p.lat, jarak, p.area_m2, p.confidence, p.lot || '', p.upi || '',
       (p.area_m2 * rates.fee).toFixed(2), (p.area_m2 * rates.cukai).toFixed(2)].join(',');
   });
   return [header, ...rows].join('\n') + '\n';
@@ -63,28 +68,28 @@ if (typeof module !== 'undefined') module.exports = { mpkJenis, mpkSuspectFilter
 
 // ---------- Browser mode ----------
 const MPK_AREAS = {
-  tk:  { name: 'Kawasan Industri Teluk Kalong', short: 'Teluk Kalong' },
-  bpb: { name: 'Koridor Bandar Putra – Berenjut', short: 'B. Putra – Berenjut' },
-  bbc: { name: 'Koridor Binjai – Bandar Chukai', short: 'Binjai – Chukai' },
+  tk:  { name: 'Teluk Kalong Industrial Area', short: 'Teluk Kalong' },
+  bpb: { name: 'Bandar Putra – Berenjut Corridor', short: 'B. Putra – Berenjut' },
+  bbc: { name: 'Binjai – Bandar Chukai Corridor', short: 'Binjai – Chukai' },
 };
 const MPK_JENIS = {
-  tiada_kadaster: { label: 'Dalam sempadan, tiada lot kadaster', color: '#6D4C41', areas: ['tk'] },
-  tiada_lot:     { label: 'Dalam sempadan, tiada lot lulus', color: '#e53935', areas: ['tk'] },
-  luar_sempadan: { label: 'Luar sempadan PBT (dalam penampan)', color: '#FB8C00', areas: ['tk'] },
-  rizab:         { label: 'Menceroboh rizab jalan', color: '#C2185B', areas: ['bpb', 'bbc'] },
+  tiada_kadaster: { label: 'Inside boundary, no cadastral lot', color: '#6D4C41', areas: ['tk'] },
+  tiada_lot:     { label: 'Inside boundary, no approved lot', color: '#e53935', areas: ['tk'] },
+  luar_sempadan: { label: 'Outside planning boundary (within buffer)', color: '#FB8C00', areas: ['tk'] },
+  rizab:         { label: 'Encroaching road reserve', color: '#C2185B', areas: ['bpb', 'bbc'] },
 };
 
 // Map layers the viewer can switch on/off from the panel, in display order.
 const MPK_LAYER_GROUPS = {
-  suspect:  { label: 'Binaan disyaki', layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
+  suspect:  { label: 'Suspected buildings', layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
               swatch: Object.values(MPK_JENIS).map(j => j.color) },
-  base:     { label: 'Bangunan lain', layers: ['mpk-base-fill'], swatch: ['#7CB342', '#B0BEC5'],
-              hint: 'Hijau: atas lot lulus · Kelabu: lain-lain' },
-  lots:     { label: 'Lot lulus PBT', layers: ['mpk-lot-fill', 'mpk-lot-line'], swatchClass: 'lot' },
-  kadaster: { label: 'Lot kadaster (NDCDB)', layers: ['mpk-kadaster-line'], swatchClass: 'kadaster',
-              hint: 'No. lot & UPI dalam popup bangunan' },
-  boundary: { label: 'Sempadan PBT', layers: ['mpk-boundary-fill', 'mpk-boundary-line'], swatchClass: 'line' },
-  koridor:  { label: 'Koridor kajian', layers: ['mpk-koridor-band', 'mpk-koridor-line'], swatchClass: 'band' },
+  base:     { label: 'Other buildings', layers: ['mpk-base-fill'], swatch: ['#7CB342', '#B0BEC5'],
+              hint: 'Green: on approved lot · Grey: other' },
+  lots:     { label: 'Approved lots', layers: ['mpk-lot-fill', 'mpk-lot-line'], swatchClass: 'lot' },
+  kadaster: { label: 'Cadastral lots (NDCDB)', layers: ['mpk-kadaster-line'], swatchClass: 'kadaster',
+              hint: 'Lot no. & UPI shown in building popup' },
+  boundary: { label: 'Planning boundary', layers: ['mpk-boundary-fill', 'mpk-boundary-line'], swatchClass: 'line' },
+  koridor:  { label: 'Study corridor', layers: ['mpk-koridor-band', 'mpk-koridor-line'], swatchClass: 'band' },
 };
 
 const MPK = {
@@ -294,11 +299,11 @@ async function mpkEnter() {
   if (MPK.active) return;
   if (!MPK.rates) MPK.rates = mpkLoadRates();
   try {
-    if (!MPK.data) showLoading('Memuat data MPK Kemaman...', 'Bangunan, sempadan, lot & koridor');
+    if (!MPK.data) showLoading('Loading MPK Kemaman data...', 'Buildings, boundary, lots & corridors');
     await mpkEnsureData();
   } catch (err) {
     hideLoading();
-    showToast('⚠️ Gagal memuat data MPK: ' + err.message, 5000);
+    showToast('⚠️ Could not load MPK data: ' + err.message, 5000);
     document.getElementById('area-mode').value = 'seremban';
     return;
   }
@@ -323,16 +328,16 @@ async function mpkEnter() {
   const title = document.getElementById('page-title'), sub = document.getElementById('page-sub');
   const panelSub = document.getElementById('panel-sub');
   MPK.prevTitle = { title: title.textContent, sub: sub.textContent, panelSub: panelSub.textContent };
-  title.textContent = 'Pemantauan Binaan Haram — MPK Kemaman';
+  title.textContent = 'Illegal Construction Monitoring — MPK Kemaman';
   sub.textContent = 'Teluk Kalong · Bandar Putra–Berenjut · Binjai–Bandar Chukai';
-  panelSub.textContent = 'MPK Kemaman · Binaan disyaki tiada Kebenaran Merancang';
+  panelSub.textContent = 'MPK Kemaman · Buildings suspected of lacking planning permission';
 
   const tab = document.getElementById('ptab-mpk');
   tab.style.display = '';
   mpkBuildPanel();
   switchTab(tab, 'mpk');
   mpkSelectArea(MPK.area);
-  addActivityLog('Mod MPK Kemaman', 'Pemantauan binaan disyaki');
+  addActivityLog('MPK Kemaman mode', 'Suspected illegal construction');
 }
 
 function mpkExit() {
@@ -353,7 +358,7 @@ function mpkExit() {
     document.getElementById('panel-sub').textContent = MPK.prevTitle.panelSub;
   }
   flyToData();
-  addActivityLog('Mod Seremban', 'Kembali ke papan pemuka Seremban');
+  addActivityLog('Seremban mode', 'Back to the Seremban dashboard');
 }
 
 // ---------- Panel ----------
@@ -364,7 +369,7 @@ function mpkBuildPanel() {
   const el = document.getElementById('tab-mpk');
   if (el.dataset.built) return;
   el.dataset.built = '1';
-  const chips = [['all', 'Semua'], ...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.short])]
+  const chips = [['all', 'All'], ...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.short])]
     .map(([k, label]) => `<button class="mpk-chip" data-area="${k}" onclick="mpkSelectArea('${k}')">${label}</button>`).join('');
   const jenisRows = Object.entries(MPK_JENIS).map(([k, j]) => `
     <div class="mpk-jenis-row" id="mpk-jenis-${k}">
@@ -383,21 +388,21 @@ function mpkBuildPanel() {
   el.innerHTML = `
     <div class="mpk-hero">
       <div class="mpk-eyebrow">MPK Kemaman · Mockup</div>
-      <div class="mpk-hero-title">Binaan disyaki tiada Kebenaran Merancang</div>
+      <div class="mpk-hero-title">Buildings suspected of lacking planning permission</div>
       <div class="mpk-hero-sub" id="mpk-hero-sub"></div>
     </div>
 
     <div class="mpk-chips" role="tablist">${chips}</div>
 
     <div class="mpk-card mpk-layers">
-      <div class="mpk-card-title">Lapisan peta</div>
+      <div class="mpk-card-title">Map layers</div>
       ${layerRows}
     </div>
 
     <div class="mpk-card">
       <div id="mpk-ctl-buffer">
         <div class="mpk-row">
-          <label for="mpk-buffer" class="mpk-label">Zon penampan luar sempadan (Teluk Kalong)</label>
+          <label for="mpk-buffer" class="mpk-label">Buffer outside the boundary (Teluk Kalong)</label>
           <span class="mpk-slider-val" id="mpk-buffer-val"></span>
         </div>
         <input type="range" id="mpk-buffer" class="mpk-range" min="100" max="1000" step="50"
@@ -406,7 +411,7 @@ function mpkBuildPanel() {
       </div>
       <div id="mpk-ctl-rizab">
         <div class="mpk-row">
-          <label for="mpk-rizab" class="mpk-label">Rizab jalan dari garis tengah (koridor)</label>
+          <label for="mpk-rizab" class="mpk-label">Road reserve from centreline (corridors)</label>
           <span class="mpk-slider-val" id="mpk-rizab-val"></span>
         </div>
         <input type="range" id="mpk-rizab" class="mpk-range" min="3" max="20" step="1"
@@ -416,36 +421,37 @@ function mpkBuildPanel() {
     </div>
 
     <div class="mpk-kpis">
-      <div class="mpk-kpi danger"><div class="v" id="mpk-k-count">—</div><div class="l">Binaan disyaki</div></div>
-      <div class="mpk-kpi"><div class="v" id="mpk-k-area">—</div><div class="l">Keluasan disyaki (m²)</div></div>
-      <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Bangunan dikaji</div></div>
+      <div class="mpk-kpi danger"><div class="v" id="mpk-k-count">—</div><div class="l">Suspected buildings</div></div>
+      <div class="mpk-kpi"><div class="v" id="mpk-k-area">—</div><div class="l">Suspected footprint (m²)</div></div>
+      <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings assessed</div></div>
     </div>
 
     <div class="mpk-card mpk-jenis">${jenisRows}</div>
 
     <div class="mpk-card">
-      <div class="mpk-card-title">Anggaran hasil PBT <span class="mpk-tag">andaian</span></div>
+      <div class="mpk-card-title">Estimated council revenue <span class="mpk-tag">assumption</span></div>
       <div class="mpk-rate-row">
-        <label for="mpk-rate-fee">Fee proses Cadangan Pemajuan<small>RM / m²</small></label>
+        <label for="mpk-rate-fee">Development application processing fee<small>RM / m²</small></label>
         <input type="number" id="mpk-rate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnRate()">
         <div class="mpk-money" id="mpk-r-fee">—</div>
       </div>
       <div class="mpk-rate-row">
-        <label for="mpk-rate-cukai">Cukai Pintu<small>RM / m² / tahun</small></label>
+        <label for="mpk-rate-cukai">Assessment tax (Cukai Pintu)<small>RM / m² / year</small></label>
         <input type="number" id="mpk-rate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnRate()">
         <div class="mpk-money" id="mpk-r-cukai">—</div>
       </div>
-      <div class="mpk-total"><span>Potensi hasil tahun pertama</span><strong id="mpk-r-total">—</strong></div>
+      <div class="mpk-total"><span>First-year revenue potential</span><strong id="mpk-r-total">—</strong></div>
     </div>
 
     <div class="mpk-list-head">
-      <div class="mpk-card-title">Binaan disyaki terbesar</div>
+      <div class="mpk-card-title">Largest suspected buildings</div>
       <button class="mpk-btn" onclick="mpkExportCSV()">Export CSV</button>
     </div>
     <div class="mpk-list" id="mpk-list"></div>
 
-    <div class="mpk-note">Bangunan: Google Open Buildings. Sempadan & lot lulus Teluk Kalong didigitkan dari peta MPK;
-      garis jalan dari OpenStreetMap; lot kadaster dari NDCDB. Lebar rizab dan kadar hasil ialah andaian. Semua kes perlu pengesahan tapak.</div>
+    <div class="mpk-note">Buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
+      road centrelines from OpenStreetMap; cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
+      Every case needs site verification.</div>
   `;
 }
 
@@ -461,7 +467,7 @@ function mpkSelectArea(area) {
       area === 'all' || j.areas.includes(area) ? '' : 'none';
   });
   document.getElementById('mpk-hero-sub').textContent = area === 'all'
-    ? 'Tiga kawasan kajian: Kaw. Industri Teluk Kalong dan dua koridor jalan di Bandar Chukai.'
+    ? 'Three study areas: Teluk Kalong Industrial Area and two road corridors in Bandar Chukai.'
     : MPK_AREAS[area].name;
   if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
   mpkRender();
@@ -481,7 +487,7 @@ function mpkRender() {
 
   const list = document.getElementById('mpk-list');
   if (!s.count) {
-    list.innerHTML = '<div class="mpk-empty">Tiada binaan disyaki dengan tetapan ini.</div>';
+    list.innerHTML = '<div class="mpk-empty">No suspected buildings with these settings.</div>';
     return;
   }
   list.innerHTML = s.suspects.slice(0, MPK.LIST_SIZE).map((f, i) => {
@@ -494,7 +500,7 @@ function mpkRender() {
       <div class="mpk-area">${mpkNum(p.area_m2)} m²</div>
     </div>`;
   }).join('') + (s.count > MPK.LIST_SIZE
-    ? `<div class="mpk-more">+ ${mpkNum(s.count - MPK.LIST_SIZE)} lagi · lihat Export CSV</div>` : '');
+    ? `<div class="mpk-more">+ ${mpkNum(s.count - MPK.LIST_SIZE)} more · see Export CSV</div>` : '');
 }
 
 function mpkRenderRevenue() {
@@ -502,7 +508,7 @@ function mpkRenderRevenue() {
   if (!s) return;
   const fee = s.area * MPK.rates.fee, cukai = s.area * MPK.rates.cukai;
   document.getElementById('mpk-r-fee').textContent = mpkRM(fee);
-  document.getElementById('mpk-r-cukai').textContent = mpkRM(cukai) + '/thn';
+  document.getElementById('mpk-r-cukai').textContent = mpkRM(cukai) + '/yr';
   document.getElementById('mpk-r-total').textContent = mpkRM(fee + cukai);
 }
 
@@ -523,10 +529,10 @@ function mpkOnRate() {
 
 // ---------- Map interaction ----------
 function mpkStatusText(p, jenis) {
-  if (jenis) return 'Disyaki · ' + MPK_JENIS[jenis].label;
-  if (p.kategori === 'lulus') return 'Atas lot lulus PBT';
-  if (p.kategori === 'luar') return 'Luar sempadan, di luar zon penampan';
-  return 'Dalam koridor · perlu semakan KM / Cukai Pintu';
+  if (jenis) return 'Suspected · ' + MPK_JENIS[jenis].label;
+  if (p.kategori === 'lulus') return 'On an approved lot';
+  if (p.kategori === 'luar') return 'Outside boundary, beyond the buffer';
+  return 'In corridor · check planning permission / assessment tax';
 }
 
 function mpkShowPopup(p, lngLat) {
@@ -538,16 +544,16 @@ function mpkShowPopup(p, lngLat) {
       <div class="popup-name">${p.plus_code}</div>
     </div>
     <div class="popup-body">
-      ${row('Kawasan', MPK_AREAS[p.kawasan].short)}
-      ${p.kategori === 'luar' ? row('Jarak dari sempadan', p.jarak_m + ' m') : ''}
-      ${p.kategori === 'koridor' ? row('Jarak dari garis tengah jalan',
-        p.jarak_jalan_m == null ? 'tiada data jalan' : p.jarak_jalan_m + ' m') : ''}
-      ${row('No. Lot', p.lot || 'tiada lot kadaster')}
+      ${row('Area', MPK_AREAS[p.kawasan].short)}
+      ${p.kategori === 'luar' ? row('Distance from boundary', p.jarak_m + ' m') : ''}
+      ${p.kategori === 'koridor' ? row('Distance from road centreline',
+        p.jarak_jalan_m == null ? 'no road data' : p.jarak_jalan_m + ' m') : ''}
+      ${row('Lot no.', p.lot || 'no cadastral lot')}
       ${p.upi ? row('UPI', p.upi) : ''}
-      ${row('Keluasan', mpkNum(p.area_m2) + ' m²')}
-      ${row('Keyakinan AI', Math.round(p.confidence * 100) + '%')}
-      ${jenis ? row('Anggaran fee proses', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
-      ${jenis ? row('Anggaran Cukai Pintu', mpkRM(p.area_m2 * MPK.rates.cukai) + '/thn') : ''}
+      ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
+      ${row('AI confidence', Math.round(p.confidence * 100) + '%')}
+      ${jenis ? row('Est. processing fee', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
+      ${jenis ? row('Est. assessment tax', mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr') : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '290px' }).setLngLat(lngLat).setHTML(html).addTo(map);
@@ -563,15 +569,15 @@ function mpkZoomTo(id) {
 
 function mpkExportCSV() {
   const s = MPK.lastStats;
-  if (!s || !s.count) { showToast('⚠️ Tiada binaan disyaki untuk dieksport'); return; }
+  if (!s || !s.count) { showToast('⚠️ No suspected buildings to export'); return; }
   const blob = new Blob(['﻿' + mpkCSV(s.suspects, MPK.rates, MPK.settings)], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'mpk_binaan_disyaki_' + MPK.area + '.csv';
+  a.download = 'mpk_suspected_buildings_' + (MPK_CSV_AREA[MPK.area] || 'all_areas') + '.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  showToast('📄 ' + mpkNum(s.count) + ' binaan disyaki dieksport');
-  addActivityLog('Export CSV MPK', mpkNum(s.count) + ' binaan · ' + (MPK_AREAS[MPK.area]?.short || 'Semua kawasan'));
+  showToast('📄 ' + mpkNum(s.count) + ' suspected buildings exported');
+  addActivityLog('MPK CSV export', mpkNum(s.count) + ' buildings · ' + (MPK_AREAS[MPK.area]?.short || 'All areas'));
 }

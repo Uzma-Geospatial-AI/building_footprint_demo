@@ -588,7 +588,7 @@
   }
   @media (max-width: 720px) {
     :root { --sidebar-w: 132px; --panel-w: 214px; }
-    /* Search ambil baris penuh sendiri supaya butang tak terhimpit */
+    /* Search takes a full row of its own so the buttons are not squeezed */
     .topbar-spacer { display: none; }
     .topbar-search { flex: 1 1 100%; width: auto; order: 5; }
     .topbar-title { max-width: 160px; font-size: 14px; }
@@ -696,7 +696,7 @@
       <input id="search-input" type="text" placeholder="Search address, sub-district, lot..." autocomplete="off"/>
       <div id="search-dropdown" class="search-dd"></div>
     </div>
-    <select id="area-mode" class="area-mode-select" onchange="mpkSetMode(this.value)" title="Kawasan" aria-label="Kawasan">
+    <select id="area-mode" class="area-mode-select" onchange="mpkSetMode(this.value)" title="Area" aria-label="Area">
       <option value="seremban">Seremban</option>
       <option value="mpk">MPK Kemaman</option>
     </select>
@@ -913,7 +913,7 @@
         <div class="ptab" onclick="switchTab(this,'layers')">Layers</div>
         <div class="ptab" onclick="switchTab(this,'roaddata')">Data</div>
         <div class="ptab" onclick="switchTab(this,'activity')">Activity</div>
-        <div class="ptab" id="ptab-mpk" style="display:none;" onclick="switchTab(this,'mpk')">Binaan Haram</div>
+        <div class="ptab" id="ptab-mpk" style="display:none;" onclick="switchTab(this,'mpk')">Illegal Construction</div>
       </div>
       <div class="panel-body">
 
@@ -1856,9 +1856,9 @@ function initMap(view) {
     pitch: view.pitch || 0,
     bearing: view.bearing || 0,
     maxZoom: 20
-    // NOTE: preserveDrawingBuffer sengaja DIMATIKAN untuk jimat memory GPU
-    // (elak WebGL context lost → skrin putih). Export PDF/PNG snapshot canvas
-    // secara on-demand dalam captureMapWithMarkers().
+    // NOTE: preserveDrawingBuffer is deliberately OFF to save GPU memory
+    // (avoids WebGL context loss → white screen). PDF/PNG export snapshots the canvas
+    // on demand in captureMapWithMarkers().
   });
   map.addControl(new maplibregl.NavigationControl(), 'top-right');
   map.on('click', onMapClick);
@@ -1872,19 +1872,19 @@ function initMap(view) {
     if (typeof mpkOnStyleLoad === 'function') mpkOnStyleLoad();
   });
 
-  // --- WebGL context-loss recovery: elak peta jadi putih kekal ---
+  // --- WebGL context-loss recovery: stop the map staying white for good ---
   const canvas = map.getCanvas();
   canvas.addEventListener('webglcontextlost', (e) => {
-    e.preventDefault(); // beritahu browser kita mahu event 'restored'
-    if (typeof showToast === 'function') showToast('⚠️ Paparan peta terganggu — memulihkan…');
+    e.preventDefault(); // tell the browser we want the 'restored' event
+    if (typeof showToast === 'function') showToast('⚠️ Map display interrupted — recovering…');
     if (_ctxLostTimer) clearTimeout(_ctxLostTimer);
-    // Fallback: kalau browser tak pulihkan context, bina semula peta.
+    // Fallback: if the browser does not restore the context, rebuild the map.
     _ctxLostTimer = setTimeout(rebuildMap, 4000);
   }, false);
   canvas.addEventListener('webglcontextrestored', () => {
     if (_ctxLostTimer) { clearTimeout(_ctxLostTimer); _ctxLostTimer = null; }
     try { applyTerrain(); if (is3D) loadOSMBuildings(); } catch (err) {}
-    if (typeof showToast === 'function') showToast('✅ Peta dipulihkan');
+    if (typeof showToast === 'function') showToast('✅ Map restored');
   }, false);
 }
 
