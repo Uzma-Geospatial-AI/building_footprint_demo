@@ -8,58 +8,52 @@ const f = (id, kawasan, kategori, extra, area_m2) => ({
 });
 const feats = [
   f(1, 'tk', 'lulus', { dalam: true, lot: '100' }, 100),
-  f(2, 'tk', 'tiada_lot', { dalam: true, lot: '52497', upi: '11030800052497' }, 50),
-  f(3, 'tk', 'luar', { jarak_m: 600 }, 200),
-  f(4, 'tk', 'luar', { jarak_m: 500 }, 30),
+  f(2, 'tk', 'mockup', { dalam: true, lot: '52497', upi: '11030800052497' }, 50),   // API is_mockup building
+  f(3, 'tk', 'luar', { jarak_m: 200 }, 200),       // Teluk Kalong rules no longer flag anything
+  f(4, 'tk', 'tiada_lot', { dalam: true }, 30),
   f(5, 'bpb', 'koridor', { jarak_jalan_m: 8.5 }, 70),
   f(6, 'bpb', 'koridor', { jarak_jalan_m: 12 }, 90),
   f(7, 'bbc', 'koridor', { jarak_jalan_m: null }, 40),
-  f(8, 'tk', 'lulus', { dalam: true }, 20),        // inside, on approved lot, but no cadastral lot
-  f(9, 'tk', 'tiada_lot', { dalam: true }, 10),    // inside, no lot of either kind
-  f(10, 'tk', 'lulus', {}, 15),                    // outside the boundary: no cadastral coverage
+  f(8, 'tk', 'mockup', {}, 20),
 ];
-const s = { buffer: 500, rizab: 10 };
+const s = { rizab: 10 };
 const rates = { fee: 2, cukai: 6 };
 
-// jenis (suspect type) per building
+// jenis (suspect type) per building: Teluk Kalong = the API mockup list, corridors = road reserve
 assert.deepStrictEqual(feats.map(x => mpkJenis(x.properties, s)),
-  [null, 'tiada_lot', null, 'luar_sempadan', 'rizab', null, null, 'tiada_kadaster', 'tiada_kadaster', null]);
-assert.strictEqual(mpkJenis(feats[5].properties, { buffer: 500, rizab: 12 }), 'rizab');
+  [null, 'mockup', null, null, 'rizab', null, null, 'mockup']);
+assert.strictEqual(mpkJenis(feats[5].properties, { rizab: 12 }), 'rizab');
 
 // stats, all areas
 const all = mpkStats(feats, s, rates, 'all');
-assert.strictEqual(all.total, 10);
-assert.strictEqual(all.lulus, 3);
-assert.strictEqual(all.count, 5);
-assert.strictEqual(all.area, 180);
-assert.deepStrictEqual(all.byJenis, { tiada_kadaster: 2, tiada_lot: 1, luar_sempadan: 1, rizab: 1 });
-assert.strictEqual(all.fee, 360);
-assert.strictEqual(all.cukai, 1080);
-assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 4, 8, 9]);   // largest first
+assert.strictEqual(all.total, 8);
+assert.strictEqual(all.lulus, 1);
+assert.strictEqual(all.count, 3);
+assert.strictEqual(all.area, 140);
+assert.deepStrictEqual(all.byJenis, { mockup: 2, rizab: 1 });
+assert.strictEqual(all.fee, 280);
+assert.strictEqual(all.cukai, 840);
+assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 8]);   // largest first
 
 // stats, one area
 const bpb = mpkStats(feats, s, rates, 'bpb');
 assert.strictEqual(bpb.total, 2);
 assert.strictEqual(bpb.count, 1);
-assert.deepStrictEqual(bpb.byJenis, { tiada_kadaster: 0, tiada_lot: 0, luar_sempadan: 0, rizab: 1 });
+assert.deepStrictEqual(bpb.byJenis, { mockup: 0, rizab: 1 });
 
 // map filter mirrors mpkJenis
 assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
-  ['all', ['==', ['get', 'dalam'], true], ['!', ['has', 'lot']]],
-  ['==', ['get', 'kategori'], 'tiada_lot'],
-  ['all', ['==', ['get', 'kategori'], 'luar'], ['<=', ['get', 'jarak_m'], 500]],
+  ['==', ['get', 'kategori'], 'mockup'],
   ['all', ['==', ['get', 'kategori'], 'koridor'],
     ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], 10]],
 ]);
 
 // CSV (English header and codes for the people who receive the export)
 const csv = mpkCSV(all.suspects, rates, s).trim().split('\n');
-assert.strictEqual(csv.length, 6);
+assert.strictEqual(csv.length, 4);
 assert.strictEqual(csv[0], 'id,area,type,plus_code,lng,lat,distance_m,area_m2,confidence,lot,upi,est_processing_fee_rm,est_annual_assessment_tax_rm');
 assert.strictEqual(csv[1], '5,bandar_putra_berenjut,road_reserve,X5,103.4,4.2,8.5,70,0.8,,,140.00,420.00');
-assert.strictEqual(csv[2], '2,teluk_kalong,no_approved_lot,X2,103.4,4.2,,50,0.8,52497,11030800052497,100.00,300.00');
-assert.strictEqual(csv[3], '4,teluk_kalong,outside_boundary,X4,103.4,4.2,500,30,0.8,,,60.00,180.00');
-assert.strictEqual(csv[4], '8,teluk_kalong,no_cadastral_lot,X8,103.4,4.2,,20,0.8,,,40.00,120.00');
+assert.strictEqual(csv[2], '2,teluk_kalong,suspected_list,X2,103.4,4.2,,50,0.8,52497,11030800052497,100.00,300.00');
 
 // Wayback helpers
 assert.strictEqual(mpkMonthLabel('2024-08-30'), 'Aug 2024');

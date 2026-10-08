@@ -9,24 +9,19 @@
 // ============================================================
 
 // ---------- Pure logic (also exported for tools/test_mpk_logic.js) ----------
-// Suspect type of one building under the current settings {buffer, rizab}, or null.
+// Suspect type of one building under the current settings {rizab}, or null.
+// Teluk Kalong: the buildings flagged is_mockup in the Uzma/MPK building API (kategori
+// 'mockup'). Corridors: buildings within the road-reserve distance of the centreline.
 function mpkJenis(p, s) {
-  // Inside the Teluk Kalong boundary the cadastral data is complete: no lot = state land / reserve
-  if (p.dalam && !p.lot) return 'tiada_kadaster';
-  if (p.kategori === 'tiada_lot') return 'tiada_lot';
-  if (p.kategori === 'luar' && p.jarak_m <= s.buffer) return 'luar_sempadan';
+  if (p.kategori === 'mockup') return 'mockup';
   if (p.kategori === 'koridor' && p.jarak_jalan_m != null && p.jarak_jalan_m <= s.rizab) return 'rizab';
   return null;
 }
 
-const MPK_NO_CADASTRAL = ['all', ['==', ['get', 'dalam'], true], ['!', ['has', 'lot']]];
-
 // MapLibre filter equivalent of mpkJenis(...) !== null
 function mpkSuspectFilter(s) {
   return ['any',
-    MPK_NO_CADASTRAL,
-    ['==', ['get', 'kategori'], 'tiada_lot'],
-    ['all', ['==', ['get', 'kategori'], 'luar'], ['<=', ['get', 'jarak_m'], s.buffer]],
+    ['==', ['get', 'kategori'], 'mockup'],
     ['all', ['==', ['get', 'kategori'], 'koridor'],
       ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], s.rizab]],
   ];
@@ -34,7 +29,7 @@ function mpkSuspectFilter(s) {
 
 function mpkStats(features, s, rates, kawasan) {
   const feats = kawasan === 'all' ? features : features.filter(f => f.properties.kawasan === kawasan);
-  const byJenis = { tiada_kadaster: 0, tiada_lot: 0, luar_sempadan: 0, rizab: 0 };
+  const byJenis = { mockup: 0, rizab: 0 };
   const suspects = [];
   let lulus = 0;
   for (const f of feats) {
@@ -50,14 +45,13 @@ function mpkStats(features, s, rates, kawasan) {
 
 // English codes written to the CSV export
 const MPK_CSV_AREA = { tk: 'teluk_kalong', bpb: 'bandar_putra_berenjut', bbc: 'binjai_bandar_chukai' };
-const MPK_CSV_TYPE = { tiada_kadaster: 'no_cadastral_lot', tiada_lot: 'no_approved_lot',
-                       luar_sempadan: 'outside_boundary', rizab: 'road_reserve' };
+const MPK_CSV_TYPE = { mockup: 'suspected_list', rizab: 'road_reserve' };
 
 function mpkCSV(suspects, rates, s) {
   const header = 'id,area,type,plus_code,lng,lat,distance_m,area_m2,confidence,lot,upi,est_processing_fee_rm,est_annual_assessment_tax_rm';
   const rows = suspects.map(f => {
     const p = f.properties, jenis = mpkJenis(p, s);
-    const jarak = jenis === 'luar_sempadan' ? p.jarak_m : jenis === 'rizab' ? p.jarak_jalan_m : '';
+    const jarak = jenis === 'rizab' ? p.jarak_jalan_m : '';
     return [p.id, MPK_CSV_AREA[p.kawasan], MPK_CSV_TYPE[jenis], p.plus_code, p.lng, p.lat, jarak, p.area_m2, p.confidence, p.lot || '', p.upi || '',
       (p.area_m2 * rates.fee).toFixed(2), (p.area_m2 * rates.cukai).toFixed(2)].join(',');
   });
@@ -186,9 +180,7 @@ const MPK_AREAS = {
 // the type is given in the popup, the list and the CSV.
 const MPK_SUSPECT_COLOR = '#e53935';
 const MPK_JENIS = {
-  tiada_kadaster: { label: 'Inside boundary, no cadastral lot', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
-  tiada_lot:     { label: 'Inside boundary, no approved lot', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
-  luar_sempadan: { label: 'Outside planning boundary (within buffer)', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
+  mockup:        { label: 'Suspected building (Teluk Kalong list)', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
   rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bpb', 'bbc'] },
 };
 
@@ -207,7 +199,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261009a',
+  VERSION: '20261009b',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -228,7 +220,7 @@ const MPK = {
   active: false,
   data: null,
   bounds: null,
-  settings: { buffer: 500, rizab: 10 },
+  settings: { rizab: 10 },
   area: 'all',
   layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, true])),
   rates: null,
@@ -542,15 +534,6 @@ function mpkBuildPanel() {
 ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
 
     <div class="mpk-card">
-      <div id="mpk-ctl-buffer">
-        <div class="mpk-row">
-          <label for="mpk-buffer" class="mpk-label">Buffer outside the boundary (Teluk Kalong)</label>
-          <span class="mpk-slider-val" id="mpk-buffer-val"></span>
-        </div>
-        <input type="range" id="mpk-buffer" class="mpk-range" min="100" max="1000" step="50"
-          value="${MPK.settings.buffer}" oninput="mpkOnSetting('buffer', this.value)">
-        <div class="mpk-range-scale"><span>100 m</span><span>1 km</span></div>
-      </div>
       <div id="mpk-ctl-rizab">
         <div class="mpk-row">
           <label for="mpk-rizab" class="mpk-label">Road reserve from centreline (corridors)</label>
@@ -591,7 +574,8 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
     </div>
     <div class="mpk-list" id="mpk-list"></div>
 
-    <div class="mpk-note">Buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
+    <div class="mpk-note">Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
+      (buildings_industri.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
       road centrelines from OpenStreetMap; cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
       Every case needs site verification.</div>
   `;
@@ -600,10 +584,8 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
 function mpkSelectArea(area) {
   MPK.area = area;
   document.querySelectorAll('.mpk-chip').forEach(c => c.classList.toggle('active', c.dataset.area === area));
-  const showTk = area === 'all' || area === 'tk';
   const showKoridor = area === 'all' || area === 'bpb' || area === 'bbc';
-  document.getElementById('mpk-ctl-buffer').style.display = showTk ? '' : 'none';
-  document.getElementById('mpk-ctl-rizab').style.display = showKoridor ? '' : 'none';
+  document.getElementById('mpk-ctl-rizab').closest('.mpk-card').style.display = showKoridor ? '' : 'none';
   Object.entries(MPK_JENIS).forEach(([k, j]) => {
     document.getElementById('mpk-jenis-' + k).style.display =
       area === 'all' || j.areas.includes(area) ? '' : 'none';
@@ -624,7 +606,6 @@ function mpkRender() {
   if (!MPK.data) return;
   const s = mpkStats(MPK.data.buildings.features, MPK.settings, MPK.rates, MPK.area);
   MPK.lastStats = s;
-  document.getElementById('mpk-buffer-val').textContent = MPK.settings.buffer + ' m';
   document.getElementById('mpk-rizab-val').textContent = MPK.settings.rizab + ' m';
   document.getElementById('mpk-k-count').textContent = mpkNum(s.count);
   document.getElementById('mpk-k-area').textContent = mpkNum(s.area);
@@ -678,7 +659,8 @@ function mpkOnRate() {
 function mpkStatusText(p, jenis) {
   if (jenis) return 'Suspected · ' + MPK_JENIS[jenis].label;
   if (p.kategori === 'lulus') return 'On an approved lot';
-  if (p.kategori === 'luar') return 'Outside boundary, beyond the buffer';
+  if (p.kategori === 'luar') return 'Outside the planning boundary';
+  if (p.kawasan === 'tk') return 'Inside the planning boundary · not on the suspected list';
   return 'In corridor · check planning permission / assessment tax';
 }
 

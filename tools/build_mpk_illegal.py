@@ -16,6 +16,8 @@ Three study areas from MPK:
        those within the road-reserve slider as encroaching.
 
 Every building whose centroid falls on an NDCDB cadastral lot also gets lot / upi.
+The API's `is_mockup` buildings (buildings_industri.geojson) are added to Teluk Kalong as
+kategori 'mockup': these are the suspected buildings shown for Teluk Kalong.
 
 Writes mpk/mpk_buildings.geojson, mpk/koridor_jalan.geojson and mpk/lot_kadaster.geojson.
 Pure Python stdlib.
@@ -37,6 +39,10 @@ import urllib.request
 
 OPEN_BUILDINGS_URL = ('https://storage.googleapis.com/open-buildings-data/v3/'
                       'polygons_s2_level_4_gzip/31d_buildings.csv.gz')
+# Uzma/MPK building API: the buildings flagged `is_mockup` are THE suspected buildings of
+# Teluk Kalong for the MPK mockup (replacing the rule-based Teluk Kalong flags)
+API_BUILDINGS_URL = ('https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/'
+                     'building/buildings_industri.geojson')
 LOTS_URL = ('https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/'
             'building/lots_sempadan_industri_kemaman.geojson')   # NDCDB cadastral lots
 OVERPASS_URLS = ['https://overpass-api.de/api/interpreter',
@@ -70,8 +76,9 @@ CORRIDORS = {
 }
 
 # Regression checks for the current inputs; update deliberately when inputs change.
-EXPECTED = {'tk': 8740, 'bpb': 451, 'bbc': 1593}
+EXPECTED = {'tk': 8777, 'bpb': 451, 'bbc': 1593}
 EXPECTED_LOTS = 4122
+EXPECTED_MOCKUP = 49
 
 KX = 111320 * math.cos(math.radians(4.24))   # metres per degree, local equirectangular
 KY = 110574
@@ -253,6 +260,7 @@ def main():
     ap.add_argument('--csv', help='pre-filtered Open Buildings CSV (skips the download)')
     ap.add_argument('--osm', help='Overpass JSON with the road ways (skips the query)')
     ap.add_argument('--lots', help='cadastral lots GeoJSON (skips the download)')
+    ap.add_argument('--api', help='API buildings GeoJSON (skips the download)')
     args = ap.parse_args()
 
     tk_boundary = load_ring_file('tk_sempadan.geojson')
@@ -331,6 +339,42 @@ def main():
             props['upi'] = lots[lot_i]['properties']['upi']
         features.append({'type': 'Feature', 'properties': props,
                          'geometry': {'type': 'Polygon', 'coordinates': [parse_polygon_wkt(row['geometry'])]}})
+
+    # Suspected buildings of Teluk Kalong = the API's is_mockup buildings. They are added as
+    # kategori 'mockup'; an Open Buildings footprint they cover is dropped (no double drawing).
+    if args.api:
+        with open(args.api, encoding='utf-8') as f:
+            api = json.load(f)
+    else:
+        with urllib.request.urlopen(API_BUILDINGS_URL) as r:
+            api = json.load(r)
+    mockups = [f for f in api['features'] if f['properties'].get('is_mockup') is True]
+    mock_rings = Polygons([[to_m(*p) for p in f['geometry']['coordinates'][0]] for f in mockups])
+    before = len(features)
+    features = [f for f in features if not (f['properties']['kawasan'] == 'tk' and
+                mock_rings.contains(*to_m(f['properties']['lng'], f['properties']['lat'])))]
+    replaced = before - len(features)
+    counts['tk'] -= replaced
+    next_id = max(f['properties']['id'] for f in features) + 1
+    for k, f in enumerate(mockups):
+        ring = [[round(a, 6), round(b, 6)] for a, b in f['geometry']['coordinates'][0]]
+        lng = sum(p[0] for p in ring[:-1]) / (len(ring) - 1)
+        lat = sum(p[1] for p in ring[:-1]) / (len(ring) - 1)
+        x, y = to_m(lng, lat)
+        p = f['properties']
+        props = {'kawasan': 'tk', 'kategori': 'mockup', 'id': next_id + k, 'api_fid': p.get('fid'),
+                 'area_m2': round(float(p['area_in_meters']), 1), 'confidence': round(float(p['confidence']), 2),
+                 'plus_code': p['full_plus_code'], 'lng': round(lng, 6), 'lat': round(lat, 6)}
+        if tk_inside.contains(x, y):
+            props['dalam'] = True
+        lot_i = lot_index.find(x, y)
+        if lot_i is not None:
+            props['lot'] = lots[lot_i]['properties']['lot']
+            props['upi'] = lots[lot_i]['properties']['upi']
+        features.append({'type': 'Feature', 'properties': props, 'geometry': {'type': 'Polygon', 'coordinates': [ring]}})
+    counts['tk'] += len(mockups)
+    print(f'API mockup buildings: {len(mockups)} added as suspected, {replaced} overlapping footprints replaced')
+    assert len(mockups) == EXPECTED_MOCKUP, f'{len(mockups)} is_mockup buildings, expected {EXPECTED_MOCKUP}'
 
     by_cat = {}
     for f in features:

@@ -123,7 +123,7 @@ Three study areas from MPK, selectable as chips in the **Illegal Construction** 
 
 | Area | Flagged as suspected |
 |---|---|
-| Kawasan Industri Teluk Kalong | inside the PBT boundary on no NDCDB cadastral lot (state land / reserve); inside the boundary on no approved lot; or outside the boundary within the buffer slider (100–1000 m) |
+| Kawasan Industri Teluk Kalong | the buildings flagged `is_mockup` in the [building API](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/buildings_industri.geojson) (49 buildings) — the MPK mockup list |
 | Koridor Bandar Putra – Berenjut | buildings within the road-reserve slider (3–20 m) of the road centreline |
 | Koridor Binjai – Bandar Chukai | same as above |
 
@@ -179,7 +179,7 @@ place names in Kemaman via OpenStreetMap Nominatim.
   coordinates printed on the map; ~6 px ≈ 60 m mean residual)
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
-- `mpk_buildings.geojson` — Google Open Buildings v3, classified per area
+- `mpk_buildings.geojson` — Google Open Buildings v3, classified per area, plus the API's `is_mockup` buildings (kategori `mockup`) for Teluk Kalong
 - `wayback.json` — distinct Esri Wayback images per area, built by `tools/build_wayback.py`
 - `sentinel.json` — least-cloudy Sentinel-2 scene per area and month, built by `tools/build_sentinel.py`
 - `landsat.json` — least-cloudy Landsat scene per area and month, built by `tools/build_landsat.py`
