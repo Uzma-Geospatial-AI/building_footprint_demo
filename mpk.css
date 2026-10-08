@@ -173,3 +173,5 @@ body:not(.mpk-mode) .mpk-search { display:none !important; }
 .mpk-cd-dots { display:flex; gap:2px; width:28px; flex-shrink:0; flex-wrap:wrap; }
 .mpk-cd-dots .mpk-dot { width:8px; height:8px; border-radius:2px; display:inline-block; }
 .mpk-meta .danger { color:var(--red); font-weight:600; }
+.mpk-layers .sw.landuse { background:linear-gradient(135deg,#8E63CE 0 33%,#F2C744 33% 66%,#E58A3A 66%); }
+.mpk-layers .sw.district { height:0; width:16px; border-top:2.5px dashed #1E2C44; border-radius:0; }

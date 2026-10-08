@@ -176,6 +176,15 @@ place names in Kemaman via OpenStreetMap Nominatim, and coordinates — decimal 
 either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 (`4°16'05"N 103°27'07"E`); a pin marks the point.
 
+**Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
+for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,
+recreation, agriculture, forest, water, under development) plus the district boundary. Click a
+zone for its class and name; building popups show the zone they stand in. This is
+community-mapped and incomplete — not the official RTD zoning (PLANMalaysia i-Plan
+`gunatanah_zoning_terengganu`), which should replace `mpk/landuse.geojson` when MPK provides it.
+No open dataset of actual illegal-construction cases exists for Terengganu; those records sit
+with each council.
+
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
 - `tk_sempadan.geojson`, `tk_lot_lulus.geojson` — Teluk Kalong boundary and approved lots,
@@ -184,6 +193,7 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
 - `mpk_buildings.geojson` — Google Open Buildings v3, classified per area, plus the API's `is_mockup` buildings (kategori `mockup`) for Teluk Kalong
+- `landuse.geojson` — OSM land-use zones + district boundary for Kemaman, built by `tools/build_landuse.py`
 - `wayback.json` — distinct Esri Wayback images per area, built by `tools/build_wayback.py`
 - `sentinel.json` — least-cloudy Sentinel-2 scene per area and month, built by `tools/build_sentinel.py`
 - `landsat.json` — least-cloudy Landsat scene per area and month, built by `tools/build_landsat.py`
@@ -193,6 +203,7 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 ```bash
 python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
+python tools/build_landuse.py                                          # stdlib; OSM land use for Kemaman (Overpass)
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)
 python tools/build_landsat.py                                          # stdlib; cloud check on ~3,000 Landsat scenes

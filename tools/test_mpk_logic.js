@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
   mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
-  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords } = require('../mpk.js');
+  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords, mpkZoneAt } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -141,5 +141,19 @@ assert.strictEqual(mpkParseCoords('1328'), null);                     // a lot n
 assert.strictEqual(mpkParseCoords('Jalan Kemaman'), null);
 assert.strictEqual(mpkParseCoords('95, 200'), null);                  // out of range
 assert.strictEqual(mpkParseCoords(`5.80528; 5'56'`), null);           // incomplete
+
+// Land-use zone under a point: the smallest zone that contains it (a park inside a housing
+// estate wins); the district outline is not a zone
+const sqz = (zone, w, s2, e, n, extra = {}) => ({ properties: { zone, ...extra },
+  geometry: { type: 'Polygon', coordinates: [[[w, s2], [e, s2], [e, n], [w, n], [w, s2]]] } });
+const zones = [sqz('district', 0, 0, 10, 10), sqz('residential', 1, 1, 5, 5, { name: 'Taman A' }),
+               sqz('recreation', 2, 2, 3, 3), sqz('industrial', 6, 6, 9, 9)];
+assert.strictEqual(mpkZoneAt(4, 4, zones).properties.name, 'Taman A');
+assert.strictEqual(mpkZoneAt(2.5, 2.5, zones).properties.zone, 'recreation');
+assert.strictEqual(mpkZoneAt(7, 7, zones).properties.zone, 'industrial');
+assert.strictEqual(mpkZoneAt(5.5, 9.5, zones), null);
+const multi = { properties: { zone: 'commercial' }, geometry: { type: 'MultiPolygon',
+  coordinates: [[[[20, 20], [21, 20], [21, 21], [20, 21], [20, 20]]], [[[30, 30], [31, 30], [31, 31], [30, 31], [30, 30]]]] } };
+assert.strictEqual(mpkZoneAt(30.5, 30.5, [multi]).properties.zone, 'commercial');
 
 console.log('mpk logic: all tests passed');

@@ -141,6 +141,31 @@ function mpkImagerySource(entry) {
              + '&color_formula=gamma%20RGB%202.7%2C%20saturation%201.5%2C%20sigmoidal%20RGB%2015%200.55'] };
 }
 
+// Land-use zone (mpk/landuse.geojson feature) under a point: the smallest containing zone,
+// so a park inside a housing estate wins; the district outline is not a zone. null if none.
+function mpkZoneAt(lng, lat, features) {
+  const inRing = ring => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const area = ring => Math.abs(ring.reduce((a, p, i) => { const q = ring[(i + 1) % ring.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+  let best = null, bestArea = Infinity;
+  for (const f of features) {
+    if (f.properties.zone === 'district') continue;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const rings of polys) {
+      if (inRing(rings[0]) && !rings.slice(1).some(inRing) && area(rings[0]) < bestArea) {
+        best = f; bestArea = area(rings[0]);
+      }
+    }
+  }
+  return best;
+}
+
 // A coordinate typed in the search box -> { lat, lng }, or null. Accepts decimal degrees
 // ("4.2681, 103.452", either order, any of , ; or space between) and degrees-minutes(-seconds)
 // with hemisphere letters ("4°16'05"N 103°27'07"E", "4 16 05 N 103 27 07 E", "N4°16.08' E103°27.12'").
@@ -202,7 +227,7 @@ function mpkSearchLocal(query, areas, lots, buildings, limit = 6) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkParseCoords, mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+  module.exports = { mpkZoneAt, mpkParseCoords, mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
                      mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
                      mpkYearBest, mpkEsriImages };
 }
@@ -221,6 +246,19 @@ const MPK_JENIS = {
   rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bpb', 'bbc'] },
 };
 
+// Land-use classes of mpk/landuse.geojson (OpenStreetMap, grouped by tools/build_landuse.py)
+const MPK_ZONES = {
+  industrial:    { label: 'Industrial', color: '#8E63CE' },
+  residential:   { label: 'Residential', color: '#F2C744' },
+  commercial:    { label: 'Commercial', color: '#E58A3A' },
+  institutional: { label: 'Institutional', color: '#4A90D9' },
+  recreation:    { label: 'Recreation / open space', color: '#7BC67B' },
+  agriculture:   { label: 'Agriculture', color: '#B9D46A' },
+  forest:        { label: 'Forest', color: '#2E7D32' },
+  water:         { label: 'Water body', color: '#4FC3F7' },
+  development:   { label: 'Under development', color: '#A1887F' },
+};
+
 // Map layers the viewer can switch on/off from the panel, in display order.
 const MPK_LAYER_GROUPS = {
   suspect:   { label: 'Suspected buildings', swatch: [MPK_SUSPECT_COLOR],
@@ -231,12 +269,15 @@ const MPK_LAYER_GROUPS = {
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
                legend: [['On approved lot', '#7CB342'], ['Other building', '#B0BEC5'], ['Approved lot', '.lot'],
                         ['Cadastral lot', '.kadaster'], ['Planning boundary', '.line'], ['Study corridor', '.band']] },
+  landuse:   { label: 'Land use · Kemaman (OSM)', swatchClass: 'landuse',
+               layers: ['mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line'],
+               legend: [...Object.values(MPK_ZONES).map(z => [z.label, z.color]), ['District boundary', '.district']] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261009c',
+  VERSION: '20261009d',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -245,14 +286,14 @@ const MPK = {
     roads: 'mpk/koridor_jalan.geojson',
   },
   // Optional imagery indexes: if one fails to load, only its imagery mode is hidden
-  OPTIONAL_FILES: { wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
+  OPTIONAL_FILES: { landuse: 'mpk/landuse.geojson', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
-  LAYERS: ['mpk-wayback-layer', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-base-fill', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line'],
-  SOURCES: ['mpk-wayback', 'mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SOURCES: ['mpk-wayback', 'mpk-landuse', 'mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -334,6 +375,18 @@ function mpkAddLayers() {
     map.addSource('mpk-buildings', { type: 'geojson', data: MPK.data.buildings });
     map.addSource('mpk-highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
+    if (MPK.data.landuse) {
+      // under every other MPK layer
+      map.addSource('mpk-landuse', { type: 'geojson', data: MPK.data.landuse });
+      const zoneColor = ['match', ['get', 'zone'], ...Object.entries(MPK_ZONES).flatMap(([k, z]) => [k, z.color]), '#9E9E9E'];
+      const notDistrict = ['!=', ['get', 'zone'], 'district'];
+      map.addLayer({ id: 'mpk-landuse-fill', type: 'fill', source: 'mpk-landuse', filter: notDistrict,
+        paint: { 'fill-color': zoneColor, 'fill-opacity': 0.3 } });
+      map.addLayer({ id: 'mpk-landuse-line', type: 'line', source: 'mpk-landuse', filter: notDistrict,
+        paint: { 'line-color': zoneColor, 'line-width': 1, 'line-opacity': 0.9 } });
+      map.addLayer({ id: 'mpk-district-line', type: 'line', source: 'mpk-landuse', filter: ['==', ['get', 'zone'], 'district'],
+        paint: { 'line-color': '#1E2C44', 'line-width': 2.5, 'line-dasharray': [4, 2, 1, 2] } });
+    }
     map.addLayer({ id: 'mpk-lot-fill', type: 'fill', source: 'mpk-lots',
       paint: { 'fill-color': '#8E24AA', 'fill-opacity': 0.22 } });
     map.addLayer({ id: 'mpk-lot-line', type: 'line', source: 'mpk-lots',
@@ -445,6 +498,13 @@ function mpkBindEvents() {
     });
     map.on('mouseenter', layer, () => { if (MPK.active) map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', layer, () => { if (MPK.active) map.getCanvas().style.cursor = 'grab'; });
+  });
+  // a land-use zone answers only where there is no building under the click
+  map.on('click', 'mpk-landuse-fill', e => {
+    if (!MPK.active || !e.features.length) return;
+    const onBuilding = map.queryRenderedFeatures(e.point, { layers: ['mpk-suspect-fill', 'mpk-base-fill']
+      .filter(id => map.getLayer(id)) }).length;
+    if (!onBuilding) mpkShowZonePopup(e.features[0].properties, e.lngLat);
   });
 }
 
@@ -612,7 +672,9 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
     </div>
     <div class="mpk-list" id="mpk-list"></div>
 
-    <div class="mpk-note">Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
+    <div class="mpk-note">Land use: OpenStreetMap landuse polygons for Kemaman district — community-mapped and
+      incomplete, not the official RTD zoning (PLANMalaysia i-Plan); to be replaced with MPK's zoning layer.
+      Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
       (buildings_industri.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
       road centrelines from OpenStreetMap; cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
       Every case needs site verification.</div>
@@ -702,6 +764,27 @@ function mpkStatusText(p, jenis) {
   return 'In corridor · check planning permission / assessment tax';
 }
 
+function mpkZoneLabel(zone) {
+  if (!zone) return 'not mapped';
+  const z = MPK_ZONES[zone.properties.zone];
+  return (z ? z.label : zone.properties.zone) + (zone.properties.name ? ' · ' + zone.properties.name : '');
+}
+
+function mpkShowZonePopup(zone, lngLat) {
+  const z = MPK_ZONES[zone.zone] || { label: zone.zone, color: '#9E9E9E' };
+  const html = `
+    <div class="popup-header" style="background:${z.color}">
+      <div class="popup-fc">Land use · OpenStreetMap (not official RTD zoning)</div>
+      <div class="popup-name">${zone.name || z.label}</div>
+    </div>
+    <div class="popup-body">
+      <div class="popup-row"><span class="popup-k">Class</span><span class="popup-v">${z.label}</span></div>
+      <div class="popup-row"><span class="popup-k">OSM tag</span><span class="popup-v">landuse=${zone.osm}</span></div>
+    </div>`;
+  if (MPK.popup) MPK.popup.remove();
+  MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+}
+
 function mpkShowPopup(p, lngLat) {
   const jenis = mpkJenis(p, MPK.settings);
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
@@ -712,6 +795,7 @@ function mpkShowPopup(p, lngLat) {
     </div>
     <div class="popup-body">
       ${row('Area', MPK_AREAS[p.kawasan].short)}
+      ${MPK.data.landuse ? row('Land use (OSM)', mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features))) : ''}
       ${p.kategori === 'luar' ? row('Distance from boundary', p.jarak_m + ' m') : ''}
       ${p.kategori === 'koridor' ? row('Distance from road centreline',
         p.jarak_jalan_m == null ? 'no road data' : p.jarak_jalan_m + ' m') : ''}
