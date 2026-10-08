@@ -35,7 +35,9 @@ Everything runs in the browser. There is no server, database or API key.
 ```
 building_footprint_demo/
 ├── index.html               # the entire dashboard (markup + styles + app logic)
-├── login.html               # gated sign-in page
+├── login/index.html         # gated sign-in page, served at /login/
+├── compare/index.html       # before/after swipe page, served at /compare/
+├── login.html, compare.html # redirects from the old addresses
 ├── uzma.js                  # POI / gazetteer + reference datasets
 ├── uzma-dashboard.css       # legacy standalone stylesheet
 ├── GeoAILogo.png            # brand mark
@@ -63,7 +65,7 @@ python -m http.server 8000
 npx serve .
 ```
 
-Then open http://localhost:8000/login.html
+Then open http://localhost:8000/login/
 
 > Opening `index.html` directly via `file://` will fail — browsers block
 > `fetch()` on the local GeoJSON under the file protocol.
@@ -74,7 +76,7 @@ The demo is gated by a single account. The email is
 `geospatial.ai@uzmagroup.com`; the password is **not** published here — ask one
 of the contacts in the sign-in page's support modal.
 
-`login.html` stores a salted SHA-256 digest of the password rather than the
+`login/index.html` stores a salted SHA-256 digest of the password rather than the
 plaintext, so neither the page source nor this repository contains it.
 
 > **This is obfuscation, not security.** The check runs in the browser, so it is
@@ -88,7 +90,7 @@ plaintext, so neither the page source nor this repository contains it.
 
 ```bash
 printf '%s' 'uzma-geoai::NEW_PASSWORD' | sha256sum
-# paste the hex into PASS_HASH in login.html
+# paste the hex into PASS_HASH in login/index.html
 ```
 
 …or set a `DEMO_PASSWORD` repository secret;
@@ -155,7 +157,7 @@ tick one or more things to detect (each becomes its own coloured layer with a sh
 checkbox, and the same layers appear on the Compare page) — *New buildings* (footprints on land that was green before and is built
 now, judged per footprint), *New built-up* (vegetation → hard surface), *Land cleared*
 (vegetation → bare) or *Vegetation gain* — then **Generate**. A switch hides the result to
-show the regular basemap, and **Compare ↗** opens `compare.html` in a new tab: a swipe
+show the regular basemap, and **Compare ↗** opens `/compare/` in a new tab: a swipe
 slider with Before on the left and After on the right (Google Satellite underneath). Index maps (NDVI, NDBI) for the area are
 fetched from Planetary Computer at native resolution, clouds masked (Sentinel-2 SCL +
 bright-blue test, Landsat bright-blue test), compared pixel by pixel in the browser and drawn
@@ -252,16 +254,18 @@ container. `.geojson` / `.geojsonn` are served as `application/json` so nginx gz
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on every push to `main` (or
 manually: *Actions → Deploy to EC2 → Run workflow*):
 
-1. optionally inject the `DEMO_PASSWORD` digest into `login.html` (see *Sign in*)
+1. optionally inject the `DEMO_PASSWORD` digest into `login/index.html` (see *Sign in*)
 2. rsync the repository to `/var/www/buildvision/`, excluding `.git`, `.github`, `docs/` and `tools/`
-3. check that `login.html` and `index.html` answer 200
+3. check that `/`, `/login/`, `/compare/` and the old `/login.html` redirect answer 200
 
 ```bash
 git push origin main
 ```
 
 The workflow needs the repository secrets `SSH_PRIVATE_KEY`, `SSH_HOST` and `SSH_USER`.
-To land visitors on the sign-in page first, link to `login.html` directly.
+To land visitors on the sign-in page first, link to `/login/` directly. Pages live in
+folders (`/login/`, `/compare/`) so addresses carry no file names; nginx serves each
+folder's `index.html` without any server change.
 
 ### Static hosts (S3, Netlify, Cloudflare Pages, Vercel)
 

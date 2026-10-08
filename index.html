@@ -7,13 +7,17 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>
+  /* Clean address: show "/" rather than "/index.html" */
+  if (/\/index\.html$/.test(location.pathname)) {
+    history.replaceState(null, '', location.pathname.replace(/index\.html$/, '') + location.search + location.hash);
+  }
   /* ── Auth guard: bounce to login if no active session ── */
   (function () {
     try {
       if (sessionStorage.getItem('uzma_auth') !== '1') {
-        window.location.replace('login.html');
+        window.location.replace('/login/');
       }
-    } catch (e) { window.location.replace('login.html'); }
+    } catch (e) { window.location.replace('/login/'); }
   })();
   function uzmaLogout() {
     try {
@@ -22,7 +26,7 @@
       sessionStorage.removeItem('uzma_role');
       sessionStorage.removeItem('uzma_email');
     } catch (e) {}
-    window.location.replace('login.html');
+    window.location.replace('/login/');
   }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">

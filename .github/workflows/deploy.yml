@@ -6,7 +6,7 @@ name: Deploy to EC2
 #
 # Optional: set a DEMO_PASSWORD repository secret to rotate the demo password at
 # deploy time instead of committing a new digest. If it is not set, the digest
-# already in login.html is deployed unchanged.
+# already in login/index.html is deployed unchanged.
 on:
   push:
     branches: [main]
@@ -34,18 +34,18 @@ jobs:
           DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
         run: |
           if [ -z "$DEMO_PASSWORD" ]; then
-            echo "DEMO_PASSWORD not set — keeping the digest committed in login.html"
+            echo "DEMO_PASSWORD not set — keeping the digest committed in login/index.html"
             exit 0
           fi
 
-          SALT=$(grep -oP "(?<=const PASS_SALT = ')[^']*" login.html)
+          SALT=$(grep -oP "(?<=const PASS_SALT = ')[^']*" login/index.html)
           HASH=$(printf '%s' "${SALT}${DEMO_PASSWORD}" | sha256sum | cut -d' ' -f1)
 
           # Replace the 64-hex digest in place. The password itself is never
           # written to disk or echoed to the log.
-          sed -i -E "s/(const PASS_HASH = ')[0-9a-f]{64}(')/\1${HASH}\2/" login.html
+          sed -i -E "s/(const PASS_HASH = ')[0-9a-f]{64}(')/\1${HASH}\2/" login/index.html
 
-          if ! grep -qE "const PASS_HASH = '${HASH}'" login.html; then
+          if ! grep -qE "const PASS_HASH = '${HASH}'" login/index.html; then
             echo "::error::Digest substitution failed — refusing to deploy a broken login"
             exit 1
           fi
@@ -75,7 +75,7 @@ jobs:
 
       - name: Health check
         run: |
-          for page in login.html index.html; do
+          for page in "" login/ compare/ login.html; do
             code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "https://buildvision.uzmadigitalearth.app/$page")
             echo "$page -> HTTP $code"
             [ "$code" = "200" ] || exit 1

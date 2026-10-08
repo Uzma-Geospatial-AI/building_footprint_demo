@@ -53,7 +53,7 @@ const state = { area: 'tk', before: { source: 's2', item: 'S2A_X', date: '2018-0
                 after: { source: 's2', item: 'S2B_Y', date: '2025-02-03', cloud: 0.5 },
                 center: [103.452, 4.268], zoom: 13.5 };
 const url = mpkCompareUrl(state);
-assert.ok(url.startsWith('compare.html?d='));
+assert.ok(url.startsWith('/compare/?d='));
 assert.deepStrictEqual(mpkCompareParse(url.slice(url.indexOf('?'))), state);
 assert.strictEqual(mpkCompareParse('?d=not-json'), null);
 assert.strictEqual(mpkCompareParse(''), null);

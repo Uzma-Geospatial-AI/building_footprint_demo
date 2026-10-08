@@ -297,9 +297,9 @@ function mpkResultMatches(result, state) {
   return result.area === state.area && !!same(result.before, state.before) && !!same(result.after, state.after);
 }
 
-// Link to the before/after swipe page (compare.html) carrying the whole comparison
+// Link to the before/after swipe page (/compare/) carrying the whole comparison
 function mpkCompareUrl(state) {
-  return 'compare.html?d=' + encodeURIComponent(JSON.stringify(state));
+  return '/compare/?d=' + encodeURIComponent(JSON.stringify(state));
 }
 
 function mpkCompareParse(search) {
@@ -854,7 +854,7 @@ function mpkChangeClear() {
   if (document.getElementById('mpk-cd-result')) mpkChangeRender();
 }
 
-// For compare.html (opened from this tab): the current result as plain data, or null.
+// For the /compare/ page (opened from this tab): the current result as plain data, or null.
 // Top-level consts are not window properties, so the compare page calls this function.
 function mpkChangeExport() {
   return MPK_CHANGE.result ? JSON.stringify({ result: MPK_CHANGE.result, shown: MPK_CHANGE.shown }) : null;
