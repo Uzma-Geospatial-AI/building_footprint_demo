@@ -81,21 +81,17 @@ const MPK_JENIS = {
 
 // Map layers the viewer can switch on/off from the panel, in display order.
 const MPK_LAYER_GROUPS = {
-  suspect:  { label: 'Suspected buildings', layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
-              swatch: Object.values(MPK_JENIS).map(j => j.color) },
-  base:     { label: 'Other buildings', layers: ['mpk-base-fill'], swatch: ['#7CB342', '#B0BEC5'],
-              hint: 'Green: on approved lot · Grey: other' },
-  lots:     { label: 'Approved lots', layers: ['mpk-lot-fill', 'mpk-lot-line'], swatchClass: 'lot' },
-  kadaster: { label: 'Cadastral lots (NDCDB)', layers: ['mpk-kadaster-line'], swatchClass: 'kadaster',
-              hint: 'Lot no. & UPI shown in building popup' },
-  boundary: { label: 'Planning boundary', layers: ['mpk-boundary-fill', 'mpk-boundary-line'], swatchClass: 'line' },
-  koridor:  { label: 'Study corridor', layers: ['mpk-koridor-band', 'mpk-koridor-line'], swatchClass: 'band' },
+  suspect:   { label: 'Suspected buildings', swatch: [MPK_JENIS.tiada_lot.color],
+               layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'] },
+  reference: { label: 'Reference layers', swatchClass: 'line',
+               layers: ['mpk-base-fill', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill',
+                        'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008a',
+  VERSION: '20261008b',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
