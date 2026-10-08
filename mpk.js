@@ -128,17 +128,20 @@ function mpkEsriImages(history, area) {
 }
 
 // Raster source for one imagery entry (Esri, Sentinel-2 or Landsat), or null when none.
+// maxView is the deepest map zoom where the sensor still looks sharp: one screen pixel per
+// sensor pixel (10 m Sentinel-2 ~ z14, 30 m Landsat ~ z12); null means no cap.
 // kind changes the source settings (max zoom, credit), so it must be rebuilt per kind.
 function mpkImagerySource(entry) {
   if (!entry || !entry.source) return null;
   if (entry.source === 'esri') {
-    return { kind: 'esri', tiles: [mpkWaybackTileUrl(entry.release)], maxzoom: 19, attribution: 'Esri World Imagery Wayback' };
+    return { kind: 'esri', tiles: [mpkWaybackTileUrl(entry.release)], maxzoom: 19, maxView: null,
+             attribution: 'Esri World Imagery Wayback' };
   }
   if (entry.source === 's2') {
-    return { kind: 's2', tiles: [mpkSentinelTileUrl(entry.item)], maxzoom: 16,
+    return { kind: 's2', tiles: [mpkSentinelTileUrl(entry.item)], maxzoom: 16, maxView: 14,
              attribution: 'Sentinel-2 (Copernicus) via Microsoft Planetary Computer' };
   }
-  return { kind: 'landsat', maxzoom: 15, attribution: 'Landsat (USGS/NASA) via Microsoft Planetary Computer',
+  return { kind: 'landsat', maxzoom: 15, maxView: 12, attribution: 'Landsat (USGS/NASA) via Microsoft Planetary Computer',
            tiles: ['https://planetarycomputer.microsoft.com/api/data/v1/item/tiles/WebMercatorQuad/{z}/{x}/{y}@1x'
              + '?collection=landsat-c2-l2&item=' + entry.item + '&assets=red&assets=green&assets=blue&nodata=0&format=png'
              + '&color_formula=gamma%20RGB%202.7%2C%20saturation%201.5%2C%20sigmoidal%20RGB%2015%200.55'] };
@@ -181,7 +184,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008j',
+  VERSION: '20261008l',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -446,6 +449,7 @@ function mpkExit() {
   MPK.active = false;
   document.body.classList.remove('mpk-mode');
   mpkWaybackStop();
+  mpkImageryZoomCap(null);
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
   mpkSetSerembanVisible(true);
@@ -778,6 +782,7 @@ function mpkWaybackIndex() {
 function mpkShowWaybackImagery() {
   if (!map || !MPK.wayback.src) return;
   const w = MPK.wayback, src = mpkImagerySource(mpkWaybackList()[mpkWaybackIndex()]);
+  mpkImageryZoomCap(src ? src.maxView : null);
   if (!src) {                                       // no usable image here: show none
     if (map.getLayer('mpk-wayback-layer')) map.setLayoutProperty('mpk-wayback-layer', 'visibility', 'none');
     return;
@@ -792,10 +797,20 @@ function mpkShowWaybackImagery() {
     map.addSource('mpk-wayback', { type: 'raster', tiles: src.tiles, tileSize: 256, maxzoom: src.maxzoom,
       attribution: src.attribution });
     // under every MPK overlay, above the basemap
-    map.addLayer({ id: 'mpk-wayback-layer', type: 'raster', source: 'mpk-wayback' },
+    // a little contrast lifts the haze of 10-30 m imagery; Esri photos are left as they are
+    map.addLayer({ id: 'mpk-wayback-layer', type: 'raster', source: 'mpk-wayback',
+      paint: src.kind === 'esri' ? {} : { 'raster-contrast': 0.15, 'raster-saturation': 0.1 } },
       map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
     w.kind = src.kind;
   } catch (e) {}                                    // style reloading — mpkAddLayers re-adds it
+}
+
+// Cap map zoom at the satellite's sharpest level (zooming out if needed); null releases it
+function mpkImageryZoomCap(maxView) {
+  if (!map) return;
+  const cap = maxView == null ? (currentBasemap === 'uzma-sat' ? UZMASAT_MAXZOOM : GLOBAL_MAXZOOM) : maxView;
+  map.setMaxZoom(cap);
+  if (map.getZoom() > cap) map.easeTo({ zoom: cap, duration: 600 });
 }
 
 function mpkHideWaybackImagery() {
@@ -819,6 +834,7 @@ function mpkToggleWayback() {
   } else {
     mpkWaybackStop();
     mpkHideWaybackImagery();
+    mpkImageryZoomCap(null);
   }
 }
 
@@ -889,7 +905,7 @@ function mpkWaybackRender() {
   date.textContent = mpkDayLabel(entry.date) + cloud;
   sub.textContent = w.view === 'image'
     ? `Image ${i + 1} of ${list.length} · ${area}`
-    : `Least-cloudy ${mpkSatName(entry)} image of ${period} · ${area}`;
+    : `Least-cloudy ${mpkSatName(entry)} image of ${period} · ${area} · zoom limited to keep it sharp`;
 }
 
 function mpkWaybackStep(d) {
