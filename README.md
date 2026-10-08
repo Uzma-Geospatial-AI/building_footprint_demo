@@ -135,6 +135,13 @@ buildings (click to zoom) and a CSV export. Labels always say "Suspected" — re
 site verification. "No cadastral lot" is only judged inside the boundary, where the lot
 data is meant to be complete; a gap in the NDCDB extract will show up as a false flag.
 
+**Historical imagery** (Esri World Imagery Wayback): a switch in the panel overlays past
+imagery under the MPK layers. *Imagery history* steps through every distinct image Esri has
+over the selected area (Teluk Kalong goes back to March 2007); *Last 12 months* shows the
+latest Esri release of each month, labelled with the real capture date. Esri updates an area
+only when new imagery arrives, so consecutive months often show the same picture. No free
+high-resolution imagery exists for Kemaman before 2007.
+
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
 - `tk_sempadan.geojson`, `tk_lot_lulus.geojson` — Teluk Kalong boundary and approved lots,
@@ -143,12 +150,14 @@ data is meant to be complete; a gap in the NDCDB extract will show up as a false
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
 - `mpk_buildings.geojson` — Google Open Buildings v3, classified per area
+- `wayback.json` — Wayback releases with the capture date per area, built by `tools/build_wayback.py`
 
 **Regenerate:**
 
 ```bash
 python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
+python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 node tools/test_mpk_logic.js                                           # pure-logic tests
 ```
 

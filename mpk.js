@@ -64,7 +64,40 @@ function mpkCSV(suspects, rates, s) {
   return [header, ...rows].join('\n') + '\n';
 }
 
-if (typeof module !== 'undefined') module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV };
+// ---------- Esri World Imagery Wayback helpers ----------
+const MPK_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// '2024-08-30' or '2024-08' -> 'Aug 2024'
+function mpkMonthLabel(d) {
+  const [y, m] = d.split('-');
+  return MPK_MONTH_NAMES[+m - 1] + ' ' + y;
+}
+
+function mpkWaybackTileUrl(release) {
+  return 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/'
+    + release + '/{z}/{y}/{x}';
+}
+
+// The entry whose imagery is shown at slider position i. A month with no Esri release keeps
+// the previous release on screen (or the next one when there is none before it).
+function mpkWaybackShown(list, i) {
+  for (let j = i; j >= 0; j--) if (list[j].release) return list[j];
+  for (let j = i + 1; j < list.length; j++) if (list[j].release) return list[j];
+  return null;
+}
+
+// Distinct images over one area, oldest capture first. A later release can fall back to an
+// older image, so de-duplicate by capture date and keep the first release that showed it.
+function mpkWaybackHistory(history, area) {
+  const byCapture = new Map();
+  for (const e of history) if (!byCapture.has(e.capture[area])) byCapture.set(e.capture[area], e);
+  return [...byCapture.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, e]) => e);
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl, mpkWaybackShown,
+                     mpkWaybackHistory };
+}
 
 // ---------- Browser mode ----------
 const MPK_AREAS = {
@@ -97,7 +130,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008d',
+  VERSION: '20261008f',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -105,13 +138,15 @@ const MPK = {
     kadaster: 'mpk/lot_kadaster.geojson',
     roads: 'mpk/koridor_jalan.geojson',
   },
+  // Optional: if it fails to load, only the historical-imagery card is hidden
+  WAYBACK_FILE: 'mpk/wayback.json',
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
-  LAYERS: ['mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-wayback-layer', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-base-fill', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line'],
-  SOURCES: ['mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SOURCES: ['mpk-wayback', 'mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -123,6 +158,8 @@ const MPK = {
   boundMap: null,
   prevTitle: null,
   popup: null,
+  // Esri Wayback viewer: mode 'history' (distinct images) or 'monthly' (last 12 months)
+  wayback: { on: false, mode: 'history', index: { history: null, monthly: null }, timer: null },
   lastStats: null,
 };
 
@@ -159,6 +196,12 @@ async function mpkEnsureData() {
     return [key, await res.json()];
   }));
   const data = Object.fromEntries(entries);
+  try {
+    const res = await fetch(MPK.WAYBACK_FILE + '?v=' + MPK.VERSION);
+    data.wayback = res.ok ? await res.json() : null;
+  } catch (e) {
+    data.wayback = null;
+  }
   const b = data.buildings.features;
   MPK.bounds = {
     all: mpkBoundsOf([...b, ...data.boundary.features, ...data.roads.features]),
@@ -218,6 +261,7 @@ function mpkAddLayers() {
     return false;
   }
   mpkApplyLayerVisibility();
+  if (MPK.wayback.on) mpkShowWaybackImagery();
   return true;
 }
 
@@ -347,6 +391,7 @@ function mpkExit() {
   if (!MPK.active) return;
   MPK.active = false;
   document.body.classList.remove('mpk-mode');
+  mpkWaybackStop();
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
   mpkSetSerembanVisible(true);
@@ -408,6 +453,31 @@ function mpkBuildPanel() {
     <div class="mpk-card mpk-layers">
       <div class="mpk-card-title">Map layers</div>
       ${layerRows}
+    </div>
+
+    <div class="mpk-card mpk-wayback"${MPK.data.wayback ? '' : ' hidden'}>
+      <div class="mpk-layer-row">
+        <span class="mpk-sw-group"><i class="sw wayback"></i></span>
+        <div class="mpk-layer-main">Historical imagery<small>Esri World Imagery Wayback</small></div>
+        <button type="button" class="layer-toggle off" id="mpk-tog-wayback" role="switch" aria-checked="false"
+          aria-label="Historical imagery" onclick="mpkToggleWayback()"></button>
+      </div>
+      <div id="mpk-wb-body" hidden>
+        <div class="mpk-seg" role="tablist">
+          <button type="button" data-mode="history" onclick="mpkWaybackMode('history')">Imagery history</button>
+          <button type="button" data-mode="monthly" onclick="mpkWaybackMode('monthly')">Last 12 months</button>
+        </div>
+        <div class="mpk-wb-date" id="mpk-wb-date">—</div>
+        <div class="mpk-wb-sub" id="mpk-wb-sub"></div>
+        <input type="range" id="mpk-wb-slider" class="mpk-range" min="0" max="0" step="1" value="0"
+          aria-label="Imagery date" oninput="mpkWaybackGo(+this.value)">
+        <div class="mpk-range-scale"><span id="mpk-wb-first"></span><span id="mpk-wb-last"></span></div>
+        <div class="mpk-wb-controls">
+          <button type="button" class="mpk-wb-btn" onclick="mpkWaybackStep(-1)" aria-label="Previous image">◀</button>
+          <button type="button" class="mpk-wb-btn play" id="mpk-wb-play" onclick="mpkWaybackPlay()" aria-label="Play">▶ Play</button>
+          <button type="button" class="mpk-wb-btn" onclick="mpkWaybackStep(1)" aria-label="Next image">▶</button>
+        </div>
+      </div>
     </div>
 
     <div class="mpk-card">
@@ -482,6 +552,10 @@ function mpkSelectArea(area) {
     : MPK_AREAS[area].name;
   if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
   mpkRender();
+  if (MPK.wayback.on) {
+    MPK.wayback.index.history = null;
+    mpkWaybackMode(MPK.wayback.mode);
+  }
 }
 
 function mpkRender() {
@@ -591,4 +665,115 @@ function mpkExportCSV() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   showToast('📄 ' + mpkNum(s.count) + ' suspected buildings exported');
   addActivityLog('MPK CSV export', mpkNum(s.count) + ' buildings · ' + (MPK_AREAS[MPK.area]?.short || 'All areas'));
+}
+
+// ---------- Historical imagery (Esri World Imagery Wayback) ----------
+function mpkWaybackList() {
+  return MPK.wayback.mode === 'history'
+    ? mpkWaybackHistory(MPK.data.wayback.history, mpkWaybackArea())
+    : MPK.data.wayback.monthly;
+}
+
+function mpkWaybackIndex() {
+  const list = mpkWaybackList(), i = MPK.wayback.index[MPK.wayback.mode];
+  return i == null ? list.length - 1 : i;          // start on the newest
+}
+
+function mpkShowWaybackImagery() {
+  const shown = mpkWaybackShown(mpkWaybackList(), mpkWaybackIndex());
+  if (!map || !shown) return;
+  const tiles = [mpkWaybackTileUrl(shown.release)];
+  const src = map.getSource('mpk-wayback');
+  if (src) { src.setTiles(tiles); return; }
+  try {
+    map.addSource('mpk-wayback', { type: 'raster', tiles, tileSize: 256, maxzoom: 19,
+      attribution: 'Esri World Imagery Wayback' });
+    // under every MPK overlay, above the basemap
+    map.addLayer({ id: 'mpk-wayback-layer', type: 'raster', source: 'mpk-wayback' },
+      map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined);
+  } catch (e) {}                                      // style reloading — mpkAddLayers re-adds it
+}
+
+function mpkHideWaybackImagery() {
+  if (!map) return;
+  if (map.getLayer('mpk-wayback-layer')) map.removeLayer('mpk-wayback-layer');
+  if (map.getSource('mpk-wayback')) map.removeSource('mpk-wayback');
+}
+
+function mpkToggleWayback() {
+  const w = MPK.wayback;
+  w.on = !w.on;
+  const btn = document.getElementById('mpk-tog-wayback');
+  btn.className = 'layer-toggle ' + (w.on ? 'on' : 'off');
+  btn.setAttribute('aria-checked', String(w.on));
+  document.getElementById('mpk-wb-body').hidden = !w.on;
+  if (w.on) {
+    mpkWaybackMode(w.mode);
+    addActivityLog('Historical imagery on', 'Esri World Imagery Wayback');
+  } else {
+    mpkWaybackStop();
+    mpkHideWaybackImagery();
+  }
+}
+
+function mpkWaybackMode(mode) {
+  MPK.wayback.mode = mode;
+  document.querySelectorAll('.mpk-seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  const list = mpkWaybackList(), slider = document.getElementById('mpk-wb-slider');
+  slider.max = list.length - 1;
+  slider.value = mpkWaybackIndex();
+  const label = e => mode === 'monthly' ? mpkMonthLabel(e.month) : mpkMonthLabel(e.capture[mpkWaybackArea()]);
+  document.getElementById('mpk-wb-first').textContent = label(list[0]);
+  document.getElementById('mpk-wb-last').textContent = label(list[list.length - 1]);
+  mpkWaybackGo(mpkWaybackIndex());
+}
+
+// Area whose capture date is shown; 'All' uses Teluk Kalong as the headline
+function mpkWaybackArea() {
+  return MPK.area === 'all' ? 'tk' : MPK.area;
+}
+
+function mpkWaybackGo(i) {
+  MPK.wayback.index[MPK.wayback.mode] = i;
+  document.getElementById('mpk-wb-slider').value = i;
+  mpkShowWaybackImagery();
+  mpkWaybackRender();
+}
+
+function mpkWaybackRender() {
+  if (!MPK.wayback.on) return;
+  const list = mpkWaybackList(), i = mpkWaybackIndex(), entry = list[i], shown = mpkWaybackShown(list, i);
+  const area = mpkWaybackArea();
+  document.getElementById('mpk-wb-date').textContent = 'Captured ' + mpkMonthLabel(shown.capture[area]);
+  const others = MPK.area === 'all'
+    ? ' · ' + Object.entries(MPK_AREAS).filter(([k]) => k !== 'tk')
+        .map(([k, a]) => a.short + ' ' + mpkMonthLabel(shown.capture[k])).join(' · ')
+    : '';
+  const sub = MPK.wayback.mode === 'history'
+    ? `Image ${i + 1} of ${list.length} for ${MPK_AREAS[area].short} · Esri release ${shown.date}`
+    : entry.release
+      ? `${mpkMonthLabel(entry.month)} release (${shown.date})`
+      : `No Esri release in ${mpkMonthLabel(entry.month)} · showing ${shown.date}`;
+  document.getElementById('mpk-wb-sub').textContent = sub + (MPK.area === 'all' ? ' · Teluk Kalong' + others : '');
+}
+
+function mpkWaybackStep(d) {
+  const n = mpkWaybackList().length;
+  mpkWaybackGo((mpkWaybackIndex() + d + n) % n);
+}
+
+function mpkWaybackPlay() {
+  const w = MPK.wayback;
+  if (w.timer) { mpkWaybackStop(); return; }
+  w.timer = setInterval(() => mpkWaybackStep(1), 2000);
+  const btn = document.getElementById('mpk-wb-play');
+  btn.textContent = '❚❚ Pause';
+  btn.setAttribute('aria-label', 'Pause');
+}
+
+function mpkWaybackStop() {
+  const w = MPK.wayback;
+  if (w.timer) { clearInterval(w.timer); w.timer = null; }
+  const btn = document.getElementById('mpk-wb-play');
+  if (btn) { btn.textContent = '▶ Play'; btn.setAttribute('aria-label', 'Play'); }
 }
