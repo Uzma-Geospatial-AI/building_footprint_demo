@@ -8,7 +8,8 @@
     "tk": "2007-03-16",
     "bpb": "2011-01-19",
     "bbc": "2011-01-19"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2014_r01/MapServer"
   },
   {
    "release": 31026,
@@ -17,7 +18,8 @@
     "tk": "2013-10-10",
     "bpb": "2013-10-10",
     "bbc": "2013-10-10"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2017_r04/MapServer"
   },
   {
    "release": 9598,
@@ -26,7 +28,8 @@
     "tk": "2017-04-20",
     "bpb": "2016-07-09",
     "bbc": "2018-07-04"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2019_r06/MapServer"
   },
   {
    "release": 15045,
@@ -35,7 +38,8 @@
     "tk": "2019-05-03",
     "bpb": "2019-04-06",
     "bbc": "2018-07-04"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2020_r06/MapServer"
   },
   {
    "release": 15423,
@@ -44,7 +48,8 @@
     "tk": "2020-08-27",
     "bpb": "2019-04-06",
     "bbc": "2020-08-27"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2021_r07/MapServer"
   },
   {
    "release": 13851,
@@ -53,7 +58,8 @@
     "tk": "2019-05-03",
     "bpb": "2019-04-06",
     "bbc": "2020-08-27"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2022_r09/MapServer"
   },
   {
    "release": 12428,
@@ -62,7 +68,8 @@
     "tk": "2020-08-27",
     "bpb": "2023-04-21",
     "bbc": "2020-08-27"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2024_r06/MapServer"
   },
   {
    "release": 27982,
@@ -71,7 +78,8 @@
     "tk": "2024-08-30",
     "bpb": "2023-04-21",
     "bbc": "2020-08-27"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2025_r04/MapServer"
   },
   {
    "release": 10842,
@@ -80,7 +88,8 @@
     "tk": "2025-12-04",
     "bpb": "2025-12-05",
     "bbc": "2025-10-30"
-   }
+   },
+   "metadata": "https://metadata.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Metadata_2026_r05/MapServer"
   }
  ]
 }

@@ -124,7 +124,7 @@ function mpkEsriImages(history, area) {
   const byCapture = new Map();
   for (const e of history || []) if (!byCapture.has(e.capture[area])) byCapture.set(e.capture[area], e);
   return [...byCapture.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, e]) => ({ source: 'esri', release: e.release, date }));
+    .map(([date, e]) => ({ source: 'esri', release: e.release, date, metadata: e.metadata }));
 }
 
 // Raster source for one imagery entry (Esri, Sentinel-2 or Landsat), or null when none.
@@ -207,7 +207,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008u',
+  VERSION: '20261008z',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',

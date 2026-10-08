@@ -7,8 +7,9 @@ per MPK study area, then keeps every release that shows a capture combination no
 before (oldest first) — the distinct high-resolution images over the study areas. Monthly
 imagery comes from Sentinel-2 instead (tools/build_sentinel.py).
 
-Each entry carries the release number (for the tile URL), the release date and the
-capture date per area (tk / bpb / bbc). Pure Python stdlib.
+Each entry carries the release number (for the tile URL), the release date, the capture
+date per area (tk / bpb / bbc) and the release's metadata service (capture-date polygons,
+used by change detection to compare only areas imaged on different dates). Pure Python stdlib.
 
 Usage: python tools/build_wayback.py
 """
@@ -66,7 +67,7 @@ def main():
         except Exception as e:                    # metadata service down for this release
             print(f'  skip {r["date"]} ({r["release"]}): {e}')
             return None
-        return {'release': r['release'], 'date': r['date'], 'capture': cap}
+        return {'release': r['release'], 'date': r['date'], 'capture': cap, 'metadata': r['metadata']}
 
     with ThreadPoolExecutor(8) as ex:
         done = [r for r in ex.map(with_capture, releases) if r and all(r['capture'].values())]

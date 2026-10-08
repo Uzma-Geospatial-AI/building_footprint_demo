@@ -12,9 +12,108 @@
 // ============================================================
 
 // ---------- Pure logic (also exported for tools/test_mpk_change.js) ----------
-// NDVI change thresholds; Esri photos use excess-green with its own scale
+// NDVI change thresholds (NDVI is physically calibrated, so fixed values work across dates)
 const MPK_NDVI_TH = { veg: 0.4, bare: 0.25, delta: 0.25 };
-const MPK_EXG_TH = { veg: 0.08, bare: 0.02, delta: 0.06 };
+// Esri photos: excess-green after colour-matching the Before photo to the After photo and
+// centring both on the After photo's green threshold (mpkEsriIndices)
+const MPK_EXG_TH = { veg: 0.02, bare: -0.02, delta: 0.08 };
+
+// Otsu threshold: best split of the valid pixels into two classes, placed midway
+// between the two class means
+function mpkOtsu(values, valid, lo = -0.3, hi = 0.8, bins = 220) {
+  const hist = new Array(bins).fill(0);
+  let n = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (!valid[i]) continue;
+    const b = Math.min(bins - 1, Math.max(0, Math.floor((values[i] - lo) / (hi - lo) * bins)));
+    hist[b]++; n++;
+  }
+  if (!n) return 0;
+  let total = 0;
+  for (let b = 0; b < bins; b++) total += b * hist[b];
+  let wB = 0, sumB = 0, best = -1, split = 0;
+  for (let b = 0; b < bins; b++) {
+    wB += hist[b];
+    sumB += b * hist[b];
+    const wF = n - wB;
+    if (!wB || !wF) continue;
+    const mB = sumB / wB, mF = (total - sumB) / wF, between = wB * wF * (mB - mF) ** 2;
+    if (between > best) { best = between; split = (mB + mF) / 2; }
+  }
+  // midway between the two class means (bin centres), not the edge of the lower class
+  return lo + (split + 0.5) / bins * (hi - lo);
+}
+
+// Map each channel of `src` onto the value distribution of `ref` (histogram matching)
+function mpkMatchChannel(src, ref, valid, ch) {
+  const cdf = data => {
+    const h = new Float64Array(256);
+    let n = 0;
+    for (let i = 0; i < valid.length; i++) if (valid[i]) { h[data[i * 4 + ch]]++; n++; }
+    for (let v = 1; v < 256; v++) h[v] += h[v - 1];
+    return h.map(c => c / (n || 1));
+  };
+  const cs = cdf(src), cr = cdf(ref), lut = new Uint8Array(256);
+  for (let v = 0, r = 0; v < 256; v++) {
+    while (r < 255 && cr[r] < cs[v] - 1e-9) r++;
+    lut[v] = r;
+  }
+  return lut;
+}
+
+// Excess-green for two Esri photos, made comparable. Water and dark pixels are dropped. Esri
+// images are mosaics of captures from different dates, so `groups` gives each pixel its
+// capture-date pair (-1 = same capture in both images, nothing to compare); within each group
+// the Before colours are matched to the After photo and both are centred on one green
+// threshold (Otsu on the After photo): > 0 green, < 0 not. groups = null: one group.
+// opts.width + opts.cloudMargin: drop clouds (bright, colourless) in either photo plus a
+// margin of that many pixels around them (hazy cloud edges).
+function mpkEsriIndices(rgbaBefore, rgbaAfter, groups = null, opts = {}) {
+  const n = rgbaBefore.length / 4, valid = new Uint8Array(n);
+  const group = i => (groups ? groups[i] : 0);
+  const usable = (d, p) => d[p + 3] > 0 && d[p] + d[p + 1] + d[p + 2] > 60 &&
+    !(d[p + 2] > d[p + 1] && d[p + 2] > d[p]);                  // blue-dominant = water
+  const cloudy = (d, p) => Math.min(d[p], d[p + 1], d[p + 2]) > 175 &&
+    Math.max(d[p], d[p + 1], d[p + 2]) - Math.min(d[p], d[p + 1], d[p + 2]) < 40;
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    valid[i] = group(i) >= 0 && usable(rgbaBefore, p) && usable(rgbaAfter, p) ? 1 : 0;
+  }
+  if (opts.width) {
+    const w = opts.width, h = n / w, r = opts.cloudMargin || 0, cloud = new Uint8Array(n);
+    for (let i = 0, p = 0; i < n; i++, p += 4) cloud[i] = cloudy(rgbaBefore, p) || cloudy(rgbaAfter, p) ? 1 : 0;
+    // dilate: separable max filter, rows then columns
+    const rows = new Uint8Array(n);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let c = 0;
+        for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r) && !c; k++) c = cloud[y * w + k];
+        rows[y * w + x] = c;
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        let c = 0;
+        for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r) && !c; k++) c = rows[k * w + x];
+        if (c) valid[y * w + x] = 0;
+      }
+    }
+  }
+  const exgB = new Float32Array(n), exgA = new Float32Array(n);
+  const ids = new Set();
+  for (let i = 0; i < n; i++) if (valid[i]) ids.add(group(i));
+  for (const g of ids) {
+    const inGroup = Uint8Array.from(valid, (v, i) => (v && group(i) === g ? 1 : 0));
+    const luts = [0, 1, 2].map(ch => mpkMatchChannel(rgbaBefore, rgbaAfter, inGroup, ch));
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      if (!inGroup[i]) continue;
+      exgB[i] = mpkExg(luts[0][rgbaBefore[p]], luts[1][rgbaBefore[p + 1]], luts[2][rgbaBefore[p + 2]]);
+      exgA[i] = mpkExg(rgbaAfter[p], rgbaAfter[p + 1], rgbaAfter[p + 2]);
+    }
+    const t = mpkOtsu(exgA, inGroup);
+    for (let i = 0; i < n; i++) if (inGroup[i]) { exgB[i] -= t; exgA[i] -= t; }
+  }
+  return { before: { ndvi: exgB, valid }, after: { ndvi: exgA, valid } };
+}
 
 // Sentinel-2 index expressions; processing baseline 04.00 (25 Jan 2022) adds 1000 to bands
 // plus a bright-blue cloud test, because the scene classification misses small clouds
@@ -131,7 +230,8 @@ function mpkFootprintPixels(f, grid, valid) {
 
 // Buildings that are new between the two images, judged on the mean of their footprint
 // pixels. 'spectral' (Sentinel-2/Landsat): green before, not green after, built-up index up.
-// 'exg' (Esri photos): green before, not green after (bare soil → roof is not detectable).
+// 'exg' (Esri photos, Otsu-centred excess-green): green before, not green after
+// (bare soil → roof is not detectable in plain photos).
 function mpkNewBuildings(features, grid, before, after, kind) {
   const valid = before.valid.map((v, i) => v && after.valid[i]);
   const mean = (arr, px) => px.reduce((s, i) => s + arr[i], 0) / px.length;
@@ -139,9 +239,35 @@ function mpkNewBuildings(features, grid, before, after, kind) {
     const px = mpkFootprintPixels(f, grid, valid);
     if (!px.length) return false;
     const vB = mean(before.ndvi, px), vA = mean(after.ndvi, px);
-    if (kind === 'exg') return vB >= MPK_EXG_TH.veg * 0.75 && vA <= MPK_EXG_TH.bare;
+    if (kind === 'exg') return vB >= MPK_EXG_TH.veg && vA <= MPK_EXG_TH.bare;   // centred values
     return vB >= 0.35 && vA <= 0.25 && mean(after.ndbi, px) - mean(before.ndbi, px) >= 0.1;
   });
+}
+
+// Morphological opening (erode then dilate, square of radius r): removes specks smaller than
+// the square and keeps larger patches at their size
+function mpkOpenMask(mask, w, r) {
+  const h = mask.length / w;
+  const pass = (src, keep) => {               // keep = 'all' (erode) or 'any' (dilate)
+    const rows = new Uint8Array(src.length), out = new Uint8Array(src.length);
+    const test = keep === 'all' ? (acc, v) => acc && v : (acc, v) => acc || v;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let acc = keep === 'all' ? 1 : 0;
+        for (let k = x - r; k <= x + r; k++) acc = test(acc, k >= 0 && k < w ? src[y * w + k] : 0);
+        rows[y * w + x] = acc ? 1 : 0;
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        let acc = keep === 'all' ? 1 : 0;
+        for (let k = y - r; k <= y + r; k++) acc = test(acc, k >= 0 && k < h ? rows[k * w + x] : 0);
+        out[y * w + x] = acc ? 1 : 0;
+      }
+    }
+    return out;
+  };
+  return pass(pass(mask, 'all'), 'any');
 }
 
 function mpkMaskHectares(mask, pixelMetres) {
@@ -165,7 +291,7 @@ function mpkCompareParse(search) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
+  module.exports = { mpkOpenMask, MPK_EXG_TH, mpkOtsu, mpkEsriIndices, mpkNewBuildings, mpkCompareUrl, mpkCompareParse, mpkFlag, mpkClassifyChange, mpkS2Expressions, mpkLandsatExpressions, mpkPixelOf,
                      mpkBuildingsInMask, mpkExg, mpkMaskHectares };
 }
 
@@ -302,9 +428,16 @@ async function mpkDecodePng(blob, w, h) {
 async function mpkFetchBbox(collection, item, params, grid) {
   const q = new URLSearchParams({ collection, item, ...params });
   const url = `${MPK_PC_BBOX}${grid.west},${grid.south},${grid.east},${grid.north}/${grid.w}x${grid.h}.png?${q}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Planetary Computer HTTP ${res.status}`);
-  return mpkDecodePng(await res.blob(), grid.w, grid.h);
+  for (let attempt = 1; ; attempt++) {             // the tiler sometimes drops a request: retry
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Planetary Computer HTTP ${res.status}`);
+      return await mpkDecodePng(await res.blob(), grid.w, grid.h);
+    } catch (err) {
+      if (attempt >= 3) throw err;
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
 }
 
 // NDVI / NDBI / validity for one Sentinel-2 or Landsat image
@@ -354,7 +487,8 @@ async function mpkEsriGrid() {
            w: (x1 - x0 + 1) * 256, h: (y1 - y0 + 1) * 256, metres: 40075016 * Math.cos(4.25 * Math.PI / 180) / 2 ** z / 256 };
 }
 
-async function mpkEsriExg(entry, grid) {
+// Esri photo tiles over the grid, stitched: raw RGBA pixels
+async function mpkEsriPixels(entry, grid) {
   const c = document.createElement('canvas');
   c.width = grid.w; c.height = grid.h;
   const ctx = c.getContext('2d', { willReadFrequently: true });
@@ -372,13 +506,7 @@ async function mpkEsriExg(entry, grid) {
     }
   }
   await Promise.all(loads);
-  const d = ctx.getImageData(0, 0, grid.w, grid.h).data, n = grid.w * grid.h;
-  const ndvi = new Float32Array(n), valid = new Uint8Array(n);
-  for (let i = 0, p = 0; i < n; i++, p += 4) {
-    ndvi[i] = mpkExg(d[p], d[p + 1], d[p + 2]);
-    valid[i] = d[p + 3] > 0 && d[p] + d[p + 1] + d[p + 2] > 30 ? 1 : 0;
-  }
-  return { ndvi, valid };
+  return ctx.getImageData(0, 0, grid.w, grid.h).data;
 }
 
 // Selected Before / After entries, or an error message
@@ -400,6 +528,64 @@ function mpkChangeCompare() {
     center: [+c.lng.toFixed(5), +c.lat.toFixed(5)], zoom: +map.getZoom().toFixed(2) }), '_blank');
 }
 
+// Capture-date polygons of an Esri image (its metadata service), drawn onto the grid: the
+// capture index of every pixel (-1 where unknown) and the list of capture dates
+async function mpkEsriCaptures(entry, grid) {
+  if (!entry.metadata) return null;
+  const env = JSON.stringify({ xmin: grid.west, ymin: grid.south, xmax: grid.east, ymax: grid.north, spatialReference: { wkid: 4326 } });
+  let feats = [];
+  for (const layer of [5, 6, 7]) {                 // 60 cm, 1.2 m, 2.4 m footprints: first that answers
+    const q = new URLSearchParams({ geometry: env, geometryType: 'esriGeometryEnvelope', inSR: 4326, outSR: 4326,
+      spatialRel: 'esriSpatialRelIntersects', outFields: 'SRC_DATE2', returnGeometry: 'true', f: 'json' });
+    const res = await fetch(`${entry.metadata}/${layer}/query?${q}`);
+    feats = res.ok ? ((await res.json()).features || []).filter(f => f.attributes.SRC_DATE2 && f.geometry) : [];
+    if (feats.length) break;
+  }
+  if (!feats.length) return null;
+  const dates = feats.map(f => new Date(f.attributes.SRC_DATE2).toISOString().slice(0, 10));
+  const c = document.createElement('canvas');
+  c.width = grid.w; c.height = grid.h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const yOf = lat => (mpkMercY(grid.north) - mpkMercY(lat)) / (mpkMercY(grid.north) - mpkMercY(grid.south)) * grid.h;
+  feats.forEach((f, k) => {                        // index k encoded as red = (k + 1) * 8
+    ctx.fillStyle = `rgb(${(k + 1) * 8},0,0)`;
+    ctx.beginPath();
+    for (const ring of f.geometry.rings) {
+      ring.forEach(([lng, lat], j) => {
+        const x = (lng - grid.west) / (grid.east - grid.west) * grid.w, y = yOf(lat);
+        if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      });
+      ctx.closePath();
+    }
+    ctx.fill('evenodd');
+  });
+  const d = ctx.getImageData(0, 0, grid.w, grid.h).data, ids = new Int16Array(grid.w * grid.h);
+  for (let i = 0, p = 0; i < ids.length; i++, p += 4) {
+    // anti-aliased polygon edges blend colours: keep exact codes only
+    ids[i] = d[p + 3] === 255 && d[p] % 8 === 0 && d[p] / 8 - 1 < dates.length ? d[p] / 8 - 1 : -1;
+  }
+  return { ids, dates };
+}
+
+// Group each pixel by its Before/After capture-date pair; -1 where both images show the same
+// (or an older-after-newer) capture. Returns the groups and each pair's share of the area.
+function mpkEsriGroups(capB, capA) {
+  const n = capB.ids.length, groups = new Int32Array(n).fill(-1), keys = new Map(), count = new Map();
+  let same = 0;
+  for (let i = 0; i < n; i++) {
+    const kb = capB.ids[i], ka = capA.ids[i];
+    if (kb < 0 || ka < 0) continue;
+    const dB = capB.dates[kb], dA = capA.dates[ka];
+    if (dB >= dA) { same++; continue; }
+    const key = dB.slice(0, 7) + ' → ' + dA.slice(0, 7);
+    if (!keys.has(key)) keys.set(key, keys.size);
+    groups[i] = keys.get(key);
+    count.set(key, (count.get(key) || 0) + 1);
+  }
+  const pairs = [...count.entries()].sort((x, y) => y[1] - x[1]).map(([key, c]) => ({ key, share: c / n }));
+  return { groups, pairs, same: same / n };
+}
+
 async function mpkChangeGenerate() {
   if (MPK_CHANGE.busy) return;
   const sat = MPK_CHANGE.sat, pick = mpkChangePicked();
@@ -409,10 +595,16 @@ async function mpkChangeGenerate() {
   document.getElementById('mpk-cd-go').disabled = true;
   mpkChangeStatus(`Fetching ${MPK_CHANGE_SATS[sat].label} data for both dates…`);
   try {
-    let grid, b, a, th = MPK_NDVI_TH, pixelMetres;
+    let grid, b, a, th = MPK_NDVI_TH, pixelMetres, esriDates = null;
     if (sat === 'esri') {
       grid = await mpkEsriGrid();
-      [b, a] = await Promise.all([mpkEsriExg(before, grid), mpkEsriExg(after, grid)]);
+      const [pxB, pxA, capB, capA] = await Promise.all([mpkEsriPixels(before, grid), mpkEsriPixels(after, grid),
+        mpkEsriCaptures(before, grid).catch(() => null), mpkEsriCaptures(after, grid).catch(() => null)]);
+      // Esri images are mosaics of several capture dates: compare only areas imaged on different
+      // dates, each date pair on its own (falls back to one group if the metadata is missing)
+      esriDates = capB && capA ? mpkEsriGroups(capB, capA) : null;
+      ({ before: b, after: a } = mpkEsriIndices(pxB, pxA, esriDates ? esriDates.groups : null,
+        { width: grid.w, cloudMargin: Math.round(30 / grid.metres) }));       // ~30 m around clouds
       th = MPK_EXG_TH;
       pixelMetres = grid.metres;
     } else {
@@ -432,13 +624,15 @@ async function mpkChangeGenerate() {
       hectares = Math.round(buildings.reduce((sum, f) => sum + f.properties.area_m2, 0) / 100) / 100;
     } else {
       mask = mpkClassifyChange(type, b, a, th);
+      // high-res photos: drop specks under ~5 m (shadows, single trees, colour noise)
+      if (sat === 'esri') mask = mpkOpenMask(mask, grid.w, Math.max(1, Math.round(2.5 / grid.metres)));
       // a neighbouring pixel only on fine grids — on 30 m Landsat it would reach ~90 m away
       buildings = type === 'gain' ? [] : mpkBuildingsInMask(feats, mask, grid, pixelMetres >= 20 ? 0 : 1);
       hectares = mpkMaskHectares(mask, pixelMetres);
     }
     buildings.sort((x, y) => y.properties.area_m2 - x.properties.area_m2);
     MPK_CHANGE.result = { sat, type, before, after, grid, mask, buildings, hectares,
-                          usable: usable / b.valid.length, area };
+                          usable: usable / b.valid.length, area, esriDates };
     if (MPK.wayback && MPK.wayback.on) mpkHistoricOff();     // one imagery layer at a time
     mpkChangeDraw();
     mpkChangeView('after');
@@ -546,7 +740,11 @@ function mpkChangeRender() {
     <div class="mpk-cd-headline"><i class="sw" style="background:rgb(${t.rgb})"></i>${t.label}:
       <strong>${r.type === 'newbld' ? mpkNum(r.buildings.length) + ' · ' : ''}${r.hectares.toLocaleString('en-MY')} ha</strong></div>
     <div class="mpk-cd-meta">${label(r.before)} → ${label(r.after)} · ${MPK_AREAS[r.area].short} ·
-      ${Math.round(r.usable * 100)}% of the area cloud-free in both images</div>
+      ${r.esriDates ? `${Math.round(r.usable * 100)}% of the area compared (clouds, water and unchanged images left out)`
+        : `${Math.round(r.usable * 100)}% of the area cloud-free in both images`}</div>
+    ${r.esriDates ? `<div class="mpk-cd-meta">Esri images are mosaics; actual capture dates compared:
+      ${r.esriDates.pairs.filter(x => x.share >= 0.01).map(x => `${x.key} (${Math.round(x.share * 100)}%)`).join(', ') || 'none'}
+      ${r.esriDates.same >= 0.01 ? ` · ${Math.round(r.esriDates.same * 100)}% shows the same image in both, not compared` : ''}</div>` : ''}
     ${r.type === 'gain' ? '' : `<div class="mpk-cd-meta"><strong>${mpkNum(r.buildings.length)}</strong> ${
       r.type === 'newbld' ? 'new buildings (green land before, built now)'
         : `buildings on ${r.type === 'built' ? 'new built-up' : 'cleared'} land`} ·

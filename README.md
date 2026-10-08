@@ -162,7 +162,12 @@ fetched from Planetary Computer at native resolution, clouds masked (Sentinel-2 
 bright-blue test, Landsat bright-blue test), compared pixel by pixel in the browser and drawn
 on the map, with the changed area in hectares and the building footprints standing on
 changed pixels (suspected ones flagged). Esri photos have no infrared band, so for Esri
-*New buildings* only catches buildings on formerly green land and *New built-up* is not offered. At 10–30 m "new built-up" means new hard surface,
+*New buildings* only catches buildings on formerly green land and *New built-up* is not offered.
+Esri comparisons use an excess-green index made comparable across years: each Esri image is a
+mosaic of several capture dates, so pixels are grouped by their before/after capture-date pair
+(from the release's metadata service); each group is colour-matched (histogram matching) and
+thresholded (Otsu) on its own, areas showing the same capture in both are skipped, and
+clouds (+30 m margin), water and specks under ~5 m are left out. At 10–30 m "new built-up" means new hard surface,
 not individual houses. Logic in `mpk-change.js`, tests in `tools/test_mpk_change.js`.
 
 **Search** (topbar, MPK mode): study areas, cadastral lot no. / UPI, building Plus Codes, and
