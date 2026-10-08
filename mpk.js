@@ -72,19 +72,21 @@ const MPK_AREAS = {
   bpb: { name: 'Bandar Putra – Berenjut Corridor', short: 'B. Putra – Berenjut' },
   bbc: { name: 'Binjai – Bandar Chukai Corridor', short: 'Binjai – Chukai' },
 };
+// Every suspected building is drawn in one red so "red = suspected" reads at a glance;
+// the type is given in the popup, the list and the CSV.
+const MPK_SUSPECT_COLOR = '#e53935';
 const MPK_JENIS = {
-  tiada_kadaster: { label: 'Inside boundary, no cadastral lot', color: '#6D4C41', areas: ['tk'] },
-  tiada_lot:     { label: 'Inside boundary, no approved lot', color: '#e53935', areas: ['tk'] },
-  luar_sempadan: { label: 'Outside planning boundary (within buffer)', color: '#FB8C00', areas: ['tk'] },
-  rizab:         { label: 'Encroaching road reserve', color: '#C2185B', areas: ['bpb', 'bbc'] },
+  tiada_kadaster: { label: 'Inside boundary, no cadastral lot', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
+  tiada_lot:     { label: 'Inside boundary, no approved lot', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
+  luar_sempadan: { label: 'Outside planning boundary (within buffer)', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
+  rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bpb', 'bbc'] },
 };
 
 // Map layers the viewer can switch on/off from the panel, in display order.
 const MPK_LAYER_GROUPS = {
-  suspect:   { label: 'Suspected buildings', swatch: [MPK_JENIS.tiada_lot.color],
+  suspect:   { label: 'Suspected buildings', swatch: [MPK_SUSPECT_COLOR],
                layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
-               legend: [['No cadastral lot', MPK_JENIS.tiada_kadaster.color], ['No approved lot', MPK_JENIS.tiada_lot.color],
-                        ['Outside boundary', MPK_JENIS.luar_sempadan.color], ['Road reserve', MPK_JENIS.rizab.color]] },
+               legend: [] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-base-fill', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
@@ -95,7 +97,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008c',
+  VERSION: '20261008d',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -172,9 +174,6 @@ function mpkAddLayers() {
   if (!map) return false;
   if (map.getSource('mpk-buildings')) return true;
   const suspect = mpkSuspectFilter(MPK.settings);
-  const jenisColor = ['case', MPK_NO_CADASTRAL, MPK_JENIS.tiada_kadaster.color,
-    ['match', ['get', 'kategori'],
-      'tiada_lot', MPK_JENIS.tiada_lot.color, 'luar', MPK_JENIS.luar_sempadan.color, MPK_JENIS.rizab.color]];
   try {
     map.addSource('mpk-lots', { type: 'geojson', data: MPK.data.lots });
     map.addSource('mpk-kadaster', { type: 'geojson', data: MPK.data.kadaster });
@@ -204,12 +203,12 @@ function mpkAddLayers() {
     map.addLayer({ id: 'mpk-base-fill', type: 'fill', source: 'mpk-buildings', filter: ['!', suspect],
       paint: { 'fill-color': ['match', ['get', 'kategori'], 'lulus', '#7CB342', '#B0BEC5'], 'fill-opacity': 0.6 } });
     map.addLayer({ id: 'mpk-suspect-fill', type: 'fill', source: 'mpk-buildings', filter: suspect,
-      paint: { 'fill-color': jenisColor, 'fill-opacity': 0.8 } });
+      paint: { 'fill-color': MPK_SUSPECT_COLOR, 'fill-opacity': 0.45 } });
     map.addLayer({ id: 'mpk-suspect-line', type: 'line', source: 'mpk-buildings', filter: suspect,
-      paint: { 'line-color': '#7f0000', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 17, 1.4] } });
+      paint: { 'line-color': '#b71c1c', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.6, 17, 2] } });
     map.addLayer({ id: 'mpk-suspect-extrude', type: 'fill-extrusion', source: 'mpk-buildings', filter: suspect,
       layout: { visibility: 'none' },
-      paint: { 'fill-extrusion-color': jenisColor, 'fill-extrusion-height': 8, 'fill-extrusion-base': 0,
+      paint: { 'fill-extrusion-color': MPK_SUSPECT_COLOR, 'fill-extrusion-height': 8, 'fill-extrusion-base': 0,
                'fill-extrusion-opacity': 0.85 } });
     map.addLayer({ id: 'mpk-highlight-line', type: 'line', source: 'mpk-highlight',
       paint: { 'line-color': '#FDD835', 'line-width': 3 } });
@@ -394,7 +393,7 @@ function mpkBuildPanel() {
         <button type="button" class="layer-toggle ${MPK.layerOn[k] ? 'on' : 'off'}" id="mpk-tog-${k}" role="switch"
           aria-checked="${MPK.layerOn[k]}" aria-label="${g.label}" onclick="mpkToggleLayer('${k}')"></button>
       </div>
-      <div class="mpk-layer-legend">${legend}</div>
+      ${legend ? `<div class="mpk-layer-legend">${legend}</div>` : ''}
     </div>`;
   }).join('');
   el.innerHTML = `
