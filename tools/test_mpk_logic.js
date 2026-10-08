@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
   mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
-  mpkYearBest, mpkEsriImages } = require('../mpk.js');
+  mpkYearBest, mpkEsriImages, mpkSearchLocal } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -115,5 +115,19 @@ const hist = [
 ];
 assert.deepStrictEqual(mpkEsriImages(hist, 'tk').map(e => [e.release, e.date, e.source]),
   [[10, '2007-03-16', 'esri'], [15045, '2019-05-03', 'esri'], [15423, '2020-08-27', 'esri']]);
+
+// Search: study areas by name, cadastral lots by lot no. / UPI prefix, buildings by Plus Code
+const areas = { tk: { name: 'Teluk Kalong Industrial Area', short: 'Teluk Kalong' },
+                bbc: { name: 'Binjai – Bandar Chukai Corridor', short: 'Binjai – Chukai' } };
+const lots = [{ properties: { lot: '1328', upi: '1103120001328' } }, { properties: { lot: '13280', upi: '1103120013280' } },
+              { properties: { lot: '3020', upi: '1103120003020' } }];
+const blds = [{ properties: { id: 7, plus_code: '6PP56FR4+V8MV' } }, { properties: { id: 8, plus_code: '6PP57F33+49XJ' } }];
+const kinds = r => r.map(x => x.kind + ':' + x.label);
+assert.deepStrictEqual(kinds(mpkSearchLocal('kalong', areas, lots, blds)), ['area:Teluk Kalong']);
+assert.deepStrictEqual(kinds(mpkSearchLocal('chukai', areas, lots, blds)), ['area:Binjai – Chukai']);
+assert.deepStrictEqual(kinds(mpkSearchLocal('1328', areas, lots, blds)), ['lot:Lot 1328', 'lot:Lot 13280']);
+assert.deepStrictEqual(kinds(mpkSearchLocal('1103120003020', areas, lots, blds)), ['lot:Lot 3020']);
+assert.deepStrictEqual(kinds(mpkSearchLocal('f33+49', areas, lots, blds)), ['building:6PP57F33+49XJ']);
+assert.deepStrictEqual(mpkSearchLocal(' ', areas, lots, blds), []);
 
 console.log('mpk logic: all tests passed');

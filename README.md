@@ -152,6 +152,19 @@ whole satellite tile. Striped Landsat 7 images (after May 2003) are used only wh
 other Landsat scene is reasonably clear. No other free imagery source can be shown in
 the browser; Planet NICFI monthly mosaics would need an API key.
 
+**Change detection** (panel card): pick one satellite, a *Before* and an *After* date, and
+what to detect — *New built-up* (vegetation → hard surface), *Land cleared* (vegetation →
+bare) or *Vegetation gain* — then **Generate**. Index maps (NDVI, NDBI) for the area are
+fetched from Planetary Computer at native resolution, clouds masked (Sentinel-2 SCL +
+bright-blue test, Landsat bright-blue test), compared pixel by pixel in the browser and drawn
+on the map, with the changed area in hectares and the building footprints standing on
+changed pixels (suspected ones flagged). Esri photos have no infrared band, so only the
+vegetation types are offered for Esri. At 10–30 m "new built-up" means new hard surface,
+not individual houses. Logic in `mpk-change.js`, tests in `tools/test_mpk_change.js`.
+
+**Search** (topbar, MPK mode): study areas, cadastral lot no. / UPI, building Plus Codes, and
+place names in Kemaman via OpenStreetMap Nominatim.
+
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
 - `tk_sempadan.geojson`, `tk_lot_lulus.geojson` — Teluk Kalong boundary and approved lots,

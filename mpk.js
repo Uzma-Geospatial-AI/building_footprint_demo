@@ -147,8 +147,31 @@ function mpkImagerySource(entry) {
              + '&color_formula=gamma%20RGB%202.7%2C%20saturation%201.5%2C%20sigmoidal%20RGB%2015%200.55'] };
 }
 
+// Search MPK's own data: study areas by name, cadastral lots by lot no. / UPI prefix,
+// buildings by Plus Code (the "+" may be left out). At most `limit` results per kind.
+function mpkSearchLocal(query, areas, lots, buildings, limit = 6) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const out = [];
+  for (const [key, a] of Object.entries(areas)) {
+    if (a.name.toLowerCase().includes(q) || a.short.toLowerCase().includes(q)) {
+      out.push({ kind: 'area', label: a.short, sub: a.name, key });
+    }
+  }
+  if (/^\d+$/.test(q)) {
+    out.push(...lots.filter(f => f.properties.lot.startsWith(q) || f.properties.upi.startsWith(q)).slice(0, limit)
+      .map(f => ({ kind: 'lot', label: 'Lot ' + f.properties.lot, sub: 'UPI ' + f.properties.upi, feature: f })));
+  }
+  const code = q.replace('+', '').toUpperCase();
+  if (code.length >= 3) {
+    out.push(...buildings.filter(f => f.properties.plus_code.replace('+', '').includes(code)).slice(0, limit)
+      .map(f => ({ kind: 'building', label: f.properties.plus_code, sub: 'Building footprint', id: f.properties.id })));
+  }
+  return out;
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+  module.exports = { mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
                      mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
                      mpkYearBest, mpkEsriImages };
 }
@@ -184,7 +207,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008m',
+  VERSION: '20261008r',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -319,6 +342,7 @@ function mpkAddLayers() {
   }
   mpkApplyLayerVisibility();
   if (MPK.wayback.on) mpkShowWaybackImagery();
+  if (typeof mpkChangeRestore === 'function') mpkChangeRestore();
   return true;
 }
 
@@ -440,6 +464,8 @@ async function mpkEnter() {
   tab.style.display = '';
   mpkBuildPanel();
   mpkBuildHistoricBasemaps();
+  mpkBindSearch();
+  if (typeof mpkChangeInit === 'function') mpkChangeInit();
   switchTab(tab, 'mpk');
   mpkSelectArea(MPK.area);
   addActivityLog('MPK Kemaman mode', 'Suspected illegal construction');
@@ -450,6 +476,7 @@ function mpkExit() {
   MPK.active = false;
   document.body.classList.remove('mpk-mode');
   mpkHistoricOff();
+  if (typeof mpkChangeClear === 'function') mpkChangeClear();
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
   mpkSetSerembanVisible(true);
@@ -512,6 +539,7 @@ function mpkBuildPanel() {
       <div class="mpk-card-title">Map layers</div>
       ${layerRows}
     </div>
+${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
 
     <div class="mpk-card">
       <div id="mpk-ctl-buffer">
@@ -589,6 +617,7 @@ function mpkSelectArea(area) {
     MPK.wayback.index = {};                    // lists differ per area: start each on its default
     mpkWaybackSource(MPK.wayback.src);
   }
+  if (typeof mpkChangeAreaChanged === 'function') mpkChangeAreaChanged();
 }
 
 function mpkRender() {
@@ -674,7 +703,9 @@ function mpkShowPopup(p, lngLat) {
       ${jenis ? row('Est. assessment tax', mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr') : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
-  MPK.popup = new maplibregl.Popup({ maxWidth: '290px' }).setLngLat(lngLat).setHTML(html).addTo(map);
+  // focusAfterOpen off: otherwise the Enter that picked a search result also "presses" the
+  // popup's freshly focused close button and shuts it straight away
+  MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
 function mpkZoomTo(id) {
@@ -832,6 +863,7 @@ function mpkSelectHistoric(src) {
   const w = MPK.wayback;
   if (!w.on) MPK.prevBasemapLabel = document.getElementById('basemap-label').textContent;
   w.on = true;
+  if (typeof MPK_CHANGE !== 'undefined' && MPK_CHANGE.result) mpkChangeView('map');   // one imagery layer at a time
   document.querySelectorAll('.basemap-option').forEach(o => o.classList.toggle('active', o.dataset.src === src));
   document.getElementById('mpk-wb-body').hidden = false;
   mpkWaybackSource(src);
@@ -946,4 +978,89 @@ function mpkWaybackStop() {
   if (w.timer) { clearInterval(w.timer); w.timer = null; }
   const btn = document.getElementById('mpk-wb-play');
   if (btn) { btn.textContent = '▶ Play'; btn.setAttribute('aria-label', 'Play'); }
+}
+
+// ---------- Search (MPK mode topbar) ----------
+// Kemaman bounds for place-name lookups (OpenStreetMap Nominatim): W, N, E, S
+const MPK_SEARCH_VIEWBOX = '103.30,4.40,103.60,4.10';
+const MPK_SEARCH = { results: [], placeTimer: null, seq: 0 };
+
+function mpkBindSearch() {
+  const input = document.getElementById('mpk-search-input');
+  if (!input || input.dataset.bound) return;
+  input.dataset.bound = '1';
+  input.addEventListener('input', () => mpkSearchRun(input.value));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && MPK_SEARCH.results.length) mpkSearchPick(0);
+    if (e.key === 'Escape') mpkSearchClose();
+  });
+  input.addEventListener('focus', () => { if (input.value.trim()) mpkSearchRun(input.value); });
+  document.addEventListener('click', e => { if (!e.target.closest('.mpk-search')) mpkSearchClose(); });
+}
+
+function mpkSearchRun(query) {
+  const seq = ++MPK_SEARCH.seq;
+  clearTimeout(MPK_SEARCH.placeTimer);
+  const q = query.trim();
+  if (!q) { mpkSearchClose(); return; }
+  MPK_SEARCH.results = mpkSearchLocal(q, MPK_AREAS, MPK.data.kadaster.features,
+    MPK.data.buildings.features);
+  mpkSearchRender(q.length >= 3);
+  if (q.length < 3) return;
+  // place names: wait for a pause in typing (Nominatim allows ~1 request per second)
+  MPK_SEARCH.placeTimer = setTimeout(async () => {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+        format: 'jsonv2', q, viewbox: MPK_SEARCH_VIEWBOX, bounded: 1, countrycodes: 'my', limit: 6 });
+      const places = await (await fetch(url, { headers: { 'Accept-Language': 'en' } })).json();
+      if (seq !== MPK_SEARCH.seq) return;              // a newer query is on screen
+      MPK_SEARCH.results = MPK_SEARCH.results.filter(r => r.kind !== 'place').concat(places.map(p => ({
+        kind: 'place', label: p.name || p.display_name.split(',')[0],
+        sub: p.display_name.split(',').slice(1, 3).join(',').trim(), lng: +p.lon, lat: +p.lat, bbox: p.boundingbox })));
+    } catch (e) {}
+    if (seq === MPK_SEARCH.seq) mpkSearchRender(false);
+  }, 600);
+}
+
+function mpkSearchRender(placesPending) {
+  const dd = document.getElementById('mpk-search-dd');
+  const icons = { area: '🗺️', lot: '📐', building: '🏠', place: '📍' };
+  const titles = { area: 'Study areas', lot: 'Cadastral lots', building: 'Buildings', place: 'Places in Kemaman' };
+  let html = '', last = null;
+  MPK_SEARCH.results.forEach((r, i) => {
+    if (r.kind !== last) { html += `<div class="search-section-header">${titles[r.kind]}</div>`; last = r.kind; }
+    html += `<div class="search-item" role="option" onclick="mpkSearchPick(${i})">
+      <div class="search-item-icon">${icons[r.kind]}</div>
+      <div class="search-item-body"><div class="search-item-id">${r.label}</div><div class="search-item-cls">${r.sub || ''}</div></div></div>`;
+  });
+  if (placesPending) html += '<div class="search-loading">Searching places…</div>';
+  if (!html) html = '<div class="search-loading">No matches. Try a lot no., UPI, Plus Code or place name.</div>';
+  dd.innerHTML = html;
+  dd.style.display = 'block';
+}
+
+function mpkSearchClose() {
+  const dd = document.getElementById('mpk-search-dd');
+  if (dd) dd.style.display = 'none';
+}
+
+function mpkSearchPick(i) {
+  const r = MPK_SEARCH.results[i];
+  if (!r) return;
+  mpkSearchClose();
+  document.getElementById('mpk-search-input').value = r.label;
+  if (r.kind === 'area') {
+    mpkSelectArea(r.key);
+  } else if (r.kind === 'building') {
+    mpkZoomTo(r.id);
+  } else if (r.kind === 'lot') {
+    map.fitBounds(mpkBoundsOf([r.feature]), { padding: 120, maxZoom: 18, duration: 1000 });
+    try { map.getSource('mpk-highlight').setData(r.feature); } catch (e) {}
+    showToast('📐 ' + r.label + ' · ' + r.sub);
+  } else {
+    const b = r.bbox && r.bbox.map(Number);
+    if (b && b[0] !== b[1]) map.fitBounds([[b[2], b[0]], [b[3], b[1]]], { padding: 60, maxZoom: 17, duration: 1000 });
+    else map.flyTo({ center: [r.lng, r.lat], zoom: 16, duration: 1000 });
+  }
+  addActivityLog('Search', r.label);
 }
