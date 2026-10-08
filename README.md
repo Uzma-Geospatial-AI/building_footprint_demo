@@ -169,8 +169,10 @@ thresholded (Otsu) on its own, areas showing the same capture in both are skippe
 clouds (+30 m margin), water and specks under ~5 m are left out. At 10–30 m "new built-up" means new hard surface,
 not individual houses. Logic in `mpk-change.js`, tests in `tools/test_mpk_change.js`.
 
-**Search** (topbar, MPK mode): study areas, cadastral lot no. / UPI, building Plus Codes, and
-place names in Kemaman via OpenStreetMap Nominatim.
+**Search** (topbar, MPK mode): study areas, cadastral lot no. / UPI, building Plus Codes,
+place names in Kemaman via OpenStreetMap Nominatim, and coordinates — decimal degrees in
+either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
+(`4°16'05"N 103°27'07"E`); a pin marks the point.
 
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 

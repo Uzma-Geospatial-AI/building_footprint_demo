@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
   mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
-  mpkYearBest, mpkEsriImages, mpkSearchLocal } = require('../mpk.js');
+  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -123,5 +123,23 @@ assert.deepStrictEqual(kinds(mpkSearchLocal('1328', areas, lots, blds)), ['lot:L
 assert.deepStrictEqual(kinds(mpkSearchLocal('1103120003020', areas, lots, blds)), ['lot:Lot 3020']);
 assert.deepStrictEqual(kinds(mpkSearchLocal('f33+49', areas, lots, blds)), ['building:6PP57F33+49XJ']);
 assert.deepStrictEqual(mpkSearchLocal(' ', areas, lots, blds), []);
+
+// Coordinates typed in the search box -> { lat, lng } (null when not a coordinate)
+const near = (r, lat, lng) => r && Math.abs(r.lat - lat) < 1e-4 && Math.abs(r.lng - lng) < 1e-4;
+assert.ok(near(mpkParseCoords('4.2681, 103.4520'), 4.2681, 103.452));
+assert.ok(near(mpkParseCoords('4.2681 103.4520'), 4.2681, 103.452));
+assert.ok(near(mpkParseCoords('4.2681;103.4520'), 4.2681, 103.452));
+assert.ok(near(mpkParseCoords('103.4520, 4.2681'), 4.2681, 103.452));          // lng, lat order
+assert.ok(near(mpkParseCoords('-4.5, 103.2'), -4.5, 103.2));
+assert.ok(near(mpkParseCoords(`4°16'05"N 103°27'07"E`), 4 + 16 / 60 + 5 / 3600, 103 + 27 / 60 + 7 / 3600));
+assert.ok(near(mpkParseCoords("4°16'05''N, 103°27'07''E"), 4 + 16 / 60 + 5 / 3600, 103 + 27 / 60 + 7 / 3600));
+assert.ok(near(mpkParseCoords('4 16 05 N 103 27 07 E'), 4 + 16 / 60 + 5 / 3600, 103 + 27 / 60 + 7 / 3600));
+assert.ok(near(mpkParseCoords(`N4°16.08' E103°27.12'`), 4 + 16.08 / 60, 103 + 27.12 / 60));
+assert.ok(near(mpkParseCoords(`103°27'07"E 4°16'05"N`), 4 + 16 / 60 + 5 / 3600, 103 + 27 / 60 + 7 / 3600));
+assert.ok(near(mpkParseCoords(`4°16'05"S 103°27'07"W`), -(4 + 16 / 60 + 5 / 3600), -(103 + 27 / 60 + 7 / 3600)));
+assert.strictEqual(mpkParseCoords('1328'), null);                     // a lot number
+assert.strictEqual(mpkParseCoords('Jalan Kemaman'), null);
+assert.strictEqual(mpkParseCoords('95, 200'), null);                  // out of range
+assert.strictEqual(mpkParseCoords(`5.80528; 5'56'`), null);           // incomplete
 
 console.log('mpk logic: all tests passed');

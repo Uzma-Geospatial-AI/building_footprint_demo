@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261009b" rel="stylesheet">
+<link href="mpk.css?v=20261009c" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -698,7 +698,7 @@
     </div>
     <div class="topbar-search mpk-search" style="position:relative;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input id="mpk-search-input" type="search" placeholder="Search area, lot no., UPI, Plus Code or place…" autocomplete="off" aria-label="Search MPK Kemaman"/>
+      <input id="mpk-search-input" type="search" placeholder="Search area, lot, UPI, Plus Code, place or coordinate…" autocomplete="off" aria-label="Search MPK Kemaman"/>
       <div id="mpk-search-dd" class="search-dd" role="listbox"></div>
     </div>
     <select id="area-mode" class="area-mode-select" onchange="mpkSetMode(this.value)" title="Area" aria-label="Area">
@@ -4232,7 +4232,7 @@ function showLoading(text, sub) {
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 </script>
-<script src="mpk.js?v=20261009b"></script>
-<script src="mpk-change.js?v=20261009b"></script>
+<script src="mpk.js?v=20261009c"></script>
+<script src="mpk-change.js?v=20261009c"></script>
 </body>
 </html>

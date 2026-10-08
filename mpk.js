@@ -141,6 +141,43 @@ function mpkImagerySource(entry) {
              + '&color_formula=gamma%20RGB%202.7%2C%20saturation%201.5%2C%20sigmoidal%20RGB%2015%200.55'] };
 }
 
+// A coordinate typed in the search box -> { lat, lng }, or null. Accepts decimal degrees
+// ("4.2681, 103.452", either order, any of , ; or space between) and degrees-minutes(-seconds)
+// with hemisphere letters ("4°16'05"N 103°27'07"E", "4 16 05 N 103 27 07 E", "N4°16.08' E103°27.12'").
+function mpkParseCoords(text) {
+  const q = text.trim().toUpperCase().replace(/[′’‘`]/g, "'").replace(/[″“”]|''/g, '"');
+  const inRange = (lat, lng) => Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+  // decimal pair
+  let m = q.match(/^([-+]?\d+(?:\.\d+)?)\s*[,;\s]\s*([-+]?\d+(?:\.\d+)?)$/);
+  if (m) {
+    let a = +m[1], b = +m[2];
+    if (!m[1].includes('.') && !m[2].includes('.')) return null;      // "1328 20": not a coordinate
+    if (Math.abs(a) > 90 && Math.abs(b) <= 90) [a, b] = [b, a];       // typed as lng, lat
+    return inRange(a, b) ? { lat: a, lng: b } : null;
+  }
+  // two DMS / DM parts, each with a hemisphere letter before ("N4°16'") or after ("4°16'N")
+  const num = String.raw`(\d+(?:\.\d+)?)\s*(?:°|D|\s)\s*(?:(\d+(?:\.\d+)?)\s*(?:'|M|\s)\s*)?(?:(\d+(?:\.\d+)?)\s*(?:"|S(?![A-Z])|\s)?\s*)?`;
+  const forms = { pre: String.raw`([NSEW])\s*` + num, post: num + String.raw`([NSEW])` };
+  const read = (hemi, d, mi, se) => {
+    if (mi != null && +mi >= 60 || se != null && +se >= 60) return null;
+    const v = +d + (mi ? +mi / 60 : 0) + (se ? +se / 3600 : 0);
+    return { hemi, v: hemi === 'S' || hemi === 'W' ? -v : v };
+  };
+  const part = (form, g) => (form === 'pre' ? read(g[0], g[1], g[2], g[3]) : read(g[3], g[0], g[1], g[2]));
+  for (const f1 of ['pre', 'post']) {
+    for (const f2 of ['pre', 'post']) {
+      m = q.match(new RegExp(String.raw`^${forms[f1]}\s*[,;]?\s*${forms[f2]}$`));
+      if (!m) continue;
+      const x = part(f1, m.slice(1, 5)), y = part(f2, m.slice(5, 9));
+      if (!x || !y) continue;
+      const lat = 'NS'.includes(x.hemi) ? x : y, lng = 'EW'.includes(x.hemi) ? x : y;
+      if (lat === lng || !'NS'.includes(lat.hemi) || !'EW'.includes(lng.hemi)) continue;
+      return inRange(lat.v, lng.v) ? { lat: lat.v, lng: lng.v } : null;
+    }
+  }
+  return null;
+}
+
 // Search MPK's own data: study areas by name, cadastral lots by lot no. / UPI prefix,
 // buildings by Plus Code (the "+" may be left out). At most `limit` results per kind.
 function mpkSearchLocal(query, areas, lots, buildings, limit = 6) {
@@ -165,7 +202,7 @@ function mpkSearchLocal(query, areas, lots, buildings, limit = 6) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+  module.exports = { mpkParseCoords, mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
                      mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
                      mpkYearBest, mpkEsriImages };
 }
@@ -199,7 +236,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261009b',
+  VERSION: '20261009c',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -468,6 +505,7 @@ function mpkExit() {
   MPK.active = false;
   document.body.classList.remove('mpk-mode');
   mpkHistoricOff();
+  if (MPK_SEARCH.marker) { MPK_SEARCH.marker.remove(); MPK_SEARCH.marker = null; }
   if (typeof mpkChangeClear === 'function') mpkChangeClear();
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
@@ -985,6 +1023,13 @@ function mpkSearchRun(query) {
   clearTimeout(MPK_SEARCH.placeTimer);
   const q = query.trim();
   if (!q) { mpkSearchClose(); return; }
+  const coord = mpkParseCoords(q);
+  if (coord) {
+    MPK_SEARCH.results = [{ kind: 'coord', label: `${coord.lat.toFixed(6)}, ${coord.lng.toFixed(6)}`,
+                            sub: 'Go to this coordinate', lat: coord.lat, lng: coord.lng }];
+    mpkSearchRender(false);
+    return;
+  }
   MPK_SEARCH.results = mpkSearchLocal(q, MPK_AREAS, MPK.data.kadaster.features,
     MPK.data.buildings.features);
   mpkSearchRender(q.length >= 3);
@@ -1006,8 +1051,8 @@ function mpkSearchRun(query) {
 
 function mpkSearchRender(placesPending) {
   const dd = document.getElementById('mpk-search-dd');
-  const icons = { area: '🗺️', lot: '📐', building: '🏠', place: '📍' };
-  const titles = { area: 'Study areas', lot: 'Cadastral lots', building: 'Buildings', place: 'Places in Kemaman' };
+  const icons = { coord: '🎯', area: '🗺️', lot: '📐', building: '🏠', place: '📍' };
+  const titles = { coord: 'Coordinate', area: 'Study areas', lot: 'Cadastral lots', building: 'Buildings', place: 'Places in Kemaman' };
   let html = '', last = null;
   MPK_SEARCH.results.forEach((r, i) => {
     if (r.kind !== last) { html += `<div class="search-section-header">${titles[r.kind]}</div>`; last = r.kind; }
@@ -1016,7 +1061,7 @@ function mpkSearchRender(placesPending) {
       <div class="search-item-body"><div class="search-item-id">${r.label}</div><div class="search-item-cls">${r.sub || ''}</div></div></div>`;
   });
   if (placesPending) html += '<div class="search-loading">Searching places…</div>';
-  if (!html) html = '<div class="search-loading">No matches. Try a lot no., UPI, Plus Code or place name.</div>';
+  if (!html) html = '<div class="search-loading">No matches. Try a lot no., UPI, Plus Code, place name or coordinate (e.g. 4.2681, 103.452).</div>';
   dd.innerHTML = html;
   dd.style.display = 'block';
 }
@@ -1031,7 +1076,10 @@ function mpkSearchPick(i) {
   if (!r) return;
   mpkSearchClose();
   document.getElementById('mpk-search-input').value = r.label;
-  if (r.kind === 'area') {
+  if (r.kind === 'coord') {
+    mpkSearchMarker(r.lng, r.lat);
+    map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 17), duration: 1000 });
+  } else if (r.kind === 'area') {
     mpkSelectArea(r.key);
   } else if (r.kind === 'building') {
     mpkZoomTo(r.id);
@@ -1045,4 +1093,16 @@ function mpkSearchPick(i) {
     else map.flyTo({ center: [r.lng, r.lat], zoom: 16, duration: 1000 });
   }
   addActivityLog('Search', r.label);
+}
+
+// Pin at a searched coordinate (one at a time); its popup shows the coordinate
+function mpkSearchMarker(lng, lat) {
+  if (MPK_SEARCH.marker) MPK_SEARCH.marker.remove();
+  const text = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  MPK_SEARCH.marker = new maplibregl.Marker({ color: '#E8772E' }).setLngLat([lng, lat])
+    .setPopup(new maplibregl.Popup({ offset: 28, focusAfterOpen: false })
+      .setHTML(`<div class="popup-body"><div class="popup-row"><span class="popup-k">Coordinate</span>
+        <span class="popup-v">${text}</span></div></div>`))
+    .addTo(map);
+  MPK_SEARCH.marker.togglePopup();
 }
