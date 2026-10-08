@@ -128,8 +128,8 @@ function mpkEsriImages(history, area) {
 }
 
 // Raster source for one imagery entry (Esri, Sentinel-2 or Landsat), or null when none.
-// maxView is the deepest map zoom where the sensor still looks sharp: one screen pixel per
-// sensor pixel (10 m Sentinel-2 ~ z14, 30 m Landsat ~ z12); null means no cap.
+// maxView caps the map zoom while the image is shown (null = no cap). All satellites zoom
+// as deep as Esri; past ~z14 (Sentinel-2) / ~z12 (Landsat) their pixels are just enlarged.
 // kind changes the source settings (max zoom, credit), so it must be rebuilt per kind.
 function mpkImagerySource(entry) {
   if (!entry || !entry.source) return null;
@@ -138,10 +138,10 @@ function mpkImagerySource(entry) {
              attribution: 'Esri World Imagery Wayback' };
   }
   if (entry.source === 's2') {
-    return { kind: 's2', tiles: [mpkSentinelTileUrl(entry.item)], maxzoom: 16, maxView: 14,
+    return { kind: 's2', tiles: [mpkSentinelTileUrl(entry.item)], maxzoom: 16, maxView: null,
              attribution: 'Sentinel-2 (Copernicus) via Microsoft Planetary Computer' };
   }
-  return { kind: 'landsat', maxzoom: 15, maxView: 12, attribution: 'Landsat (USGS/NASA) via Microsoft Planetary Computer',
+  return { kind: 'landsat', maxzoom: 15, maxView: null, attribution: 'Landsat (USGS/NASA) via Microsoft Planetary Computer',
            tiles: ['https://planetarycomputer.microsoft.com/api/data/v1/item/tiles/WebMercatorQuad/{z}/{x}/{y}@1x'
              + '?collection=landsat-c2-l2&item=' + entry.item + '&assets=red&assets=green&assets=blue&nodata=0&format=png'
              + '&color_formula=gamma%20RGB%202.7%2C%20saturation%201.5%2C%20sigmoidal%20RGB%2015%200.55'] };
@@ -207,7 +207,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261008t',
+  VERSION: '20261008u',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -956,7 +956,7 @@ function mpkWaybackRender() {
   document.getElementById('basemap-label').textContent = `${MPK_SATELLITES[w.src].label} · ${mpkMonthLabel(entry.date)}`;
   sub.textContent = w.view === 'image'
     ? `Image ${i + 1} of ${list.length} · ${area}`
-    : `Least-cloudy ${mpkSatName(entry)} image of ${period} · ${area} · zoom limited to keep it sharp`;
+    : `Least-cloudy ${mpkSatName(entry)} image of ${period} · ${area}`;
 }
 
 function mpkWaybackStep(d) {

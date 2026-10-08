@@ -89,10 +89,10 @@ assert.strictEqual(s2.kind, 's2'); assert.strictEqual(s2.tiles[0], mpkSentinelTi
 const ls = mpkImagerySource({ source: 'landsat', item: 'LT05_X' });
 assert.strictEqual(ls.kind, 'landsat');
 assert.ok(ls.tiles[0].includes('collection=landsat-c2-l2&item=LT05_X&assets=red&assets=green&assets=blue'));
-// Sharpest zoom per satellite: zooming past a sensor's native resolution only blurs it
+// No zoom cap for any satellite: like Esri, Sentinel-2 and Landsat can be zoomed to z20
 assert.strictEqual(esri.maxView, null);
-assert.strictEqual(s2.maxView, 14);
-assert.strictEqual(ls.maxView, 12);
+assert.strictEqual(s2.maxView, null);
+assert.strictEqual(ls.maxView, null);
 assert.strictEqual(mpkImagerySource(null), null);
 assert.strictEqual(mpkImagerySource({ year: 2001, source: null }), null);
 
