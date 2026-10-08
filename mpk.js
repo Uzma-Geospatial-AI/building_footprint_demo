@@ -93,6 +93,9 @@ const MPK_LAYER_GROUPS = {
 };
 
 const MPK = {
+  // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
+  // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
+  VERSION: '20261008a',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -149,7 +152,7 @@ function mpkBoundsOf(features) {
 async function mpkEnsureData() {
   if (MPK.data) return;
   const entries = await Promise.all(Object.entries(MPK.FILES).map(async ([key, url]) => {
-    const res = await fetch(url);
+    const res = await fetch(url + '?v=' + MPK.VERSION);
     if (!res.ok) throw new Error('HTTP ' + res.status + ' · ' + url);
     return [key, await res.json()];
   }));
