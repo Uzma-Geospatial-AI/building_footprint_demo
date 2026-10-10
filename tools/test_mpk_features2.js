@@ -76,8 +76,46 @@ const csvPlan = F.mpkPlanSchedule([{ score: 77, p: feats[3].properties }, { scor
   { teams: 1, perDay: 5, start: new Date(2026, 9, 15) });
 const lines = F.mpkPlanCSV(csvPlan, s).split('\n');
 assert.strictEqual(lines.length, 3);
-assert.strictEqual(lines[0], 'day,date,team,stop,plus_code,area,lot,upi,footprint_m2,priority,reason,lat,lng,google_maps');
-assert.ok(lines[1].startsWith('1,2026-10-15,1,1,P4,Binjai – Chukai,,,800,77,Within 4 m of road centreline (reserve 10 m),'));
+assert.strictEqual(lines[0], 'day,date,team,stop,plus_code,area,lot,upi,footprint_m2,priority,source,reason,lat,lng,google_maps');
+assert.ok(lines[1].startsWith('1,2026-10-15,1,1,P4,Binjai – Chukai,,,800,77,auto,Within 4 m of road centreline (reserve 10 m),'));
 assert.ok(lines[2].includes(',On MPK suspect list,') && lines[2].includes('https://www.google.com/maps/search/?api=1&query='));
+
+// Plus Codes: the reference example, and a code inside Teluk Kalong
+assert.strictEqual(F.mpkPlusCode(47.0000625, 8.0000625), '8FVC2222+22');
+assert.strictEqual(F.mpkPlusCode(4.29047, 103.44633).slice(0, 8), '6PP57CRW');
+assert.strictEqual(F.mpkPlusCode(-33.8688, 151.2093).length, 11);
+
+// Plan items: officer edits, buildings added to the plan, new cases
+const ranked = [feats[3], feats[0]].map(f => ({ p: f.properties, pr: { score: f.properties.id === 4 ? 70 : 60 } }));
+const store = {
+  added: [{ id: 'x1', lat: 4.2, lng: 103.4, title: 'Complaint 114', note: 'new shed', score: 95, m2: 40, kawasan: 'tk' },
+          { id: 'x2', lat: 4.25, lng: 103.45, title: 'Far away', score: 25, kawasan: 'bbc' }],
+  edits: { 4: { excluded: true }, 1: { score: 30, note: 'check permit' }, 2: { include: true, score: 75 } },
+};
+const mitems = F.mpkPlanItems(ranked, feats, store, "all");
+assert.deepStrictEqual(mitems.map(x => [x.key, x.score, x.source]),
+  [['nx1', 95, 'added'], ['b2', 75, 'included'], ['b1', 30, 'edited'], ['nx2', 25, 'added']]);
+assert.strictEqual(mitems[0].p.plus_code, F.mpkPlusCode(4.2, 103.4));
+assert.strictEqual(mitems[0].p.area_m2, 40);
+// area filter drops new cases elsewhere; no edits = the automatic list
+assert.deepStrictEqual(F.mpkPlanItems(ranked, feats, store, 'tk').map(x => x.key), ['nx1', 'b2', 'b1']);
+assert.deepStrictEqual(F.mpkPlanItems(ranked, feats, { added: [], edits: {} }, 'all').map(x => [x.key, x.source]), [['b4', 'auto'], ['b1', 'auto']]);
+// reasons in plain words, with the note
+assert.strictEqual(F.mpkPlanReason(mitems[0], s), 'Complaint 114 · added by officer · Note: new shed');
+assert.strictEqual(F.mpkPlanReason(mitems[1], s), 'Added by officer (legal · on approved lot)');
+assert.strictEqual(F.mpkPlanReason(mitems[2], s), 'On MPK suspect list · Note: check permit');
+// the plan and its CSV carry them
+const mplan = F.mpkPlanSchedule(mitems, { teams: 1, perDay: 10, start: new Date(2026, 9, 15) });
+const mcsv = F.mpkPlanCSV(mplan, s);
+assert.ok(mcsv.includes(',95,added,Complaint 114 · added by officer · Note: new shed,'));
+assert.ok(mcsv.includes(',Outside study areas,') === false);
+
+// Store from a file: bad entries dropped, values clamped
+const clean = F.mpkPlanStoreClean({ added: [{ id: 'a', lat: 4.2, lng: 103.4, score: 500, title: 'x'.repeat(300) }, { lat: 'no' }, null,
+  { id: 'b', lat: 95, lng: 0 }], edits: { 12: { score: 40, junk: 1 }, abc: { score: 1 }, 13: {}, 14: { excluded: true } } });
+assert.strictEqual(clean.added.length, 1);
+assert.deepStrictEqual([clean.added[0].score, clean.added[0].title.length, clean.added[0].kawasan], [50, 120, null]);
+assert.deepStrictEqual(clean.edits, { 12: { score: 40 }, 14: { excluded: true } });
+assert.deepStrictEqual(F.mpkPlanStoreClean('nonsense'), { v: 1, added: [], edits: {} });
 
 console.log('mpk features 12-15: all tests passed');

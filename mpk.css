@@ -482,3 +482,38 @@ body:not(.mpk-mode) .mpk-swipe, body:not(.mpk-mode) .mpk-gest-cam { display:none
 .mpk-plan-day { flex-shrink:0; width:34px; height:28px; border-radius:7px; background:#1E2C44; color:#fff; font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
 .mpk-hud-item.on { border-color:#2979FF; background:#EEF4FF; }
 .mpk-hud-item.on .mpk-plan-day { background:#2979FF; }
+.mpk-plan-tools { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.mpk-plan-tools .mpk-btn { height:30px; }
+.mpk-plan-tools .mpk-btn.on { background:var(--charcoal-dark); }
+.mpk-plan-tools .mpk-wb-btn { height:30px; display:inline-flex; align-items:center; cursor:pointer; }
+.mpk-plan-tools .mpk-wb-btn:disabled { opacity:0.45; cursor:default; }
+.mpk-plan-tools.sm { margin-top:8px; }
+.mpk-plan-hint { margin-top:8px; font-size:11px; color:var(--charcoal-light); }
+.mpk-plan-hint.on { padding:7px 9px; border-radius:8px; background:#FFF3E0; color:#E65100; font-weight:700; }
+.mpk-plan-tag { font-style:normal; color:#E65100; font-weight:700; }
+.mpk-plan-stops { display:flex; flex-direction:column; gap:2px; margin:-2px 0 4px 18px; padding-left:8px; border-left:2px solid #2979FF; }
+.mpk-plan-stops button, .mpk-plan-mine-list button { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:5px 6px; border:none; border-radius:7px; background:none; font-family:inherit; font-size:11.5px; color:var(--charcoal-dark); cursor:pointer; }
+.mpk-plan-stops button:hover, .mpk-plan-mine-list button:hover { background:rgba(30,44,68,0.05); }
+.mpk-plan-stops .n { width:20px; height:20px; border-radius:50%; background:#2979FF; color:#fff; font-size:10.5px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+.mpk-plan-stops small, .mpk-plan-mine-list small { display:block; font-size:10.5px; color:var(--charcoal-light); }
+.mpk-plan-stops span:nth-child(2), .mpk-plan-mine-list span:nth-child(2) { flex:1; min-width:0; }
+.mpk-plan-stops .ed, .mpk-plan-mine-list .ed { color:var(--charcoal-light); }
+.mpk-plan-mine { margin-top:12px; padding-top:10px; border-top:1px solid rgba(30,44,68,0.08); }
+.mpk-plan-mine-head { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--charcoal-dark); }
+.mpk-plan-mine-head span { font-size:11px; color:var(--charcoal-light); }
+.mpk-plan-mine-list { margin-top:6px; max-height:160px; overflow-y:auto; }
+.mpk-plan-mine-list .kind { flex-shrink:0; min-width:48px; padding:2px 6px; border-radius:5px; font-size:9.5px; font-weight:800; text-transform:uppercase; text-align:center; background:#E3F2FD; color:#0D47A1; }
+.mpk-plan-mine-list .kind.new { background:#FFF3E0; color:#E65100; }
+.mpk-plan-mine-list .kind.out { background:#ECEFF1; color:#546E7A; }
+.mpk-pe { margin-top:10px; padding:10px 12px 12px; border:1.5px solid #FF8F00; border-radius:11px; background:#FFFBF5; display:flex; flex-direction:column; gap:8px; }
+.mpk-pe-head { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--charcoal-dark); }
+.mpk-pe-head button { border:none; background:none; cursor:pointer; color:var(--charcoal-light); font-size:13px; }
+.mpk-pe-loc { font-size:11px; color:var(--charcoal-light); display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.mpk-pe label { display:flex; flex-direction:column; gap:4px; font-size:10.5px; font-weight:600; color:var(--charcoal-light); }
+.mpk-pe label i { font-weight:400; font-style:normal; }
+.mpk-pe label.chk { flex-direction:row; align-items:center; gap:6px; font-size:11.5px; color:var(--charcoal-dark); }
+.mpk-pe input[type=text], .mpk-pe input[type=number], .mpk-pe select, .mpk-pe textarea { padding:7px 8px; border:1.5px solid rgba(30,44,68,0.16); border-radius:8px; font-family:inherit; font-size:12.5px; color:var(--charcoal-dark); background:#fff; min-width:0; resize:vertical; }
+.mpk-pe input:focus, .mpk-pe select:focus, .mpk-pe textarea:focus { outline:none; border-color:var(--orange); }
+.mpk-pe-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.mpk-pe .mpk-hud-actions { margin-top:2px; }
+.mpk-wb-btn.danger { color:#c62828; border-color:rgba(198,40,40,0.3); }
