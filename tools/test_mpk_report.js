@@ -1,7 +1,7 @@
 const assert = require('assert');
 const mpk = require('../mpk.js');
 Object.assign(global, mpk);                       // the report module uses mpk.js globals
-const { mpkReportId, mpkReportSuspectRows, mpkReportSummaryRows } = require('../mpk-report.js');
+const { mpkReportId, mpkReportDate, mpkReportSuspectRows, mpkReportSummaryRows, MPK_REPORT_TEXT } = require('../mpk-report.js');
 
 // System report ID: BV-YYYYMMDD-HHMM (local time) — not an official council reference
 assert.strictEqual(mpkReportId(new Date(2026, 9, 11, 14, 5)), 'BV-20261011-1405');
@@ -30,5 +30,22 @@ assert.deepStrictEqual(mpkReportSummaryRows(feats, s), [
   ['Not verified', '1', '25.0%', '30'],
   ['Total', '4', '100%', '2,267'],
 ]);
+
+// Bahasa Melayu version: same rows, Malay wording
+assert.strictEqual(mpkReportDate(new Date(2026, 7, 3), 'ms'), '3 Ogos 2026');
+assert.strictEqual(mpkReportDate(new Date(2026, 7, 3), 'en'), '3 August 2026');
+assert.deepStrictEqual(mpkReportSuspectRows(feats, s, 'ms').map(r => r[5]),
+  ['Dalam 6.3 m dari garis tengah jalan (rizab 10 m)', 'Dalam senarai syak MPK']);
+assert.deepStrictEqual(mpkReportSummaryRows(feats, s, 'ms').map(r => r[0]),
+  ['Disyaki haram', 'Sah · di atas lot diluluskan', 'Belum disahkan', 'Jumlah']);
+
+// Both languages carry every key, and the size labels line up with the size classes
+const keys = l => Object.keys(MPK_REPORT_TEXT[l]).sort();
+assert.deepStrictEqual(keys('ms'), keys('en'));
+for (const l of ['en', 'ms']) {
+  assert.strictEqual(MPK_REPORT_TEXT[l].sizes.length, MPK_SIZE_CLASSES.length);
+  assert.deepStrictEqual(Object.keys(MPK_REPORT_TEXT[l].statusLabel), Object.keys(MPK_STATUS));
+  assert.deepStrictEqual(Object.keys(MPK_REPORT_TEXT[l].areas), Object.keys(MPK_AREAS));
+}
 
 console.log('mpk report: all tests passed');

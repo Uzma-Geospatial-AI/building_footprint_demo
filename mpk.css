@@ -281,3 +281,17 @@ body:not(.mpk-mode) .mpk-nav, body:not(.mpk-mode) .mpk-stats-page { display:none
 body:not(.mpk-mode) .mpk-pdf-btn { display:none !important; }
 .mpk-stats-actions { display:flex; gap:8px; flex-shrink:0; }
 .mpk-stats-actions .mpk-wb-btn { height:28px; }
+
+/* PDF report language chooser */
+.mpk-lang-overlay { position:fixed; inset:0; z-index:3000; display:flex; align-items:center; justify-content:center; background:rgba(20,28,42,0.45); padding:16px; }
+.mpk-lang-overlay[hidden] { display:none; }
+.mpk-lang-box { width:min(400px, 100%); background:#fff; border-radius:12px; padding:20px; box-shadow:0 18px 50px rgba(0,0,0,0.25); font-family:inherit; }
+.mpk-lang-box h3 { margin:0 0 4px; font-size:15px; color:var(--charcoal-dark); }
+.mpk-lang-box p { margin:0 0 14px; font-size:12px; color:#6b7685; }
+.mpk-lang-opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.mpk-lang-opt { display:flex; flex-direction:column; gap:4px; align-items:flex-start; text-align:left; padding:12px; border:1.5px solid rgba(30,44,68,0.14); border-radius:9px; background:#fff; font-family:inherit; cursor:pointer; }
+.mpk-lang-opt b { font-size:13px; color:var(--charcoal-dark); }
+.mpk-lang-opt small { font-size:10.5px; color:#6b7685; }
+.mpk-lang-opt:hover, .mpk-lang-opt:focus-visible { border-color:var(--orange); outline:none; background:#fff8f3; }
+.mpk-lang-opt.last { border-color:rgba(30,44,68,0.35); }
+.mpk-lang-cancel { margin-top:14px; width:100%; }
