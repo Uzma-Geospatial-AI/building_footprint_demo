@@ -1,7 +1,8 @@
 const assert = require('assert');
 const { mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
   mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
-  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords, mpkZoneAt, mpkStatus } = require('../mpk.js');
+  mpkYearBest, mpkEsriImages, mpkSearchLocal, mpkParseCoords, mpkZoneAt, mpkStatus,
+  mpkInScope, mpkSizeClass, MPK_SIZE_CLASSES, mpkBreakdown, mpkCSVAll } = require('../mpk.js');
 
 const f = (id, kawasan, kategori, extra, area_m2) => ({
   properties: { id, kawasan, kategori, area_m2, confidence: 0.8, plus_code: 'X' + id, lng: 103.4, lat: 4.2, ...extra },
@@ -161,5 +162,34 @@ assert.strictEqual(mpkZoneAt(5.5, 9.5, zones), null);
 const multi = { properties: { zone: 'commercial' }, geometry: { type: 'MultiPolygon',
   coordinates: [[[[20, 20], [21, 20], [21, 21], [20, 21], [20, 20]]], [[[30, 30], [31, 30], [31, 31], [30, 31], [30, 30]]]] } };
 assert.strictEqual(mpkZoneAt(30.5, 30.5, [multi]).properties.zone, 'commercial');
+
+// Scope: Teluk Kalong buildings inside the planning boundary, and corridor buildings
+const scope = [f(1, 'tk', 'lulus', { dalam: true }, 100), f(2, 'tk', 'lulus', {}, 100), f(3, 'tk', 'mockup', { dalam: true }, 50),
+               f(4, 'tk', 'mockup', {}, 50), f(5, 'tk', 'luar', { jarak_m: 30 }, 10), f(6, 'bbc', 'koridor', { jarak_jalan_m: 4 }, 600)];
+assert.deepStrictEqual(scope.map(x => mpkInScope(x.properties)), [true, false, true, false, false, true]);
+
+// Size classes (m²)
+assert.deepStrictEqual([50, 100, 499, 500, 999, 1000, 4999, 5000, 20000].map(mpkSizeClass), [0, 1, 1, 2, 2, 3, 3, 4, 4]);
+assert.strictEqual(MPK_SIZE_CLASSES.length, 5);
+
+// Breakdown per area and status, with m², share and size classes
+const inScope = scope.filter(x => mpkInScope(x.properties));
+const bd = mpkBreakdown(inScope, s);
+assert.strictEqual(bd.all.total, 3);
+assert.strictEqual(bd.all.m2, 750);
+assert.deepStrictEqual(bd.all.byStatus.legal, { n: 1, m2: 100, pct: 100 / 3 });
+assert.deepStrictEqual(bd.all.byStatus.suspected, { n: 2, m2: 650, pct: 200 / 3 });
+assert.deepStrictEqual(bd.all.byStatus.unverified, { n: 0, m2: 0, pct: 0 });
+assert.strictEqual(bd.tk.total, 2);
+assert.strictEqual(bd.bbc.byStatus.suspected.n, 1);
+assert.strictEqual(bd.bpb.total, 0);
+assert.deepStrictEqual(bd.all.sizes.map(c => c.n), [1, 1, 1, 0, 0]);      // 50, 100, 600 m²
+assert.deepStrictEqual(bd.all.sizes[2].byStatus, { suspected: 1, legal: 0, unverified: 0 });
+
+// CSV of every building in scope with its status and size
+const all2 = mpkCSVAll(inScope, s).trim().split('\n');
+assert.strictEqual(all2[0], 'id,area,status,plus_code,lng,lat,area_m2,lot,upi');
+assert.strictEqual(all2.length, 4);
+assert.strictEqual(all2[1], '6,binjai_bandar_chukai,suspected_illegal,X6,103.4,4.2,600,,');   // largest first
 
 console.log('mpk logic: all tests passed');

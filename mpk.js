@@ -27,6 +27,46 @@ function mpkStatus(p, s) {
   return p.kategori === 'lulus' ? 'legal' : 'unverified';
 }
 
+// The marked areas the dashboard reports on: Teluk Kalong buildings inside the planning
+// boundary, and buildings within the two road corridors
+function mpkInScope(p) {
+  return (p.kawasan === 'tk' && p.dalam === true) || p.kategori === 'koridor';
+}
+
+// Building size classes (footprint m²)
+const MPK_SIZE_CLASSES = [
+  { max: 100, label: 'Under 100 m²' },
+  { max: 500, label: '100 – 500 m²' },
+  { max: 1000, label: '500 – 1,000 m²' },
+  { max: 5000, label: '1,000 – 5,000 m²' },
+  { max: Infinity, label: '5,000 m² and over' },
+];
+function mpkSizeClass(m2) {
+  return MPK_SIZE_CLASSES.findIndex(c => m2 < c.max);
+}
+
+// Counts, m² and share per status, per area and overall, plus the size distribution
+function mpkBreakdown(features, s) {
+  const empty = () => ({ total: 0, m2: 0,
+    byStatus: { suspected: { n: 0, m2: 0, pct: 0 }, legal: { n: 0, m2: 0, pct: 0 }, unverified: { n: 0, m2: 0, pct: 0 } },
+    sizes: MPK_SIZE_CLASSES.map(c => ({ label: c.label, n: 0, byStatus: { suspected: 0, legal: 0, unverified: 0 } })) });
+  const out = { all: empty(), tk: empty(), bpb: empty(), bbc: empty() };
+  for (const f of features) {
+    const p = f.properties, st = mpkStatus(p, s), cls = mpkSizeClass(p.area_m2);
+    for (const key of ['all', p.kawasan]) {
+      const b = out[key];
+      if (!b) continue;
+      b.total++; b.m2 += p.area_m2;
+      b.byStatus[st].n++; b.byStatus[st].m2 += p.area_m2;
+      b.sizes[cls].n++; b.sizes[cls].byStatus[st]++;
+    }
+  }
+  for (const b of Object.values(out)) {
+    for (const v of Object.values(b.byStatus)) v.pct = b.total ? v.n * 100 / b.total : 0;
+  }
+  return out;
+}
+
 // MapLibre filter equivalent of mpkJenis(...) !== null
 function mpkSuspectFilter(s) {
   return ['any',
@@ -52,6 +92,17 @@ function mpkStats(features, s, rates, kawasan) {
   const area = suspects.reduce((sum, f) => sum + f.properties.area_m2, 0);
   return { total: feats.length, lulus, count: suspects.length, area, byJenis, byStatus,
            fee: area * rates.fee, cukai: area * rates.cukai, suspects };
+}
+
+// Every building with its status and size, largest first
+const MPK_CSV_STATUS = { suspected: 'suspected_illegal', legal: 'legal_approved_lot', unverified: 'not_verified' };
+function mpkCSVAll(features, s) {
+  const rows = [...features].sort((a, b) => b.properties.area_m2 - a.properties.area_m2).map(f => {
+    const p = f.properties;
+    return [p.id, MPK_CSV_AREA[p.kawasan], MPK_CSV_STATUS[mpkStatus(p, s)], p.plus_code, p.lng, p.lat, p.area_m2,
+      p.lot || '', p.upi || ''].join(',');
+  });
+  return ['id,area,status,plus_code,lng,lat,area_m2,lot,upi', ...rows].join('\n') + '\n';
 }
 
 // English codes written to the CSV export
@@ -238,7 +289,7 @@ function mpkSearchLocal(query, areas, lots, buildings, limit = 6) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkStatus, mpkZoneAt, mpkParseCoords, mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+  module.exports = { mpkInScope, mpkSizeClass, MPK_SIZE_CLASSES, mpkBreakdown, mpkCSVAll, mpkStatus, mpkZoneAt, mpkParseCoords, mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
                      mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
                      mpkYearBest, mpkEsriImages };
 }
@@ -251,13 +302,13 @@ const MPK_AREAS = {
 };
 // Every suspected building is drawn in one red so "red = suspected" reads at a glance;
 // the type is given in the popup, the list and the CSV.
-const MPK_SUSPECT_COLOR = '#e53935';
+const MPK_SUSPECT_COLOR = '#c62828';
 const MPK_STATUS = {
   suspected:  { label: 'Suspected illegal', color: MPK_SUSPECT_COLOR,
                 hint: 'On the MPK suspect list (Teluk Kalong) or encroaching the road reserve (corridors)' },
-  legal:      { label: 'Legal · on approved lot', color: '#2E9E4F',
+  legal:      { label: 'Legal · on approved lot', color: '#26a69a',
                 hint: 'Stands on a lot approved by MPK (Teluk Kalong)' },
-  unverified: { label: 'Not verified', color: '#9AA5B1',
+  unverified: { label: 'Not verified', color: '#CFD8DC',
                 hint: 'No approval record to confirm either way' },
 };
 const MPK_JENIS = {
@@ -288,6 +339,7 @@ const MPK_LAYER_GROUPS = {
                legend: [] },
   legal:     { label: MPK_STATUS.legal.label, swatch: [MPK_STATUS.legal.color],
                layers: ['mpk-legal-fill', 'mpk-legal-line'], legend: [] },
+  sizes:     { label: 'Building size labels', swatch: [], layers: ['mpk-size-label'], legend: [] },
   unverified: { label: MPK_STATUS.unverified.label, swatch: [MPK_STATUS.unverified.color],
                layers: ['mpk-unverified-fill'], legend: [] },
   reference: { label: 'Reference layers', swatchClass: 'line',
@@ -300,7 +352,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261009h',
+  VERSION: '20261011a',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -315,15 +367,16 @@ const MPK = {
   LIST_SIZE: 50,
   LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-unverified-fill', 'mpk-legal-fill', 'mpk-legal-line', 'mpk-suspect-fill', 'mpk-suspect-line',
-           'mpk-suspect-extrude', 'mpk-highlight-line'],
-  SOURCES: ['mpk-wayback', 'mpk-landuse', 'mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+           'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-size-label'],
+  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-landuse', 'mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
   bounds: null,
   settings: { rizab: 10 },
   area: 'all',
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, true])),
+  // land use starts off so the map shows the buildings first (switch it on in Analysis)
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, k !== 'landuse'])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -367,6 +420,9 @@ async function mpkEnsureData() {
     return [key, await res.json()];
   }));
   const data = Object.fromEntries(entries);
+  // the dashboard reports on the marked areas only: Teluk Kalong inside the planning boundary
+  // and the two road corridors (buildings outside them are dropped)
+  data.buildings = { ...data.buildings, features: data.buildings.features.filter(f => mpkInScope(f.properties)) };
   await Promise.all(Object.entries(MPK.OPTIONAL_FILES).map(async ([key, url]) => {
     try {
       const res = await fetch(url + '?v=' + MPK.VERSION);
@@ -430,11 +486,11 @@ function mpkAddLayers() {
     }
     // not verified (quiet grey) < legal (green) < suspected (red), so the two that matter stand out
     map.addLayer({ id: 'mpk-unverified-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('unverified'),
-      paint: { 'fill-color': MPK_STATUS.unverified.color, 'fill-opacity': 0.45 } });
+      paint: { 'fill-color': MPK_STATUS.unverified.color, 'fill-opacity': 0.6, 'fill-outline-color': '#90A4AE' } });
     map.addLayer({ id: 'mpk-legal-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('legal'),
-      paint: { 'fill-color': MPK_STATUS.legal.color, 'fill-opacity': 0.55 } });
+      paint: { 'fill-color': MPK_STATUS.legal.color, 'fill-opacity': 0.6 } });
     map.addLayer({ id: 'mpk-legal-line', type: 'line', source: 'mpk-buildings', filter: mpkStatusFilter('legal'),
-      paint: { 'line-color': '#1B5E20', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.4] } });
+      paint: { 'line-color': '#00695C', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.4] } });
     map.addLayer({ id: 'mpk-suspect-fill', type: 'fill', source: 'mpk-buildings', filter: suspect,
       paint: { 'fill-color': MPK_SUSPECT_COLOR, 'fill-opacity': 0.45 } });
     map.addLayer({ id: 'mpk-suspect-line', type: 'line', source: 'mpk-buildings', filter: suspect,
@@ -445,6 +501,14 @@ function mpkAddLayers() {
                'fill-extrusion-opacity': 0.85 } });
     map.addLayer({ id: 'mpk-highlight-line', type: 'line', source: 'mpk-highlight',
       paint: { 'line-color': '#FDD835', 'line-width': 3 } });
+    // footprint size (m²) on every building once zoomed in
+    map.addSource('mpk-size-pts', { type: 'geojson', data: { type: 'FeatureCollection',
+      features: MPK.data.buildings.features.map(f => ({ type: 'Feature', properties: { m2: f.properties.area_m2 },
+        geometry: { type: 'Point', coordinates: [f.properties.lng, f.properties.lat] } })) } });
+    map.addLayer({ id: 'mpk-size-label', type: 'symbol', source: 'mpk-size-pts', minzoom: 16.5,
+      layout: { 'text-field': ['concat', ['to-string', ['round', ['get', 'm2']]], ' m²'], 'text-font': ['Noto Sans Regular'],
+                'text-size': ['interpolate', ['linear'], ['zoom'], 16.5, 9.5, 19, 12.5], 'text-allow-overlap': false },
+      paint: { 'text-color': '#1E2C44', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } });
   } catch (e) {
     // Style not ready yet (e.g. mid basemap rebuild) — mpkOnStyleLoad retries.
     mpkRemoveLayers();
@@ -588,6 +652,8 @@ async function mpkEnter() {
   const tab = document.getElementById('ptab-mpk');
   tab.style.display = '';
   mpkBuildPanel();
+  mpkBuildStatsPage();
+  MPK.page = 'dashboard';
   mpkBuildHistoricBasemaps();
   mpkBindSearch();
   if (typeof mpkChangeInit === 'function') mpkChangeInit();
@@ -599,6 +665,7 @@ async function mpkEnter() {
 function mpkExit() {
   if (!MPK.active) return;
   MPK.active = false;
+  if (MPK.page === 'stats') mpkShowPage('dashboard');
   document.body.classList.remove('mpk-mode');
   mpkHistoricOff();
   if (MPK_SEARCH.marker) { MPK_SEARCH.marker.remove(); MPK_SEARCH.marker = null; }
@@ -630,45 +697,70 @@ function mpkBuildPanel() {
   el.dataset.built = '1';
   const chips = [['all', 'All'], ...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.short])]
     .map(([k, label]) => `<button class="mpk-chip" data-area="${k}" onclick="mpkSelectArea('${k}')">${label}</button>`).join('');
-  const jenisRows = Object.entries(MPK_JENIS).map(([k, j]) => `
-    <div class="mpk-jenis-row" id="mpk-jenis-${k}">
-      <i class="sw" style="background:${j.color}"></i><span>${j.label}</span><strong id="mpk-j-${k}">—</strong>
-    </div>`).join('');
-  const layerRows = Object.entries(MPK_LAYER_GROUPS).map(([k, g]) => {
-    const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>`
-      : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
-    // legend swatch: a colour, or '.class' for a styled swatch (lot outline, dashed line, band)
-    const legend = g.legend.map(([label, v]) => {
-      const item = v[0] === '.' ? `<i class="sw ${v.slice(1)}"></i>` : `<i class="sw" style="background:${v}"></i>`;
-      return `<span>${item}${label}</span>`;
-    }).join('');
+  // a switch row for one layer group (shared by the Overview status rows and the Analysis layers)
+  const toggle = (k, label) => `<button type="button" class="layer-toggle ${MPK.layerOn[k] ? 'on' : 'off'}" id="mpk-tog-${k}"
+    role="switch" aria-checked="${MPK.layerOn[k]}" aria-label="${label}" onclick="mpkToggleLayer('${k}')"></button>`;
+  const statusRows = Object.entries(MPK_STATUS).map(([k, st]) => {
+    const group = { suspected: 'suspect', legal: 'legal', unverified: 'unverified' }[k];
+    return `<div class="mpk-st-row mpk-layer-group${MPK.layerOn[group] ? '' : ' is-off'}" id="mpk-group-${group}" title="${st.hint}">
+      <i class="sw" style="background:${st.color}"></i>
+      <div class="mpk-st-main"><div class="mpk-st-label">${st.label}</div><div class="mpk-st-sub" id="mpk-st-sub-${k}">—</div></div>
+      <div class="mpk-st-pct" id="mpk-st-pct-${k}">—</div>
+      ${toggle(group, st.label)}
+    </div>`;
+  }).join('');
+  const analysisGroups = ['landuse', 'reference'].map(k => {
+    const g = MPK_LAYER_GROUPS[k];
+    const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>` : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
+    const legend = g.legend.map(([label, v]) =>
+      `<span>${v[0] === '.' ? `<i class="sw ${v.slice(1)}"></i>` : `<i class="sw" style="background:${v}"></i>`}${label}</span>`).join('');
     return `<div class="mpk-layer-group${MPK.layerOn[k] ? '' : ' is-off'}" id="mpk-group-${k}">
-      <div class="mpk-layer-row">
-        <span class="mpk-sw-group">${sw}</span>
-        <div class="mpk-layer-main">${g.label}</div>
-        <button type="button" class="layer-toggle ${MPK.layerOn[k] ? 'on' : 'off'}" id="mpk-tog-${k}" role="switch"
-          aria-checked="${MPK.layerOn[k]}" aria-label="${g.label}" onclick="mpkToggleLayer('${k}')"></button>
-      </div>
+      <div class="mpk-layer-row"><span class="mpk-sw-group">${sw}</span><div class="mpk-layer-main">${g.label}</div>${toggle(k, g.label)}</div>
       ${legend ? `<div class="mpk-layer-legend">${legend}</div>` : ''}
     </div>`;
   }).join('');
+
   el.innerHTML = `
-    <div class="mpk-hero">
-      <div class="mpk-eyebrow">MPK Kemaman · Mockup</div>
-      <div class="mpk-hero-title">Buildings suspected of lacking planning permission</div>
-      <div class="mpk-hero-sub" id="mpk-hero-sub"></div>
+    <div class="mpk-subtabs" role="tablist">
+      <button type="button" role="tab" data-sub="overview" class="active" onclick="mpkSubTab('overview')">Overview</button>
+      <button type="button" role="tab" data-sub="analysis" onclick="mpkSubTab('analysis')">Analysis</button>
     </div>
 
-    <div class="mpk-chips" role="tablist">${chips}</div>
+    <div id="mpk-sub-overview">
+      <div class="mpk-chips" role="tablist">${chips}</div>
+      <div class="mpk-scope" id="mpk-hero-sub"></div>
 
-    <div class="mpk-card mpk-layers">
-      <div class="mpk-card-title">Map layers</div>
-      ${layerRows}
+      <div class="mpk-kpis">
+        <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings<br><span id="mpk-k-m2">—</span></div></div>
+        <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Legal</div></div>
+        <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Suspected illegal</div></div>
+      </div>
+
+      <div class="mpk-card mpk-status">
+        <div class="mpk-status-bar" id="mpk-status-bar"></div>
+        ${statusRows}
+        <div class="mpk-st-row mpk-layer-group${MPK.layerOn.sizes ? '' : ' is-off'}" id="mpk-group-sizes">
+          <i class="sw sizes">m²</i>
+          <div class="mpk-st-main"><div class="mpk-st-label">Building size labels</div>
+            <div class="mpk-st-sub">m² shown on each building when zoomed in</div></div>
+          ${toggle('sizes', 'Building size labels')}
+        </div>
+      </div>
+
+      <div class="mpk-list-head">
+        <div class="mpk-card-title">Largest suspected buildings</div>
+        <button class="mpk-btn" onclick="mpkExportCSV()">Export CSV</button>
+      </div>
+      <div class="mpk-list" id="mpk-list"></div>
     </div>
-${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
 
-    <div class="mpk-card">
-      <div id="mpk-ctl-rizab">
+    <div id="mpk-sub-analysis" hidden>
+      <div class="mpk-card mpk-layers">
+        <div class="mpk-card-title">Map layers</div>
+        ${analysisGroups}
+      </div>
+
+      <div class="mpk-card" id="mpk-rizab-card">
         <div class="mpk-row">
           <label for="mpk-rizab" class="mpk-label">Road reserve from centreline (corridors)</label>
           <span class="mpk-slider-val" id="mpk-rizab-val"></span>
@@ -677,67 +769,54 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
           value="${MPK.settings.rizab}" oninput="mpkOnSetting('rizab', this.value)">
         <div class="mpk-range-scale"><span>3 m</span><span>20 m</span></div>
       </div>
-    </div>
+${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
 
-    <div class="mpk-kpis">
-      <div class="mpk-kpi danger"><div class="v" id="mpk-k-count">—</div><div class="l">Suspected buildings</div></div>
-      <div class="mpk-kpi"><div class="v" id="mpk-k-area">—</div><div class="l">Suspected footprint (m²)</div></div>
-      <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings assessed</div></div>
-    </div>
-
-    <div class="mpk-card mpk-status">
-      <div class="mpk-card-title">Building status</div>
-      <div class="mpk-status-bar" id="mpk-status-bar"></div>
-      ${Object.entries(MPK_STATUS).map(([k, st]) => `
-        <div class="mpk-status-row" title="${st.hint}">
-          <i class="sw" style="background:${st.color}"></i><span>${st.label}<small>${st.hint}</small></span>
-          <strong id="mpk-st-${k}">—</strong></div>`).join('')}
-    </div>
-
-    <div class="mpk-card mpk-jenis">${jenisRows}</div>
-
-    <div class="mpk-card">
-      <div class="mpk-card-title">Estimated council revenue <span class="mpk-tag">assumption</span></div>
-      <div class="mpk-rate-row">
-        <label for="mpk-rate-fee">Development application processing fee<small>RM / m²</small></label>
-        <input type="number" id="mpk-rate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnRate()">
-        <div class="mpk-money" id="mpk-r-fee">—</div>
+      <div class="mpk-card">
+        <div class="mpk-card-title">Estimated council revenue <span class="mpk-tag">assumption</span></div>
+        <div class="mpk-rate-row">
+          <label for="mpk-rate-fee">Development application processing fee<small>RM / m²</small></label>
+          <input type="number" id="mpk-rate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnRate()">
+          <div class="mpk-money" id="mpk-r-fee">—</div>
+        </div>
+        <div class="mpk-rate-row">
+          <label for="mpk-rate-cukai">Assessment tax (Cukai Pintu)<small>RM / m² / year</small></label>
+          <input type="number" id="mpk-rate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnRate()">
+          <div class="mpk-money" id="mpk-r-cukai">—</div>
+        </div>
+        <div class="mpk-total"><span>First-year revenue potential</span><strong id="mpk-r-total">—</strong></div>
       </div>
-      <div class="mpk-rate-row">
-        <label for="mpk-rate-cukai">Assessment tax (Cukai Pintu)<small>RM / m² / year</small></label>
-        <input type="number" id="mpk-rate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnRate()">
-        <div class="mpk-money" id="mpk-r-cukai">—</div>
-      </div>
-      <div class="mpk-total"><span>First-year revenue potential</span><strong id="mpk-r-total">—</strong></div>
-    </div>
 
-    <div class="mpk-list-head">
-      <div class="mpk-card-title">Largest suspected buildings</div>
-      <button class="mpk-btn" onclick="mpkExportCSV()">Export CSV</button>
+      <div class="mpk-note">Buildings shown: Teluk Kalong inside the planning boundary, and within the two road corridors.
+        Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
+        (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings.
+        Boundary & approved lots digitised from MPK's map; road centrelines and land use from OpenStreetMap (not
+        official RTD zoning); cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
+        Every case needs site verification.</div>
     </div>
-    <div class="mpk-list" id="mpk-list"></div>
-
-    <div class="mpk-note">Land use: OpenStreetMap landuse polygons for Kemaman district — community-mapped and
-      incomplete, not the official RTD zoning (PLANMalaysia i-Plan); to be replaced with MPK's zoning layer.
-      Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
-      (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings. Teluk Kalong boundary & approved lots digitised from MPK's map;
-      road centrelines from OpenStreetMap; cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
-      Every case needs site verification.</div>
   `;
+}
+
+// Overview / Analysis inside the panel
+function mpkSubTab(sub) {
+  document.querySelectorAll('.mpk-subtabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.sub === sub);
+    b.setAttribute('aria-selected', String(b.dataset.sub === sub));
+  });
+  document.getElementById('mpk-sub-overview').hidden = sub !== 'overview';
+  document.getElementById('mpk-sub-analysis').hidden = sub !== 'analysis';
 }
 
 function mpkSelectArea(area) {
   MPK.area = area;
   document.querySelectorAll('.mpk-chip').forEach(c => c.classList.toggle('active', c.dataset.area === area));
   const showKoridor = area === 'all' || area === 'bpb' || area === 'bbc';
-  document.getElementById('mpk-ctl-rizab').closest('.mpk-card').style.display = showKoridor ? '' : 'none';
-  Object.entries(MPK_JENIS).forEach(([k, j]) => {
-    document.getElementById('mpk-jenis-' + k).style.display =
-      area === 'all' || j.areas.includes(area) ? '' : 'none';
-  });
-  document.getElementById('mpk-hero-sub').textContent = area === 'all'
-    ? 'Three study areas: Teluk Kalong Industrial Area and two road corridors in Bandar Chukai.'
-    : MPK_AREAS[area].name;
+  document.getElementById('mpk-rizab-card').style.display = showKoridor ? '' : 'none';
+  document.getElementById('mpk-hero-sub').textContent = {
+    all: 'Teluk Kalong (inside the planning boundary) and the two road corridors',
+    tk: 'Teluk Kalong Industrial Area · buildings inside the planning boundary',
+    bpb: 'Bandar Putra – Berenjut · buildings along the road corridor',
+    bbc: 'Binjai – Bandar Chukai · buildings along the road corridor',
+  }[area];
   if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
   mpkRender();
   if (MPK.wayback.on) {
@@ -747,39 +826,53 @@ function mpkSelectArea(area) {
   if (typeof mpkChangeAreaChanged === 'function') mpkChangeAreaChanged();
 }
 
+// Buildings of the selected area (the dataset only holds the marked areas)
+function mpkAreaFeatures() {
+  const all = MPK.data.buildings.features;
+  return MPK.area === 'all' ? all : all.filter(f => f.properties.kawasan === MPK.area);
+}
+
+const mpkPct = v => (v > 0 && v < 1 ? '<1' : Math.round(v)) + '%';
+const mpkM2 = v => (v >= 10000 ? (v / 10000).toLocaleString('en-MY', { maximumFractionDigits: 1 }) + ' ha'
+  : mpkNum(v) + ' m²');
+
 function mpkRender() {
   if (!MPK.data) return;
   const s = mpkStats(MPK.data.buildings.features, MPK.settings, MPK.rates, MPK.area);
+  const b = mpkBreakdown(mpkAreaFeatures(), MPK.settings).all;
   MPK.lastStats = s;
+  MPK.lastBreakdown = b;
   document.getElementById('mpk-rizab-val').textContent = MPK.settings.rizab + ' m';
-  document.getElementById('mpk-k-count').textContent = mpkNum(s.count);
-  document.getElementById('mpk-k-area').textContent = mpkNum(s.area);
-  document.getElementById('mpk-k-total').textContent = mpkNum(s.total);
-  const pct = k => (s.total ? s.byStatus[k] / s.total * 100 : 0);
+  document.getElementById('mpk-k-total').textContent = mpkNum(b.total);
+  document.getElementById('mpk-k-m2').textContent = mpkM2(b.m2);
+  document.getElementById('mpk-k-legal').textContent = mpkPct(b.byStatus.legal.pct);
+  document.getElementById('mpk-k-illegal').textContent = mpkPct(b.byStatus.suspected.pct);
   document.getElementById('mpk-status-bar').innerHTML = Object.entries(MPK_STATUS)
-    .map(([k, st]) => `<i style="width:${pct(k)}%;background:${st.color}" title="${st.label}: ${mpkNum(s.byStatus[k])}"></i>`).join('');
+    .map(([k, st]) => `<i style="width:${b.byStatus[k].pct}%;background:${st.color}" title="${st.label}: ${mpkNum(b.byStatus[k].n)}"></i>`).join('');
   Object.keys(MPK_STATUS).forEach(k => {
-    document.getElementById('mpk-st-' + k).textContent = `${mpkNum(s.byStatus[k])} · ${pct(k) < 1 && pct(k) > 0 ? '<1' : Math.round(pct(k))}%`;
+    const v = b.byStatus[k];
+    document.getElementById('mpk-st-sub-' + k).textContent = `${mpkNum(v.n)} buildings · ${mpkM2(v.m2)}`;
+    document.getElementById('mpk-st-pct-' + k).textContent = mpkPct(v.pct);
   });
-  Object.keys(MPK_JENIS).forEach(k => { document.getElementById('mpk-j-' + k).textContent = mpkNum(s.byJenis[k]); });
   mpkRenderRevenue();
 
   const list = document.getElementById('mpk-list');
   if (!s.count) {
-    list.innerHTML = '<div class="mpk-empty">No suspected buildings with these settings.</div>';
-    return;
+    list.innerHTML = '<div class="mpk-empty">No suspected buildings in this area.</div>';
+  } else {
+    list.innerHTML = s.suspects.slice(0, MPK.LIST_SIZE).map((f, i) => {
+      const p = f.properties, j = MPK_JENIS[mpkJenis(p, MPK.settings)];
+      return `<div class="mpk-item" onclick="mpkZoomTo(${p.id})">
+        <span class="mpk-rank">${i + 1}</span>
+        <i class="mpk-dot" style="background:${MPK_STATUS.suspected.color}"></i>
+        <div class="mpk-item-main"><div class="mpk-pc">${p.plus_code}</div>
+          <div class="mpk-meta">${MPK_AREAS[p.kawasan].short}${p.lot ? ' · Lot ' + p.lot : ''} · ${j.label}</div></div>
+        <div class="mpk-area">${mpkNum(p.area_m2)} m²</div>
+      </div>`;
+    }).join('') + (s.count > MPK.LIST_SIZE
+      ? `<div class="mpk-more">+ ${mpkNum(s.count - MPK.LIST_SIZE)} more · see Export CSV</div>` : '');
   }
-  list.innerHTML = s.suspects.slice(0, MPK.LIST_SIZE).map((f, i) => {
-    const p = f.properties, j = MPK_JENIS[mpkJenis(p, MPK.settings)];
-    return `<div class="mpk-item" onclick="mpkZoomTo(${p.id})">
-      <span class="mpk-rank">${i + 1}</span>
-      <i class="mpk-dot" style="background:${j.color}"></i>
-      <div class="mpk-item-main"><div class="mpk-pc">${p.plus_code}</div>
-        <div class="mpk-meta">${MPK_AREAS[p.kawasan].short}${p.lot ? ' · Lot ' + p.lot : ''} · ${j.label}</div></div>
-      <div class="mpk-area">${mpkNum(p.area_m2)} m²</div>
-    </div>`;
-  }).join('') + (s.count > MPK.LIST_SIZE
-    ? `<div class="mpk-more">+ ${mpkNum(s.count - MPK.LIST_SIZE)} more · see Export CSV</div>` : '');
+  if (MPK.page === 'stats') mpkRenderStats();
 }
 
 function mpkRenderRevenue() {
@@ -886,6 +979,146 @@ function mpkExportCSV() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   showToast('📄 ' + mpkNum(s.count) + ' suspected buildings exported');
   addActivityLog('MPK CSV export', mpkNum(s.count) + ' buildings · ' + (MPK_AREAS[MPK.area]?.short || 'All areas'));
+}
+
+// ---------- Statistics page (sidebar: Dashboard / Statistics, MPK mode) ----------
+// Sidebar entry under "Dashboard" and the page itself (over the map area)
+function mpkBuildStatsPage() {
+  if (!document.getElementById('mpk-nav-stats')) {
+    const dash = document.querySelector('.sidebar-section .nav-item.active');
+    const nav = document.createElement('a');
+    nav.href = '#';
+    nav.className = 'nav-item mpk-nav';
+    nav.id = 'mpk-nav-stats';
+    nav.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/>'
+      + '<line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Statistics';
+    nav.addEventListener('click', e => { e.preventDefault(); mpkShowPage('stats'); });
+    dash.after(nav);
+    dash.id = dash.id || 'mpk-nav-dash';
+    dash.addEventListener('click', e => { if (MPK.active) { e.preventDefault(); mpkShowPage('dashboard'); } });
+  }
+  if (!document.getElementById('mpk-stats-page')) {
+    const page = document.createElement('section');
+    page.id = 'mpk-stats-page';
+    page.className = 'mpk-stats-page';
+    page.hidden = true;
+    page.setAttribute('aria-label', 'Statistics');
+    document.getElementById('mapWrapper').appendChild(page);
+  }
+}
+
+function mpkShowPage(page) {
+  MPK.page = page;
+  document.getElementById('mpk-nav-stats').classList.toggle('active', page === 'stats');
+  document.querySelector('.sidebar-section .nav-item:not(.mpk-nav)').classList.toggle('active', page !== 'stats');
+  document.getElementById('mpk-stats-page').hidden = page !== 'stats';
+  if (page === 'stats') mpkRenderStats();
+  else if (map) map.resize();
+}
+
+function mpkRenderStats() {
+  const el = document.getElementById('mpk-stats-page');
+  const area = MPK.area, s = MPK.settings;
+  const all = mpkBreakdown(MPK.data.buildings.features, s), b = all[area === 'all' ? 'all' : area];
+  const chips = [['all', 'All areas'], ...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.short])]
+    .map(([k, label]) => `<button class="mpk-chip${k === area ? ' active' : ''}" onclick="mpkSelectArea('${k}')">${label}</button>`).join('');
+  const st = MPK_STATUS;
+  // donut: status shares as conic-gradient segments with a 2px surface gap between them
+  let at = 0;
+  const segs = Object.entries(st).filter(([k]) => b.byStatus[k].n).map(([k, v]) => {
+    const from = at, to = at + b.byStatus[k].pct;
+    at = to;
+    return `${v.color} ${from}% calc(${to}% - 0.4%), #fff calc(${to}% - 0.4%) ${to}%`;
+  }).join(',');
+  const legendRows = Object.entries(st).map(([k, v]) => `<tr>
+      <td><span class="mpk-st-cell"><i class="sw" style="background:${v.color}"></i>${v.label}</span></td>
+      <td class="num">${mpkNum(b.byStatus[k].n)}</td><td class="num">${mpkPct(b.byStatus[k].pct)}</td>
+      <td class="num">${mpkNum(b.byStatus[k].m2)}</td></tr>`).join('');
+  const areaRows = [...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.name]), ['all', 'All areas']].map(([k, name]) => {
+    const r = all[k];
+    return `<tr class="${k === 'all' ? 'total' : ''}${k === area ? ' current' : ''}">
+      <td>${name}</td><td class="num">${mpkNum(r.total)}</td><td class="num">${mpkNum(r.m2)}</td>
+      ${Object.keys(st).map(sk => `<td class="num">${mpkNum(r.byStatus[sk].n)} <small>${mpkPct(r.byStatus[sk].pct)}</small></td>`).join('')}
+    </tr>`;
+  }).join('');
+  const maxN = Math.max(1, ...b.sizes.map(c => c.n));
+  const sizeRows = b.sizes.map(c => `<div class="mpk-size-row">
+      <div class="mpk-size-label">${c.label}</div>
+      <div class="mpk-size-bar" style="width:${c.n / maxN * 100}%">
+        ${Object.entries(st).map(([k, v]) => c.byStatus[k]
+          ? `<i style="flex:${c.byStatus[k]};background:${v.color}" title="${v.label}: ${mpkNum(c.byStatus[k])}"></i>` : '').join('')}
+      </div>
+      <div class="mpk-size-n">${mpkNum(c.n)}</div>
+    </div>`).join('');
+  const largest = mpkAreaFeatures().slice().sort((x, y) => y.properties.area_m2 - x.properties.area_m2).slice(0, 15)
+    .map((f, i) => {
+      const p = f.properties, k = mpkStatus(p, s);
+      return `<tr><td class="num">${i + 1}</td><td>${p.plus_code}</td><td>${MPK_AREAS[p.kawasan].short}</td>
+        <td><span class="mpk-badge" style="--c:${st[k].color}">${st[k].label}</span></td>
+        <td>${p.lot || '—'}</td><td class="num">${mpkNum(p.area_m2)}</td>
+        <td><button class="mpk-link" onclick="mpkShowPage('dashboard');mpkZoomTo(${p.id})">View</button></td></tr>`;
+    }).join('');
+
+  el.innerHTML = `
+    <div class="mpk-stats-inner">
+      <header class="mpk-stats-head">
+        <div><h2>Statistics</h2>
+          <p>Buildings in the marked areas only: Teluk Kalong inside the planning boundary, and along the two road corridors.</p></div>
+        <button class="mpk-btn" onclick="mpkExportAllCSV()">Export CSV</button>
+      </header>
+      <div class="mpk-chips">${chips}</div>
+
+      <div class="mpk-stats-cards">
+        <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings</div></div>
+        <div class="mpk-stat"><div class="v">${mpkNum(b.m2)}</div><div class="l">Total footprint (m²)</div></div>
+        <div class="mpk-stat legal"><div class="v">${mpkPct(b.byStatus.legal.pct)}</div><div class="l">Legal · on approved lot</div></div>
+        <div class="mpk-stat danger"><div class="v">${mpkPct(b.byStatus.suspected.pct)}</div><div class="l">Suspected illegal</div></div>
+        <div class="mpk-stat"><div class="v">${mpkPct(b.byStatus.unverified.pct)}</div><div class="l">Not verified</div></div>
+      </div>
+
+      <div class="mpk-stats-grid">
+        <section class="mpk-stats-card">
+          <h3>Legal vs illegal</h3>
+          <div class="mpk-donut-wrap">
+            <div class="mpk-donut" role="img" aria-label="Share of buildings by status"
+              style="background:conic-gradient(${segs || '#eee 0 100%'})"><span>${mpkNum(b.total)}<small>buildings</small></span></div>
+            <table class="mpk-table"><thead><tr><th>Status</th><th class="num">Buildings</th><th class="num">Share</th>
+              <th class="num">m²</th></tr></thead><tbody>${legendRows}</tbody></table>
+          </div>
+        </section>
+
+        <section class="mpk-stats-card">
+          <h3>Building size</h3>
+          <div class="mpk-size">${sizeRows}</div>
+          <div class="mpk-size-key">${Object.values(st).map(v => `<span><i style="background:${v.color}"></i>${v.label}</span>`).join('')}</div>
+        </section>
+      </div>
+
+      <section class="mpk-stats-card">
+        <h3>By area</h3>
+        <table class="mpk-table"><thead><tr><th>Area</th><th class="num">Buildings</th><th class="num">Footprint m²</th>
+          ${Object.values(st).map(v => `<th class="num">${v.label}</th>`).join('')}</tr></thead><tbody>${areaRows}</tbody></table>
+      </section>
+
+      <section class="mpk-stats-card">
+        <h3>Largest buildings · ${area === 'all' ? 'all areas' : MPK_AREAS[area].short}</h3>
+        <table class="mpk-table"><thead><tr><th class="num">#</th><th>Plus Code</th><th>Area</th><th>Status</th><th>Lot</th>
+          <th class="num">m²</th><th></th></tr></thead><tbody>${largest}</tbody></table>
+      </section>
+    </div>`;
+}
+
+function mpkExportAllCSV() {
+  const feats = mpkAreaFeatures();
+  const blob = new Blob(['﻿' + mpkCSVAll(feats, MPK.settings)], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mpk_buildings_' + (MPK_CSV_AREA[MPK.area] || 'all_areas') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('📄 ' + mpkNum(feats.length) + ' buildings exported');
 }
 
 // ---------- Historical imagery: one satellite per tab ----------

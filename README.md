@@ -182,6 +182,20 @@ place names in Kemaman via OpenStreetMap Nominatim, and coordinates — decimal 
 either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 (`4°16'05"N 103°27'07"E`); a pin marks the point.
 
+**Layout (MPK mode)** — kept deliberately simple:
+- *Dashboard* (sidebar): the map plus a panel with two tabs. **Overview** has the area chips,
+  three headline numbers (buildings, % legal, % suspected illegal), one row per status with its
+  count, share, footprint and a show/hide switch, a switch for the **m² label on every
+  building** (from zoom 16.5), and the largest suspected buildings. **Analysis** holds land use,
+  reference layers, the road-reserve slider, change detection and the revenue estimate.
+- *Statistics* (sidebar, under Dashboard): a full page with headline cards, a legal-vs-illegal
+  donut with counts / shares / m², building-size classes split by status, a per-area table,
+  the largest buildings (each with *View* on the map) and an *Export CSV* of every building
+  with its status and size.
+- Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
+  buildings within the two road corridors (6,225 buildings). Status colours (red / teal / light
+  grey) were checked for colour-blind separation.
+
 **Building status** — every building is shown in one of three statuses, each with its own
 map layer, switch and count (with a share bar) in the panel:
 *Suspected illegal* (red: the API suspect list in Teluk Kalong, road-reserve encroachment in
