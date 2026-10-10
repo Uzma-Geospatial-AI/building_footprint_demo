@@ -198,6 +198,24 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
   the list of suspected buildings, notes and blank Prepared / Checked / Approved blocks. It is
   marked **DRAFT · FOR REVIEW** with a system ID (`BV-YYYYMMDD-HHMM`) and carries no MPK logo,
   seal or official reference number (`mpk-report.js`, tests in `tools/test_mpk_report.js`).
+- *Features* (sidebar, under Statistics): ten live tools on the MPK data, each with a floating
+  panel on the map (`mpk-features.js`, tests in `tools/test_mpk_features.js`):
+  1. **Drone Tour**: buildings rise in 3D and the camera flies and orbits the top-priority cases
+     (*Start booth mode* loops it; touching the map stops it).
+  2. **Radar Sweep**: a beam sweeps the area and suspected buildings light up as it passes.
+  3. **Hotspot Finder**: DBSCAN clusters (4+ suspected buildings within 150 m), ranked.
+  4. **Priority Score**: 0–100 per suspected building (size 45%, evidence 25%, AI confidence 15%,
+     in a hotspot 15%), shown with its breakdown.
+  5. **Smart Inspection Route**: driving route through the top 8 cases on OSM roads (OSRM public
+     server; straight-line fallback), with distance, drive time and an *Open in Google Maps* link.
+  6. **Ask the Map**: typed or spoken questions in English or Malay ("berapa bangunan haram di
+     Binjai?"), answered on the map and optionally read aloud.
+  7. **Building Passport**: click a building for its case file: Esri close-up with the outline,
+     status, lot / UPI, score, hotspot, land use and a QR code to Google Maps.
+  8. **Lot Coverage X-ray**: building footprint ÷ cadastral lot area, per lot (joined on UPI).
+  9. **Time Machine**: cross-faded time-lapse of every Esri Wayback capture of the top case.
+  10. **Policy Simulator**: drag the road-reserve width and watch counts, footprint, fees and the
+      map update live (restored on close unless *Keep this setting*).
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
   buildings within the two road corridors (6,225 buildings). Status colours (red / teal / light
   grey) were checked for colour-blind separation.

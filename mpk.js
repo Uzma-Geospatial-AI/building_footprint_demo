@@ -352,7 +352,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261011d',
+  VERSION: '20261011e',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -559,6 +559,7 @@ function mpkRefresh3D() {
 // layers in its own style.load handler, so defer until after it has run.
 function mpkOnStyleLoad() {
   if (!MPK.active) return;
+  if (typeof mpkFeatStop === 'function' && MPK_FEAT.key) mpkFeatStop();     // the style swap dropped its layers
   let tries = 0;
   const attempt = () => {
     if (!MPK.active) return;
@@ -587,7 +588,7 @@ function mpkBindEvents() {
   MPK.boundMap = map;
   ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill'].forEach(layer => {
     map.on('click', layer, e => {
-      if (!MPK.active || !e.features.length) return;
+      if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture)) return;
       mpkShowPopup(e.features[0].properties, e.lngLat);
     });
     map.on('mouseenter', layer, () => { if (MPK.active) map.getCanvas().style.cursor = 'pointer'; });
@@ -647,6 +648,7 @@ async function mpkEnter() {
   tab.style.display = '';
   mpkBuildPanel();
   mpkBuildStatsPage();
+  if (typeof mpkBuildFeaturesPage === 'function') mpkBuildFeaturesPage();
   MPK.page = 'dashboard';
   mpkBuildHistoricBasemaps();
   mpkBindSearch();
@@ -659,7 +661,8 @@ async function mpkEnter() {
 function mpkExit() {
   if (!MPK.active) return;
   MPK.active = false;
-  if (MPK.page === 'stats') mpkShowPage('dashboard');
+  if (typeof mpkFeatStop === 'function') mpkFeatStop();
+  if (MPK.page !== 'dashboard') mpkShowPage('dashboard');
   document.body.classList.remove('mpk-mode');
   mpkHistoricOff();
   if (MPK_SEARCH.marker) { MPK_SEARCH.marker.remove(); MPK_SEARCH.marker = null; }
@@ -1003,9 +1006,13 @@ function mpkBuildStatsPage() {
 
 function mpkShowPage(page) {
   MPK.page = page;
+  const feat = document.getElementById('mpk-feat-page'), featNav = document.getElementById('mpk-nav-feat');
   document.getElementById('mpk-nav-stats').classList.toggle('active', page === 'stats');
-  document.querySelector('.sidebar-section .nav-item:not(.mpk-nav)').classList.toggle('active', page !== 'stats');
+  if (featNav) featNav.classList.toggle('active', page === 'features');
+  document.querySelector('.sidebar-section .nav-item:not(.mpk-nav)').classList.toggle('active', page === 'dashboard');
   document.getElementById('mpk-stats-page').hidden = page !== 'stats';
+  if (feat) feat.hidden = page !== 'features';
+  if (page !== 'dashboard' && typeof mpkFeatStop === 'function' && MPK_FEAT.key) mpkFeatStop();
   if (page === 'stats') mpkRenderStats();
   else if (map) map.resize();
 }
