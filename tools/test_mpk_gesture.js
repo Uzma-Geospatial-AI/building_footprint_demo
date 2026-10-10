@@ -35,19 +35,28 @@ if (require.main === module) {
   const p = G.mpkHandPose(hand(0.2, 0.5, { up: ['index'] }));
   assert.ok(Math.abs(p.x - 0.8) < 0.04 && Math.abs(p.size - 0.1) < 1e-9);
 
-  // Clap: apart, then together within the window -> one clap; held together -> no repeat
-  const clap = G.mpkClapDetector();
-  const two = (dx) => [hand(0.5 - dx, 0.5), hand(0.5 + dx, 0.5)].map(G.mpkHandPose);
-  assert.strictEqual(clap(two(0.2), 0), false);
-  assert.strictEqual(clap(two(0.04), 300), true);
-  assert.strictEqual(clap(two(0.04), 400), false);
-  assert.strictEqual(clap(two(0.2), 2000), false);
-  assert.strictEqual(clap(two(0.04), 2300), true);
-  // too slow: hands drift together over 2 s
-  const slow = G.mpkClapDetector();
-  slow(two(0.2), 0);
-  assert.strictEqual(slow(two(0.04), 2000), false);
-  assert.strictEqual(slow([G.mpkHandPose(hand(0.5, 0.5))], 0), false);
+  // Open hand: 3 straight fingers is enough (easy to hit)
+  assert.strictEqual(pose({ up: ['index', 'middle', 'ring'] }), 'open');
+
+  // Hold trigger: open hand for 1 s fires once; stays quiet until the hand is lowered
+  const open = [G.mpkHandPose(hand(0.5, 0.5, { up: ['index', 'middle', 'ring', 'pinky'] }))];
+  const fist = [G.mpkHandPose(hand(0.5, 0.5))];
+  const hold = G.mpkHoldDetector({ pose: 'open', ms: 1000, grace: 300 });
+  // camera frames every 50 ms; returns the result at `to`, and whether it fired on the way
+  const run = (h, poses, from, to) => { let fired = 0, r; for (let t = from; t <= to; t += 50) { r = h(poses, t); fired += r.fired; } return { ...r, n: fired }; };
+  assert.deepStrictEqual(hold(open, 0), { progress: 0, fired: false });
+  assert.strictEqual(run(hold, open, 50, 500).progress, 0.5);
+  assert.strictEqual(hold([], 550).progress, 0.55);                              // one dropped frame: keeps going
+  const r1 = run(hold, open, 600, 1500);
+  assert.strictEqual(r1.n, 1);                                                  // fires once at 1 s, not again while held
+  assert.deepStrictEqual(run(hold, fist, 1550, 1900), { progress: 0, fired: false, n: 0 });   // lowered -> re-armed
+  assert.strictEqual(run(hold, open, 1950, 2950).n, 1);
+  // a fist or no hand never fires; a gap longer than the grace restarts the count
+  const h2 = G.mpkHoldDetector();
+  assert.strictEqual(run(h2, fist, 0, 2000).n + run(h2, [], 2050, 4000).n, 0);
+  run(h2, open, 5000, 5800);
+  run(h2, [], 5850, 6300);
+  assert.strictEqual(run(h2, open, 6350, 6500).progress, 0.15);
 
   // Years: digits, English words, Malay words
   const y = G.mpkParseYear;

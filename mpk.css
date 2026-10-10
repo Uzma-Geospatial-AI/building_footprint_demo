@@ -423,6 +423,23 @@ body:not(.mpk-mode) .mpk-swipe, body:not(.mpk-mode) .mpk-gest-cam { display:none
 .mpk-gest-legend { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; margin-top:12px; font-size:11px; color:var(--charcoal-light); }
 .mpk-gest-legend b { display:inline-block; width:22px; font-size:14px; }
 .mpk-gest-legend span:last-child { grid-column:1 / -1; }
+.mpk-gest-steps { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:2px; counter-reset:none; }
+.mpk-gest-steps li { display:flex; gap:10px; align-items:flex-start; padding:6px 8px; border-radius:9px; font-size:12px; color:#8a94a3; }
+.mpk-gest-steps li .n { flex-shrink:0; width:20px; height:20px; border-radius:50%; background:rgba(30,44,68,0.08); color:var(--charcoal-light); display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; }
+.mpk-gest-steps li b { font-weight:600; }
+.mpk-gest-steps li small { display:block; margin-top:2px; font-size:11.5px; line-height:1.45; color:var(--charcoal); }
+.mpk-gest-steps li.done { color:#26a69a; }
+.mpk-gest-steps li.done .n { background:#26a69a; color:#fff; }
+.mpk-gest-steps li.now { background:#fff4ec; color:var(--charcoal-dark); box-shadow:inset 3px 0 0 var(--orange); }
+.mpk-gest-steps li.now .n { background:var(--orange); color:#fff; }
+.mpk-gest-steps li.now b { font-weight:800; }
+.mpk-gest-hold { display:flex; align-items:center; gap:14px; margin-top:6px; }
+.mpk-gest-hold b { display:block; font-size:15px; color:var(--charcoal-dark); }
+.mpk-gest-hold small { font-size:11.5px; color:var(--charcoal-light); }
+.mpk-gest-ring { --p:0; flex-shrink:0; width:62px; height:62px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:conic-gradient(var(--orange) calc(var(--p) * 360deg), rgba(30,44,68,0.1) 0); }
+.mpk-gest-ring span { width:50px; height:50px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; }
+.mpk-gest-ring.on span { transform:scale(1.08); }
 .mpk-gest-years { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
 .mpk-gest-years button { min-width:58px; height:34px; border:1.5px solid rgba(30,44,68,0.14); border-radius:9px; background:#fff; font-family:inherit; font-size:13px; font-weight:700; color:var(--charcoal-dark); cursor:pointer; font-variant-numeric:tabular-nums; }
 .mpk-gest-years button:hover { border-color:var(--orange); color:var(--orange-dark); }

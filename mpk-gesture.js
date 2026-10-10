@@ -1,12 +1,13 @@
 // ============================================================
 // MPK KEMAMAN — GESTURE CONTROL (feature 11)
-// The camera tracks both hands (MediaPipe Hand Landmarker, in the browser). Clap once to open
-// a before / after satellite swipe; say the "before" and "after" years; then drive it by hand:
-//   🖐 / ☝️  hover      → move the swipe divider
+// The camera tracks one hand (MediaPipe Hand Landmarker, in the browser). Hold an open hand up
+// for a second to open a before / after satellite swipe; say the "before" and "after" years;
+// then drive it by hand:
+//   ☝️ point            → move the swipe divider
 //   🤏 pinch + move     → pan the map
 //   ✌️ hold             → zoom in
 //   ✊ hold             → zoom out
-//   👏 clap             → close the swipe (clap again to reopen)
+//   🖐 hold 1 s         → close the swipe (hold again to reopen)
 // Voice also works during the swipe: "zoom in", "zoom out", "before 2017", "after 2024", "close".
 // No video leaves the browser. Pure helpers are exported for tools/test_mpk_gesture.js.
 // Loaded after mpk-features.js.
@@ -20,28 +21,34 @@ const mpkD = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function mpkHandPose(lm) {
   const w = lm[0], size = mpkD(w, lm[9]) || 1e-6;
   // a finger is straight when its tip is well beyond its middle joint, seen from the wrist
-  const ext = [[8, 6], [12, 10], [16, 14], [20, 18]].map(([tip, pip]) => mpkD(w, lm[tip]) > mpkD(w, lm[pip]) * 1.2);
+  const ext = [[8, 6], [12, 10], [16, 14], [20, 18]].map(([tip, pip]) => mpkD(w, lm[tip]) > mpkD(w, lm[pip]) * 1.15);
   const [index, middle, ring, pinky] = ext, n = ext.filter(Boolean).length;
   let pose = 'other';
   if (mpkD(lm[4], lm[8]) < size * 0.33 && mpkD(w, lm[8]) > mpkD(w, lm[6]) * 0.95) pose = 'pinch';
   else if (n === 0) pose = 'fist';
   else if (index && !middle && !ring && !pinky) pose = 'point';
   else if (index && middle && !ring && !pinky) pose = 'victory';
-  else if (n >= 4) pose = 'open';
+  else if (n >= 3) pose = 'open';                   // 3 straight fingers is enough: easy to hit
   const tip = pose === 'pinch' ? { x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 } : lm[8];
   return { pose, x: 1 - tip.x, y: tip.y, size, cx: 1 - (w.x + lm[9].x) / 2, cy: (w.y + lm[9].y) / 2 };
 }
 
-// Clap: two hands that were apart come together fast. Returns update(hands, tMs) -> true on a clap.
-function mpkClapDetector(opts = {}) {
-  const apart = opts.apart || 2.2, touch = opts.touch || 1.3, window_ = opts.window || 800, cooldown = opts.cooldown || 1500;
-  let lastApart = -Infinity, lastClap = -Infinity;
-  return (hands, t) => {
-    if (!hands || hands.length < 2) return false;
-    const [a, b] = hands, d = Math.hypot(a.cx - b.cx, a.cy - b.cy) / ((a.size + b.size) / 2);
-    if (d > apart) { lastApart = t; return false; }
-    if (d < touch && t - lastApart < window_ && t - lastClap > cooldown) { lastClap = t; lastApart = -Infinity; return true; }
-    return false;
+// Hold trigger: any hand in `pose` for `ms` fires once; it re-arms after the pose is let go.
+// A short gap (< grace ms, a dropped frame) does not reset the timer.
+// Returns update(poses, tMs) -> { progress 0..1, fired }
+function mpkHoldDetector(opts = {}) {
+  const pose = opts.pose || 'open', ms = opts.ms || 1000, grace = opts.grace || 300;
+  let since = null, lastSeen = -Infinity, armed = true;
+  return (poses, t) => {
+    const on = (poses || []).some(p => p.pose === pose);
+    if (on) {
+      if (since === null || t - lastSeen > grace) since = t;
+      lastSeen = t;
+    } else if (t - lastSeen > grace) { since = null; armed = true; }
+    if (since === null) return { progress: 0, fired: false };
+    const progress = Math.min(1, (t - since) / ms);
+    if (progress >= 1 && armed) { armed = false; return { progress: 1, fired: true }; }
+    return { progress: armed ? progress : 0, fired: false };
   };
 }
 
@@ -116,7 +123,7 @@ function mpkGestureCommand(text) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkHandPose, mpkClapDetector, mpkParseYear, mpkNearestFrame, mpkGestureCommand };
+  module.exports = { mpkHandPose, mpkHoldDetector, mpkParseYear, mpkNearestFrame, mpkGestureCommand };
 }
 
 // ============================================================
@@ -127,17 +134,27 @@ const MPK_GEST_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_lan
 const MPK_HAND_LINKS = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12],
   [9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [17, 18], [18, 19], [19, 20], [0, 17]];
 const MPK_POSE_LABEL = { pinch: '🤏 Pinch · pan', fist: '✊ Fist · zoom out', point: '☝️ Point · swipe', victory: '✌️ Victory · zoom in',
-  open: '🖐 Open hand · swipe', other: '…' };
+  open: '🖐 Open hand · hold to open / close', other: '✋ Hand found' };
+
+// What the person does, step by step (shown in the panel; the current step is highlighted)
+const MPK_GEST_STEPS = [
+  ['📷', 'Allow the camera', 'Click <b>Allow</b> when the browser asks. Stand about 1 m from the screen, in good light.'],
+  ['🖐', 'Hold up an open hand for 1 second', 'Spread your fingers, palm to the camera, and keep still until the ring fills.'],
+  ['🎙️', 'Say the BEFORE year', 'For example “2013”, or tap a year button.'],
+  ['🎙️', 'Say the AFTER year', 'For example “2025”, or tap a year button.'],
+  ['☝️', 'Control the swipe with one hand', '☝️ point = move the divider · 🤏 pinch + move = pan · ✌️ hold = zoom in · ✊ hold = zoom out'],
+  ['🖐', 'Hold an open hand again to close', 'Keep it up for 1 second. Hold it once more to compare other years.'],
+];
 
 const MPK_GEST = {
   phase: 'off', token: 0, stream: null, video: null, landmarker: null, raf: null, lastVideoTime: -1,
-  clap: null, frames: [], before: null, after: null, maps: null, slider: 0.5, cur: null, pinchFrom: null,
+  palm: null, frames: [], before: null, after: null, maps: null, slider: 0.5, cur: null, pinchFrom: null,
   hold: { pose: null, since: 0 }, rec: null, inject: null, hands: [],
 };
 
 if (typeof MPK_FEATURES !== 'undefined') {
-  MPK_FEATURES.push({ key: 'gesture', icon: '👏', title: 'Gesture Control', tag: 'Camera hand tracking + voice',
-    text: 'Clap to open a before / after satellite swipe, say the two years, then wave to slide, pinch to pan and make a ✌️ or ✊ to zoom. No mouse needed.' });
+  MPK_FEATURES.push({ key: 'gesture', icon: '🖐', title: 'Gesture Control', tag: 'Camera hand tracking + voice',
+    text: 'Hold up your hand to open a before / after satellite swipe, say the two years, then point to slide, pinch to pan and make a ✌️ or ✊ to zoom. Step-by-step guide on screen.' });
   MPK_FEAT_RUN.gesture = token => mpkGestureStart(token);
 }
 
@@ -147,7 +164,7 @@ async function mpkGestureStart(token) {
   MPK_FEAT.cleanup.push(mpkGestureStop);
   const area = (() => { const r = mpkFeatData().ranked[0]; return r ? r.p.kawasan : (MPK.area === 'all' ? 'tk' : MPK.area); })();
   MPK_GEST.frames = mpkTimeFrames(MPK.data.wayback && MPK.data.wayback.history, area);
-  MPK_GEST.clap = mpkClapDetector();
+  MPK_GEST.palm = mpkHoldDetector({ pose: 'open', ms: 1000 });
   mpkGestPhase('loading');
   let camErr = null;
   try {
@@ -201,27 +218,36 @@ function mpkGestYearChips(which) {
     .map(f => `<button type="button" onclick="mpkGestYear('${which}', ${f.capture.slice(0, 4)})">${f.capture.slice(0, 4)}</button>`).join('');
 }
 
+// Numbered steps, `at` = the current one (done ones ticked)
+function mpkGestSteps(at) {
+  return `<ol class="mpk-gest-steps">${MPK_GEST_STEPS.map(([icon, title, text], i) => `
+    <li class="${i < at ? 'done' : i === at ? 'now' : ''}"><span class="n">${i < at ? '✓' : i + 1}</span>
+      <div><b>${icon} ${title}</b>${i === at ? `<small>${text}</small>` : ''}</div></li>`).join('')}</ol>`;
+}
+
+// Hold-progress ring around the open-hand icon
+const mpkGestRing = label => `<div class="mpk-gest-hold"><div class="mpk-gest-ring" id="mpk-gest-ring" style="--p:0"><span>🖐</span></div>
+  <div><b id="mpk-gest-status">Looking for your hand…</b><small>${label}</small></div></div>`;
+
 function mpkGestPhase(phase, msg) {
   MPK_GEST.phase = phase;
-  const legend = `<div class="mpk-gest-legend">
-      <span><b>👏</b>Clap · open / close</span><span><b>🖐</b>Hover · swipe</span><span><b>🤏</b>Pinch + move · pan</span>
-      <span><b>✌️</b>Hold · zoom in</span><span><b>✊</b>Hold · zoom out</span><span><b>🎙️</b>"before 2017", "zoom in", "close"</span></div>`;
   const body = {
-    loading: '<div class="mpk-hud-sub">Starting the camera and hand tracking…<br>Allow camera access when the browser asks.</div>',
+    loading: `${mpkGestSteps(0)}<div class="mpk-hud-sub">Starting the camera and hand tracking…</div>`,
     nocam: `<div class="mpk-hud-sub">${msg || ''} You can still open the swipe and use the mouse and your voice.</div>
       <div class="mpk-hud-actions"><button class="mpk-btn" onclick="mpkGestAskYears()">Open swipe compare</button></div>`,
-    armed: `<div class="mpk-gest-big"><span class="mpk-gest-clap">👏</span><div><b>Clap once</b><small>to open the before / after swipe</small></div></div>
-      ${legend}
-      <div class="mpk-hud-actions"><button class="mpk-wb-btn" onclick="mpkGestAskYears()">Open without clapping</button></div>
+    armed: `${mpkGestRing('Hold it up for 1 second to open the before / after swipe')}${mpkGestSteps(1)}
+      <div class="mpk-hud-actions"><button class="mpk-wb-btn" onclick="mpkGestAskYears()">Skip: open with the mouse</button></div>
       <div class="mpk-hud-note">Hand tracking runs in this browser; no video is uploaded.</div>`,
     askBefore: `<div class="mpk-gest-big"><span class="mpk-gest-mic">🎙️</span><div><b>Which year for BEFORE?</b><small id="mpk-gest-heard">Say a year, e.g. “2013”</small></div></div>
-      <div class="mpk-gest-years">${mpkGestYearChips('before')}</div>`,
+      <div class="mpk-gest-years">${mpkGestYearChips('before')}</div>${mpkGestSteps(2)}`,
     askAfter: `<div class="mpk-gest-big"><span class="mpk-gest-mic">🎙️</span><div><b>Which year for AFTER?</b><small id="mpk-gest-heard">Before: ${MPK_GEST.before ? MPK_GEST.before.capture.slice(0, 4) : ''} · say a year, e.g. “2025”</small></div></div>
-      <div class="mpk-gest-years">${mpkGestYearChips('after')}</div>`,
-    swipe: `<div class="mpk-gest-now" id="mpk-gest-now">Show your hand to the camera</div>${legend}
-      <div class="mpk-hud-note" id="mpk-gest-heard">Listening for voice commands…</div>`,
+      <div class="mpk-gest-years">${mpkGestYearChips('after')}</div>${mpkGestSteps(3)}`,
+    swipe: `<div class="mpk-gest-now" id="mpk-gest-now">Show one hand to the camera</div>
+      ${mpkGestSteps(4)}
+      ${mpkGestRing('Hold an open hand for 1 second to close')}
+      <div class="mpk-hud-note" id="mpk-gest-heard">Voice: “zoom in”, “zoom out”, “before 2017”, “after 2024”, “close”.</div>`,
   }[phase];
-  mpkHud('Gesture Control', body, { icon: '👏', side: phase === 'swipe' });
+  mpkHud('Gesture Control', body, { icon: '🖐', side: phase === 'swipe' });
   document.removeEventListener('keydown', mpkGestKey);
   document.addEventListener('keydown', mpkGestKey);
 }
@@ -448,9 +474,17 @@ function mpkGestHandle(hands, t) {
   const poses = hands.map(mpkHandPose);
   const poseEl = document.getElementById('mpk-gest-pose');
   if (poseEl) poseEl.textContent = poses.length ? poses.map(p => MPK_POSE_LABEL[p.pose]).join(' · ') : 'No hands';
-  if (MPK_GEST.clap(poses, t)) {
+  const hold = MPK_GEST.palm(poses, t);
+  const ring = document.getElementById('mpk-gest-ring'), status = document.getElementById('mpk-gest-status');
+  if (ring) { ring.style.setProperty('--p', hold.progress.toFixed(3)); ring.classList.toggle('on', hold.progress > 0); }
+  if (status) {
+    status.textContent = !poses.length ? 'No hand seen: come closer, face the light'
+      : hold.progress > 0 ? 'Hold still… ' + Math.round(hold.progress * 100) + '%'
+      : poses.some(p => p.pose === 'open') ? 'Got it: keep holding' : '✅ Hand found: now open your hand 🖐';
+  }
+  if (hold.fired) {
     if (MPK_GEST.phase === 'armed') { mpkGestSay('Opening swipe compare.'); mpkGestAskYears(); return; }
-    if (MPK_GEST.phase === 'swipe') { mpkSwipeClose(); mpkGestPhase('armed'); mpkGestSay('Closed. Clap to open again.'); return; }
+    if (MPK_GEST.phase === 'swipe') { mpkSwipeClose(); mpkGestPhase('armed'); mpkGestSay('Closed. Hold up your hand to open again.'); return; }
   }
   if (MPK_GEST.phase !== 'swipe' || !MPK_GEST.maps) return;
   const cursor = document.getElementById('mpk-sw-cursor'), now = document.getElementById('mpk-gest-now');
@@ -460,7 +494,7 @@ function mpkGestHandle(hands, t) {
   if (poses.length !== 1) {
     MPK_GEST.pinchFrom = null; MPK_GEST.hold = { pose: null, since: t };
     if (cursor) cursor.hidden = true;
-    if (now) now.textContent = poses.length ? 'Two hands: clap to close' : 'Show one hand to the camera';
+    if (now) now.textContent = poses.length ? 'Two hands seen: use one hand' : 'Show one hand to the camera';
     return;
   }
   const p = poses[0];
@@ -472,7 +506,7 @@ function mpkGestHandle(hands, t) {
   const held = t - MPK_GEST.hold.since;
   const m = MPK_GEST.maps.after;
   if (now) now.textContent = MPK_POSE_LABEL[p.pose];
-  if (p.pose === 'open' || p.pose === 'point') { mpkSwipeSet(cur.x); MPK_GEST.pinchFrom = null; }
+  if (p.pose === 'point') { mpkSwipeSet(cur.x); MPK_GEST.pinchFrom = null; }
   else if (p.pose === 'pinch') {
     if (MPK_GEST.pinchFrom) {
       const c = m.getContainer();
