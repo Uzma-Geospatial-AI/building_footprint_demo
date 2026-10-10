@@ -343,20 +343,19 @@ const MPK_LAYER_GROUPS = {
   unverified: { label: MPK_STATUS.unverified.label, swatch: [MPK_STATUS.unverified.color],
                layers: ['mpk-unverified-fill'], legend: [] },
   reference: { label: 'Reference layers', swatchClass: 'line',
-               layers: ['mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill',
+               layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
-               legend: [['Approved lot', '.lot'], ['Cadastral lot', '.kadaster'], ['Planning boundary', '.line'],
+               legend: [['Cadastral lot', '.kadaster'], ['Planning boundary', '.line'],
                         ['Study corridor', '.band']] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261011a',
+  VERSION: '20261011b',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
-    lots: 'mpk/tk_lot_lulus.geojson',
     kadaster: 'mpk/lot_kadaster.geojson',
     roads: 'mpk/koridor_jalan.geojson',
   },
@@ -365,10 +364,10 @@ const MPK = {
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
-  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-lot-fill', 'mpk-lot-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-unverified-fill', 'mpk-legal-fill', 'mpk-legal-line', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-size-label'],
-  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-landuse', 'mpk-lots', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -447,17 +446,12 @@ function mpkAddLayers() {
   if (map.getSource('mpk-buildings')) return true;
   const suspect = mpkSuspectFilter(MPK.settings);
   try {
-    map.addSource('mpk-lots', { type: 'geojson', data: MPK.data.lots });
     map.addSource('mpk-kadaster', { type: 'geojson', data: MPK.data.kadaster });
     map.addSource('mpk-boundary', { type: 'geojson', data: MPK.data.boundary });
     map.addSource('mpk-roads', { type: 'geojson', data: MPK.data.roads });
     map.addSource('mpk-buildings', { type: 'geojson', data: MPK.data.buildings });
     map.addSource('mpk-highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-    map.addLayer({ id: 'mpk-lot-fill', type: 'fill', source: 'mpk-lots',
-      paint: { 'fill-color': '#8E24AA', 'fill-opacity': 0.22 } });
-    map.addLayer({ id: 'mpk-lot-line', type: 'line', source: 'mpk-lots',
-      paint: { 'line-color': '#6A1B9A', 'line-width': 1, 'line-opacity': 0.7 } });
     map.addLayer({ id: 'mpk-kadaster-line', type: 'line', source: 'mpk-kadaster',
       paint: { 'line-color': '#00ACC1', 'line-opacity': 0.85,
                'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.4] } });
@@ -1205,7 +1199,7 @@ function mpkImageryZoomCap(maxView) {
 
 // The lowest MPK layer: imagery is inserted under it so every MPK overlay stays visible
 function mpkBottomLayer() {
-  return map.getLayer('mpk-lot-fill') ? 'mpk-lot-fill' : undefined;
+  return map.getLayer('mpk-kadaster-line') ? 'mpk-kadaster-line' : undefined;
 }
 
 function mpkHideWaybackImagery() {

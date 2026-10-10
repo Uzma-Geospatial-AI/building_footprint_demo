@@ -79,7 +79,6 @@ body.mpk-mode .ptab:not(#ptab-mpk) { display:none !important; }
 .mpk-jenis-row span { flex:1; }
 .mpk-jenis-row strong { font-size:13px; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
 .mpk-jenis-row .sw, .mpk-dot { display:inline-block; width:10px; height:10px; border-radius:3px; flex-shrink:0; }
-.mpk-layers .sw.lot { background:rgba(142,36,170,0.35); border:1px solid #6A1B9A; }
 .mpk-layers .sw.band { background:rgba(253,216,53,0.35); border-top:2px solid #F9A825; border-radius:0; height:10px; }
 
 .mpk-layers { padding:10px 13px 6px; }
