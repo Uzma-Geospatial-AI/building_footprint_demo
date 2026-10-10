@@ -44,19 +44,40 @@ assert.strictEqual(far.n, 0);
 assert.strictEqual(far.nearest.p.id, 4);                                         // nearest suspected even outside
 near(far.nearest.d, 500, 1);
 
-// Fair pick: rejection sampling keeps every index equally likely
-let seq = [0xFFFFFFFF, 7];                                                      // first value is above the limit for n=3
-assert.strictEqual(F.mpkFairIndex(3, () => seq.shift()), 7 % 3);
-const counts = [0, 0, 0, 0, 0];
-let x = 12345;
-const lcg = () => (x = (Math.imul(x, 1664525) + 1013904223) >>> 0);
-for (let i = 0; i < 50000; i++) counts[F.mpkFairIndex(5, lcg)]++;
-counts.forEach(c => near(c, 10000, 400));
+// Working days skip the Terengganu weekend (Friday, Saturday). 15 Oct 2026 is a Thursday.
+assert.deepStrictEqual(F.mpkWorkdays(new Date(2026, 9, 15), 3).map(F.mpkYMD), ['2026-10-15', '2026-10-18', '2026-10-19']);
+assert.deepStrictEqual(F.mpkWorkdays(new Date(2026, 9, 16), 1).map(F.mpkYMD), ['2026-10-18']);         // starts on a Friday
+assert.deepStrictEqual(F.mpkWorkdays(new Date(2026, 9, 16), 2, [0, 6]).map(F.mpkYMD), ['2026-10-16', '2026-10-19']);
 
-// Roulette slows down: delays never shrink, from fast to slow
-const d = F.mpkRouletteDelays(34, 45, 520);
-assert.strictEqual(d.length, 34);
-assert.deepStrictEqual([d[0], d[33]], [45, 520]);
-assert.ok(d.every((v, i) => !i || v >= d[i - 1]));
+// Batches: the most urgent case seeds a day, its nearest cases fill it, the rest go to later days
+const A = [90, 50, 40, 30].map((sc, i) => ({ score: sc, p: { id: 'A' + sc, lng: mpkOffset(origin, i * 90, 40 + i * 10)[0],
+  lat: mpkOffset(origin, i * 90, 40 + i * 10)[1] } }));
+const far5 = mpkOffset(origin, 90, 5000);
+const B = [80, 70].map((sc, i) => ({ score: sc, p: { id: 'B' + sc, lng: mpkOffset(far5, 0, i * 60)[0], lat: mpkOffset(far5, 0, i * 60)[1] } }));
+const items = [A[0], B[0], B[1], A[1], A[2], A[3]];                                // most urgent first
+const batches = F.mpkPlanBatches(items, 3);
+assert.strictEqual(batches.length, 2);
+assert.strictEqual(batches[0][0].p.id, 'A90');                                   // the seed leads the route
+assert.deepStrictEqual(batches[0].map(x => x.p.id).sort(), ['A40', 'A50', 'A90']);
+assert.deepStrictEqual(batches[1].map(x => x.p.id).slice(0, 2), ['B80', 'B70']);
+assert.strictEqual(batches.flat().length, 6);
+
+// Schedule: batches go to teams in turn, a new day when every team has one
+const plan = F.mpkPlanSchedule(items, { teams: 2, perDay: 2, start: new Date(2026, 9, 15) });
+assert.deepStrictEqual(plan.map(b => [b.day, F.mpkYMD(b.date), b.team, b.stops.length]),
+  [[1, '2026-10-15', 1, 2], [1, '2026-10-15', 2, 2], [2, '2026-10-18', 1, 2]]);
+assert.ok(plan.every(b => b.km >= 0 && b.hours >= b.stops.length * 15 / 60));
+const one = F.mpkPlanSchedule([A[0]], { teams: 3, perDay: 10, start: new Date(2026, 9, 15) });
+assert.deepStrictEqual([one.length, one[0].km, one[0].hours], [1, 0, 0.25]);
+assert.deepStrictEqual(F.mpkPlanSchedule([], { start: new Date(2026, 9, 15) }), []);
+
+// CSV: header + one row per visit, with the reason and a Google Maps link
+const csvPlan = F.mpkPlanSchedule([{ score: 77, p: feats[3].properties }, { score: 60, p: feats[0].properties }],
+  { teams: 1, perDay: 5, start: new Date(2026, 9, 15) });
+const lines = F.mpkPlanCSV(csvPlan, s).split('\n');
+assert.strictEqual(lines.length, 3);
+assert.strictEqual(lines[0], 'day,date,team,stop,plus_code,area,lot,upi,footprint_m2,priority,reason,lat,lng,google_maps');
+assert.ok(lines[1].startsWith('1,2026-10-15,1,1,P4,Binjai – Chukai,,,800,77,Within 4 m of road centreline (reserve 10 m),'));
+assert.ok(lines[2].includes(',On MPK suspect list,') && lines[2].includes('https://www.google.com/maps/search/?api=1&query='));
 
 console.log('mpk features 12-15: all tests passed');

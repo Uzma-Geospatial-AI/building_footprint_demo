@@ -474,12 +474,11 @@ body:not(.mpk-mode) .mpk-swipe, body:not(.mpk-mode) .mpk-gest-cam { display:none
 .mpk-lens-ring[hidden] { display:none; }
 .mpk-lens-ring span { position:absolute; left:50%; bottom:-14px; transform:translateX(-50%); padding:3px 10px; border-radius:999px; background:var(--orange); color:#fff; font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; }
 .mpk-gest-years button.on { background:var(--charcoal-dark); border-color:var(--charcoal-dark); color:#fff; }
-.mpk-slot { text-align:center; padding:16px 12px; border-radius:12px; background:linear-gradient(180deg, #1E2C44, #2c3e5c); color:#fff; box-shadow:inset 0 0 0 2px rgba(255,255,255,0.08); }
-.mpk-slot small { display:block; font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--orange-light); }
-.mpk-slot b { display:block; font-size:24px; font-weight:800; margin:6px 0 4px; letter-spacing:0.02em; }
-.mpk-slot span { font-size:11.5px; opacity:0.8; }
-.mpk-slot.win { background:linear-gradient(180deg, #E8772E, #C75F1C); animation:mpkWin 0.6s ease; }
-@keyframes mpkWin { 30% { transform:scale(1.05); } }
-@media (prefers-reduced-motion: reduce) { .mpk-slot.win { animation:none; } }
-.mpk-spin { height:38px !important; padding:0 22px !important; font-size:14px !important; width:100%; }
-.mpk-spin:disabled { opacity:0.55; cursor:default; }
+.mpk-plan-form { display:grid; grid-template-columns:70px 1fr 1.3fr; gap:8px; margin-bottom:10px; }
+.mpk-plan-form label { display:flex; flex-direction:column; gap:4px; font-size:10.5px; font-weight:600; color:var(--charcoal-light); }
+.mpk-plan-form select, .mpk-plan-form input { height:32px; padding:0 8px; border:1.5px solid rgba(30,44,68,0.16); border-radius:8px; font-family:inherit; font-size:12.5px; color:var(--charcoal-dark); background:#fff; min-width:0; }
+.mpk-plan-form select:focus, .mpk-plan-form input:focus { outline:none; border-color:var(--orange); }
+.mpk-plan-days { max-height:300px; overflow-y:auto; }
+.mpk-plan-day { flex-shrink:0; width:34px; height:28px; border-radius:7px; background:#1E2C44; color:#fff; font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+.mpk-hud-item.on { border-color:#2979FF; background:#EEF4FF; }
+.mpk-hud-item.on .mpk-plan-day { background:#2979FF; }

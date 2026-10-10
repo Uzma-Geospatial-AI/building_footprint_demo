@@ -3,7 +3,7 @@
 //   hex        3D Hex Density   suspected footprint per 150 m hexagon, as rising 3D columns
 //   radius     Impact Radius    a circle that follows the mouse; live counts inside it
 //   lens       Time Lens        a round lens that shows an old satellite photo under the cursor
-//   roulette   Audit Roulette   a fair random pick of a suspected building for a spot check
+//   planner    Inspection Planner  suspected cases into a day-by-day site-visit schedule per team
 // Pure logic is exported for tools/test_mpk_features2.js. Loaded after mpk-gesture.js.
 // ============================================================
 
@@ -61,22 +61,67 @@ function mpkWithin(features, center, radius, s) {
   return out;
 }
 
-// ---------- Pure: fair random pick and the slowing roulette schedule ----------
-// Uniform integer in [0, n) from a 32-bit random source (rejection sampling, no modulo bias)
-function mpkFairIndex(n, rand32) {
-  const limit = Math.floor(0x100000000 / n) * n;
-  let v;
-  do { v = rand32(); } while (v >= limit);
-  return v % n;
+// ---------- Pure: inspection planner ----------
+// The next `n` working days from `start`, skipping `weekend` weekdays (Terengganu: Friday 5, Saturday 6)
+function mpkWorkdays(start, n, weekend = [5, 6]) {
+  const out = [], d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  while (out.length < n) {
+    if (!weekend.includes(d.getDay())) out.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
 }
 
-// Delays (ms) between roulette flashes: fast at first, easing out to a stop
-function mpkRouletteDelays(steps = 34, first = 45, last = 520) {
-  return Array.from({ length: steps }, (_, i) => Math.round(first + (last - first) * Math.pow(i / (steps - 1), 2.6)));
+// One day's visits each: seed with the most urgent case left, then add the case nearest to any
+// already in the batch until `cap` (compact, follows roads and clusters), then order as a route.
+// items: [{ p, score }] most urgent first
+function mpkPlanBatches(items, cap) {
+  const left = items.slice(), out = [], pt = x => [x.p.lng, x.p.lat];
+  while (left.length) {
+    const batch = [left.shift()];
+    while (batch.length < cap && left.length) {
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i < left.length; i++) {
+        for (const b of batch) { const d = mpkMetres(pt(b), pt(left[i])); if (d < bd) { bd = d; bi = i; } }
+      }
+      batch.push(left.splice(bi, 1)[0]);
+    }
+    out.push(mpkRouteOrder(batch.map(pt)).map(i => batch[i]));
+  }
+  return out;
+}
+
+// Batches handed out to teams day by day: [{ day, date, team, stops, km, hours }]
+// km: straight-line route × 1.3; hours: visitMin per stop + driving at kmh
+function mpkPlanSchedule(items, opts = {}) {
+  const teams = opts.teams || 2, perDay = opts.perDay || 12, visitMin = opts.visitMin || 15, kmh = opts.kmh || 30;
+  const batches = mpkPlanBatches(items, perDay);
+  const days = mpkWorkdays(opts.start || new Date(), Math.ceil(batches.length / teams), opts.weekend);
+  return batches.map((stops, i) => {
+    const km = mpkPathLength(stops.map(x => [x.p.lng, x.p.lat])) * 1.3 / 1000;
+    return { day: Math.floor(i / teams) + 1, date: days[Math.floor(i / teams)], team: i % teams + 1, stops, km,
+             hours: (stops.length * visitMin + km / kmh * 60) / 60 };
+  });
+}
+
+const mpkYMD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+function mpkPlanReason(p, s) {
+  return mpkJenis(p, s) === 'mockup' ? 'On MPK suspect list' : `Within ${p.jarak_jalan_m} m of road centreline (reserve ${s.rizab} m)`;
+}
+
+// The schedule as CSV, one row per visit
+function mpkPlanCSV(plan, s) {
+  const q = v => { const t = String(v == null ? '' : v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const rows = [['day', 'date', 'team', 'stop', 'plus_code', 'area', 'lot', 'upi', 'footprint_m2', 'priority', 'reason', 'lat', 'lng', 'google_maps']];
+  plan.forEach(b => b.stops.forEach((x, k) => rows.push([b.day, mpkYMD(b.date), b.team, k + 1, x.p.plus_code, MPK_AREAS[x.p.kawasan].short,
+    x.p.lot || '', x.p.upi || '', Math.round(x.p.area_m2), x.score, mpkPlanReason(x.p, s), x.p.lat, x.p.lng,
+    `https://www.google.com/maps/search/?api=1&query=${x.p.lat},${x.p.lng}`])));
+  return rows.map(r => r.map(q).join(',')).join('\n');
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkHexKey, mpkHexPolygon, mpkHexBins, mpkWithin, mpkFairIndex, mpkRouletteDelays };
+  module.exports = { mpkHexKey, mpkHexPolygon, mpkHexBins, mpkWithin, mpkWorkdays, mpkPlanBatches, mpkPlanSchedule, mpkPlanCSV, mpkYMD };
 }
 
 // ============================================================
@@ -90,14 +135,14 @@ if (typeof MPK_FEATURES !== 'undefined') {
       text: 'A circle follows your mouse and counts what is inside in real time: buildings by status, suspected m², estimated fees and the nearest suspected building. Click to pin it.' },
     { key: 'lens', icon: '🔍', title: 'Time Lens', tag: 'See the past through a lens',
       text: 'Move a round lens over the latest satellite photo and see the same spot years earlier inside it. Pick the year; resize the lens. Built-up land jumps out at once.' },
-    { key: 'roulette', icon: '🎰', title: 'Audit Roulette', tag: 'Fair random spot check',
-      text: 'Spins through the suspected buildings like a slot machine and lands on one at random for an unbiased site audit, then flies there and shows its case file.' },
+    { key: 'planner', icon: '🗓️', title: 'Inspection Planner', tag: 'Day-by-day site visit schedule',
+      text: 'Turns the suspected cases into a work plan: set the teams, visits per day and start date, and get each day\'s nearby cases in route order, skipping the Friday–Saturday weekend. Download the CSV or print the checklists.' },
   );
   Object.assign(MPK_FEAT_RUN, {
     hex: token => mpkHexRun(token),
     radius: token => mpkRadiusRun(token),
     lens: token => mpkLensRun(token),
-    roulette: token => mpkRouletteRun(token),
+    planner: token => mpkPlannerRun(token),
   });
 }
 
@@ -313,61 +358,135 @@ function mpkLensSize(v) {
   L.place();
 }
 
-// ---------- 15. Audit Roulette ----------
-function mpkRouletteRun() {
-  const { ranked } = mpkFeatData();
-  MPK_FEAT.roulette = { pool: ranked.map(x => x.p), picks: [] };
-  mpkFeatSrc('mpk-feat-rou', mpkFC([]));
-  mpkFeatLayer({ id: 'mpk-feat-rou-glow', type: 'circle', source: 'mpk-feat-rou',
-    paint: { 'circle-radius': 26, 'circle-color': '#FFD600', 'circle-opacity': 0.35, 'circle-blur': 0.6 } });
-  mpkFeatLayer({ id: 'mpk-feat-rou', type: 'circle', source: 'mpk-feat-rou',
-    paint: { 'circle-radius': 9, 'circle-color': '#FFD600', 'circle-stroke-color': '#1E2C44', 'circle-stroke-width': 3 } });
-  mpkFeatFit(MPK.bounds[MPK.area], { padding: { top: 60, bottom: 60, left: 60, right: 400 } });
-  mpkRouletteHud();
+// ---------- 15. Inspection Planner ----------
+const MPK_PLAN_DAYNAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const mpkPlanDate = d => `${MPK_PLAN_DAYNAMES[d.getDay()]} ${d.getDate()} ${MPK_MONTH_NAMES[d.getMonth()]}`;
+
+function mpkPlannerRun() {
+  const next = mpkWorkdays(new Date(Date.now() + 864e5), 1)[0];        // next working day
+  MPK_FEAT.plan = { teams: 2, perDay: 12, start: next, sel: null, plan: [] };
+  mpkFeatSrc('mpk-feat-plan-line', mpkFC([]));
+  mpkFeatSrc('mpk-feat-plan-pt', mpkFC([]));
+  mpkFeatLayer({ id: 'mpk-feat-plan-line', type: 'line', source: 'mpk-feat-plan-line',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['case', ['get', 'sel'], '#2979FF', '#5C6B80'], 'line-width': ['case', ['get', 'sel'], 4, 1.4],
+             'line-opacity': ['case', ['get', 'sel'], 0.95, 0.55] } });
+  mpkFeatLayer({ id: 'mpk-feat-plan-pt', type: 'circle', source: 'mpk-feat-plan-pt',
+    paint: { 'circle-color': ['case', ['get', 'sel'], '#2979FF', ['interpolate', ['linear'], ['get', 'dayf'], 0, '#0D2A4F', 1, '#9FB3C8']],
+             'circle-radius': ['case', ['get', 'sel'], 11, 4.5], 'circle-stroke-color': '#fff', 'circle-stroke-width': ['case', ['get', 'sel'], 2.5, 1] } });
+  mpkFeatLayer({ id: 'mpk-feat-plan-n', type: 'symbol', source: 'mpk-feat-plan-pt', filter: ['get', 'sel'],
+    layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Regular'], 'text-size': 11.5, 'text-allow-overlap': true },
+    paint: { 'text-color': '#fff' } });
+  mpkPlannerHud();
+  mpkPlannerBuild();
+  mpkFeatFit(MPK.bounds[MPK.area], { padding: { top: 50, bottom: 50, left: 50, right: 410 } });
 }
 
-function mpkRouletteHud(slot) {
-  const R = MPK_FEAT.roulette;
-  mpkHud('Audit Roulette', `
-    <div class="mpk-slot" id="mpk-slot"><small>Suspected building</small><b class="mono" id="mpk-slot-code">${slot || '— — —'}</b>
-      <span id="mpk-slot-sub">${mpkNum(R.pool.length)} in the draw</span></div>
-    <div class="mpk-hud-actions"><button class="mpk-btn mpk-spin" id="mpk-spin" onclick="mpkRouletteSpin()">🎰 Spin</button></div>
-    <div class="mpk-hud-list" id="mpk-rou-picks">${R.picks.map((p, i) => `<button class="mpk-hud-item" onclick="mpkZoomTo(${p.id})">
-      <span class="mpk-hud-stop">${i + 1}</span><span><b>${p.plus_code}</b><small>${MPK_AREAS[p.kawasan].short} · ${mpkNum(p.area_m2)} m²</small></span></button>`).join('')}</div>
-    <div class="mpk-hud-note">Every suspected building in the selected area has the same chance (crypto-random, no repeats), so spot
-      checks are unbiased, a common way to audit a large list fairly.</div>`, { icon: '🎰', side: true });
+function mpkPlannerHud() {
+  const P = MPK_FEAT.plan;
+  mpkHud('Inspection Planner', `
+    <div class="mpk-plan-form">
+      <label>Teams<select id="mpk-plan-teams" onchange="mpkPlannerSet('teams', +this.value)">${[1, 2, 3, 4, 5, 6].map(n =>
+        `<option ${n === P.teams ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>Visits / team / day<input id="mpk-plan-per" type="number" min="4" max="30" value="${P.perDay}" onchange="mpkPlannerSet('perDay', +this.value)"></label>
+      <label>Start<input id="mpk-plan-start" type="date" value="${mpkYMD(P.start)}" onchange="mpkPlannerSet('start', this.value)"></label>
+    </div>
+    <div class="mpk-hud-stats" id="mpk-plan-stats"></div>
+    <div class="mpk-hud-actions">
+      <button class="mpk-btn" onclick="mpkPlannerCSV()">Download CSV</button>
+      <button class="mpk-wb-btn" onclick="mpkPlannerPrint()">Print checklists</button>
+    </div>
+    <div class="mpk-hud-list mpk-plan-days" id="mpk-plan-days"></div>
+    <div class="mpk-hud-note">Most urgent cases first (priority score); each day groups nearby cases and orders them as a route.
+      Weekend skipped: Friday–Saturday (Terengganu); public holidays are not, so move those days by hand. Time = 15 min per visit + driving at 30 km/h on straight-line distance × 1.3.</div>`,
+    { icon: '🗓️', side: true });
 }
 
-async function mpkRouletteSpin() {
-  const R = MPK_FEAT.roulette, token = MPK_FEAT.token;
-  if (!R || R.spinning) return;
-  const left = R.pool.filter(p => !R.picks.includes(p));
-  if (!left.length) { showToast('Every building has been drawn'); return; }
-  R.spinning = true;
-  const btn = document.getElementById('mpk-spin');
-  if (btn) btn.disabled = true;
-  const rand32 = () => crypto.getRandomValues(new Uint32Array(1))[0];
-  const winner = left[mpkFairIndex(left.length, rand32)];
-  const delays = mpkRouletteDelays();
-  map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
-  for (let i = 0; i < delays.length; i++) {
-    if (!mpkFeatAlive(token)) return;
-    const p = i === delays.length - 1 ? winner : left[mpkFairIndex(left.length, rand32)];
-    map.getSource('mpk-feat-rou').setData(mpkFC([mpkPt([p.lng, p.lat])]));
-    const code = document.getElementById('mpk-slot-code'), sub = document.getElementById('mpk-slot-sub');
-    if (code) code.textContent = p.plus_code;
-    if (sub) sub.textContent = MPK_AREAS[p.kawasan].short + ' · ' + mpkNum(p.area_m2) + ' m²';
-    await mpkFeatWait(delays[i]);
+function mpkPlannerSet(key, v) {
+  const P = MPK_FEAT.plan;
+  if (!P) return;
+  if (key === 'start') { const [y, m, d] = v.split('-').map(Number); if (!y) return; P.start = new Date(y, m - 1, d); }
+  else if (key === 'perDay') P.perDay = Math.max(4, Math.min(30, v || 12));
+  else P[key] = v;
+  P.sel = null;
+  mpkPlannerBuild();
+}
+
+function mpkPlannerBuild() {
+  const P = MPK_FEAT.plan, { ranked } = mpkFeatData();
+  P.plan = mpkPlanSchedule(ranked.map(x => ({ p: x.p, score: x.pr.score })), { teams: P.teams, perDay: P.perDay, start: P.start });
+  const days = P.plan.length ? P.plan[P.plan.length - 1].day : 0;
+  const km = P.plan.reduce((a, b) => a + b.km, 0);
+  document.getElementById('mpk-plan-stats').innerHTML = `
+    <div><b>${mpkNum(ranked.length)}</b><small>cases to visit</small></div>
+    <div><b>${days}</b><small>working days</small></div>
+    <div><b>${P.plan.length ? mpkPlanDate(P.plan[P.plan.length - 1].date) : '—'}</b><small>finish · ${mpkNum(km)} km</small></div>`;
+  document.getElementById('mpk-plan-days').innerHTML = P.plan.map((b, i) => `
+    <button class="mpk-hud-item${P.sel === i ? ' on' : ''}" onclick="mpkPlannerPick(${i})">
+      <span class="mpk-plan-day">D${b.day}</span>
+      <span><b>${mpkPlanDate(b.date)} · Team ${b.team}</b><small>${b.stops.length} visits · ${b.km.toFixed(1)} km · ~${b.hours.toFixed(1)} h · top score ${b.stops[0].score}</small></span>
+    </button>`).join('') || '<div class="mpk-hud-sub">No suspected buildings in this area.</div>';
+  mpkPlannerDraw();
+}
+
+function mpkPlannerDraw() {
+  const P = MPK_FEAT.plan, days = Math.max(1, P.plan.length ? P.plan[P.plan.length - 1].day - 1 : 1);
+  map.getSource('mpk-feat-plan-line').setData(mpkFC(P.plan.map((b, i) => ({ type: 'Feature', properties: { sel: P.sel === i },
+    geometry: { type: 'LineString', coordinates: b.stops.map(x => [x.p.lng, x.p.lat]) } }))));
+  const pts = P.plan.flatMap((b, i) => b.stops.map((x, k) => mpkPt([x.p.lng, x.p.lat],
+    { sel: P.sel === i, n: String(k + 1), dayf: (b.day - 1) / days })));
+  pts.sort((a, b) => a.properties.sel - b.properties.sel);                 // the picked day on top
+  map.getSource('mpk-feat-plan-pt').setData(mpkFC(pts));
+}
+
+function mpkPlannerPick(i) {
+  const P = MPK_FEAT.plan, b = P.plan[i];
+  if (!b) return;
+  P.sel = P.sel === i ? null : i;
+  document.querySelectorAll('#mpk-plan-days .mpk-hud-item').forEach((el, k) => el.classList.toggle('on', k === P.sel));
+  mpkPlannerDraw();
+  if (P.sel !== null) {
+    mpkFeatFit(mpkBoundsOf([{ geometry: { coordinates: b.stops.map(x => [x.p.lng, x.p.lat]) } }]),
+      { padding: { top: 80, bottom: 80, left: 80, right: 420 }, maxZoom: 17.5 });
   }
-  if (!mpkFeatAlive(token)) return;
-  R.picks.push(winner);
-  R.spinning = false;
-  const slot = document.getElementById('mpk-slot');
-  if (slot) slot.classList.add('win');
-  await mpkFeatMove(() => map.flyTo({ center: [winner.lng, winner.lat], zoom: 18, duration: 1800 }));
-  if (!mpkFeatAlive(token)) return;
-  mpkRouletteHud(winner.plus_code);
-  document.getElementById('mpk-slot').classList.add('win');
-  document.getElementById('mpk-slot-sub').textContent = MPK_AREAS[winner.kawasan].short + ' · ' + mpkNum(winner.area_m2) + ' m² · drawn for audit';
-  mpkShowPopup(winner, [winner.lng, winner.lat]);
+}
+
+function mpkPlannerCSV() {
+  const P = MPK_FEAT.plan;
+  if (!P || !P.plan.length) return;
+  const blob = new Blob(['﻿' + mpkPlanCSV(P.plan, MPK.settings)], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `mpk_inspection_plan_${MPK_CSV_AREA[MPK.area] || 'all_areas'}_${mpkYMD(P.start)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('📄 Inspection plan exported');
+}
+
+// One printable checklist page per team-day (the picked day only, if one is picked)
+function mpkPlannerPrint() {
+  const P = MPK_FEAT.plan;
+  if (!P || !P.plan.length) return;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const list = P.sel !== null ? [P.plan[P.sel]] : P.plan;
+  const pages = list.map(b => `<section>
+      <header><div><h1>Site inspection checklist</h1><p>MPK Kemaman · suspected buildings · draft generated by BuildVision for planning</p></div>
+        <div class="meta"><b>Day ${b.day} · ${mpkPlanDate(b.date)} ${b.date.getFullYear()}</b><br>Team ${b.team} · ${b.stops.length} visits · ${b.km.toFixed(1)} km · ~${b.hours.toFixed(1)} h</div></header>
+      <table><thead><tr><th>#</th><th>Plus Code / location</th><th>Area · lot</th><th>m²</th><th>Why flagged</th><th>Visited</th><th>Building found</th><th>Notes</th></tr></thead>
+      <tbody>${b.stops.map((x, k) => `<tr><td>${k + 1}</td><td><b>${esc(x.p.plus_code)}</b><br><small>${x.p.lat.toFixed(5)}, ${x.p.lng.toFixed(5)}</small></td>
+        <td>${esc(MPK_AREAS[x.p.kawasan].short)}<br><small>Lot ${esc(x.p.lot || '—')}</small></td><td>${mpkNum(x.p.area_m2)}</td>
+        <td><small>${esc(mpkPlanReason(x.p, MPK.settings))} · score ${x.score}</small></td><td class="box">☐</td><td class="box">☐ Yes ☐ No</td><td class="notes"></td></tr>`).join('')}</tbody></table>
+      <footer>Inspector: ____________________ &nbsp; Signature: ____________________ &nbsp; Date: ____________</footer></section>`).join('');
+  const w = window.open('', '_blank');
+  if (!w) { showToast('⚠️ Allow pop-ups to print the checklists'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Inspection checklists</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#1E2C44;margin:0}section{padding:18mm 14mm;page-break-after:always}
+    header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1E2C44;padding-bottom:8px;margin-bottom:10px}
+    h1{font-size:18px;margin:0}p{margin:3px 0 0;font-size:11px;color:#5E6E84}.meta{text-align:right;font-size:12px}
+    table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #c9d1db;padding:5px 6px;vertical-align:top;text-align:left}
+    th{background:#1E2C44;color:#fff}small{color:#5E6E84}.box{white-space:nowrap}.notes{width:22%}tr{page-break-inside:avoid}
+    footer{margin-top:16px;font-size:12px}@page{size:A4 landscape;margin:0}</style></head><body>${pages}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
 }
