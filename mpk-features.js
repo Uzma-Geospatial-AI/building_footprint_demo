@@ -200,10 +200,13 @@ function mpkPolicyCurve(features, rMin = 3, rMax = 20) {
 }
 
 // ---------- Pure: time machine frames ----------
-// One frame per distinct capture date for the area, oldest first
+// One frame per distinct capture date for the area, oldest first. maxzoom: the deepest tile level
+// the release serves here (Wayback answers 404 below it, so MapLibre must stretch that level):
+// releases before 2024 stop at z17 over Kemaman, later ones at z18.
 function mpkTimeFrames(history, area) {
   const seen = new Set();
-  return (history || []).map(h => ({ release: h.release, capture: (h.capture || {})[area] || h.date }))
+  return (history || []).map(h => ({ release: h.release, capture: (h.capture || {})[area] || h.date,
+                                     maxzoom: (h.date || '') >= '2024' ? 18 : 17 }))
     .filter(f => f.capture && !seen.has(f.capture) && seen.add(f.capture))
     .sort((a, b) => a.capture.localeCompare(b.capture));
 }
@@ -769,7 +772,7 @@ const MPK_FEAT_RUN = {
       const id = 'mpk-feat-tm-' + slot;
       if (map.getLayer(id)) map.removeLayer(id);
       if (map.getSource(id)) map.removeSource(id);
-      map.addSource(id, { type: 'raster', tiles: [mpkWaybackTileUrl(frames[i].release)], tileSize: 256, maxzoom: 19,
+      map.addSource(id, { type: 'raster', tiles: [mpkWaybackTileUrl(frames[i].release)], tileSize: 256, maxzoom: frames[i].maxzoom,
         attribution: 'Esri World Imagery Wayback' });
       map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 0, 'raster-opacity-transition': { duration: 1400 } } }, before);
       if (!MPK_FEAT.layers.includes(id)) { MPK_FEAT.layers.push(id); MPK_FEAT.sources.push(id); }

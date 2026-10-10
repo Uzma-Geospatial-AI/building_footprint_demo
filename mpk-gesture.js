@@ -349,7 +349,7 @@ function mpkGestVoiceCommand(txt) {
 function mpkSwipeStyle(frame) {
   const sus = mpkFeatData().ranked.map(x => MPK.data.buildings.features.find(f => f.properties.id === x.p.id));
   return { version: 8,
-    sources: { img: { type: 'raster', tiles: [mpkWaybackTileUrl(frame.release)], tileSize: 256, maxzoom: 19, attribution: 'Esri World Imagery Wayback' },
+    sources: { img: { type: 'raster', tiles: [mpkWaybackTileUrl(frame.release)], tileSize: 256, maxzoom: frame.maxzoom || 17, attribution: 'Esri World Imagery Wayback' },
                sus: { type: 'geojson', data: mpkFC(sus) } },
     layers: [{ id: 'img', type: 'raster', source: 'img' },
              { id: 'sus', type: 'line', source: 'sus', paint: { 'line-color': '#FF5252', 'line-width': 1.6 } }] };
@@ -392,8 +392,8 @@ function mpkSwipeOpen() {
 
 function mpkSwipeImagery() {
   if (!MPK_GEST.maps) return;
-  MPK_GEST.maps.before.getSource('img').setTiles([mpkWaybackTileUrl(MPK_GEST.before.release)]);
-  MPK_GEST.maps.after.getSource('img').setTiles([mpkWaybackTileUrl(MPK_GEST.after.release)]);
+  MPK_GEST.maps.before.setStyle(mpkSwipeStyle(MPK_GEST.before));
+  MPK_GEST.maps.after.setStyle(mpkSwipeStyle(MPK_GEST.after));
   mpkSwipeLabels();
 }
 

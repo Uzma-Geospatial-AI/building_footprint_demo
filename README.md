@@ -44,6 +44,7 @@ building_footprint_demo/
 ├── mpk-report.js            # MPK PDF report (English / Bahasa Melayu)
 ├── mpk-features.js          # MPK Features page: tools 1–10
 ├── mpk-gesture.js           # MPK Features: tool 11, gesture control (camera + voice)
+├── mpk-features2.js         # MPK Features: tools 12–15
 ├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
 ├── tools/                   # data builders (Python) and logic tests (Node)
 ├── uzma-dashboard.css       # legacy standalone stylesheet
@@ -205,8 +206,8 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
   the list of suspected buildings, notes and blank Prepared / Checked / Approved blocks. It is
   marked **DRAFT · FOR REVIEW** with a system ID (`BV-YYYYMMDD-HHMM`) and carries no MPK logo,
   seal or official reference number (`mpk-report.js`, tests in `tools/test_mpk_report.js`).
-- *Features* (sidebar, under Statistics): eleven live tools on the MPK data, each opening a
-  floating panel on the map. See [MPK Features](#mpk-features--the-11-tools) below.
+- *Features* (sidebar, under Statistics): fifteen live tools on the MPK data, each opening a
+  floating panel on the map. See [MPK Features](#mpk-features--the-15-tools) below.
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
   buildings within the two road corridors (6,225 buildings). Status colours (red / teal / light
   grey) were checked for colour-blind separation.
@@ -252,13 +253,14 @@ python tools/build_landsat.py                                          # stdlib;
 node tools/test_mpk_logic.js                                           # pure-logic tests
 node tools/test_mpk_change.js && node tools/test_mpk_report.js         # change detection, PDF report
 node tools/test_mpk_features.js && node tools/test_mpk_gesture.js      # Features tools, gesture control
+node tools/test_mpk_features2.js                                       # Features tools 12–15
 ```
 
 The MPK source map image is client material and is not committed.
 
 ---
 
-## MPK Features — the 11 tools
+## MPK Features — the 15 tools
 
 Open **MPK Kemaman** mode, then **Features** in the sidebar (under Statistics). Each card has a
 **Launch** button; the tool runs on the map with a floating panel and its own layers, and
@@ -286,9 +288,13 @@ Shared definitions used by several tools:
 | 6 | **Ask the Map** | Answers questions about the buildings in English or Malay, highlights the matching buildings and can read the answer aloud. Can also open any other tool. | Type or press 🎙️ and speak, e.g. "How many illegal buildings in Binjai?", "Tunjuk bangunan haram lebih 1000 m²", "Largest legal building in Teluk Kalong", "lot 3020", "start the drone tour". Tick off *Speak the answer* for silence. | A small parser picks the intent (count / show / largest / lot / open a tool), area, status, size limits and lot no.; the browser's Web Speech API does the listening and speaking (Chrome / Edge). |
 | 7 | **Building Passport** | A case file for one building: satellite close-up with the footprint outlined, status, Plus Code, lot / UPI, footprint, AI confidence, why it is flagged, hotspot, land use and a QR code. | Launch (opens the top case), then click any building. Scan the QR with a phone to open the spot in Google Maps. | Esri World Imagery tiles assembled round the building; QR code made in the browser (qrcodejs). |
 | 8 | **Lot Coverage X-ray** | Shades each cadastral lot by how much of it is covered by buildings and lists the most densely built lots, with the median and the number of lots ≥ 60% built. | Launch; click a lot in the list to zoom to it. | Building footprint ÷ lot area (lot area computed from its polygon), buildings joined to lots on UPI. A building counts on the lot under its centre, so a building spanning several lots can exceed 100%; those lots are left out of the list. A screening aid, not an official plot-ratio check. |
-| 9 | **Time Machine** | Flies to the top case and plays every historical Esri photo of it as a cross-faded time-lapse (TK: 2007, 2013, 2017, 2019, 2020, 2024, 2025) with the capture year shown large. | Launch and watch; *Replay* at the end. | Esri World Imagery Wayback releases (one per distinct capture date, from `mpk/wayback.json`), two raster layers alternating with an opacity fade. |
+| 9 | **Time Machine** | Flies to the top case and plays every historical Esri photo of it as a cross-faded time-lapse (TK: 2007, 2013, 2017, 2019, 2020, 2024, 2025) with the capture year shown large. | Launch and watch; *Replay* at the end. | Esri World Imagery Wayback releases (one per distinct capture date, from `mpk/wayback.json`), two raster layers alternating with an opacity fade. Releases before 2024 only serve tiles to z17 over Kemaman (z18 from 2024), so that level is stretched when zoomed in further. |
 | 10 | **Policy Simulator** | What-if for the corridor road reserve: drag 3–20 m and the map, counts, m² and estimated processing fee update live, with a curve of suspected buildings against reserve width. | Drag the slider. *Keep this setting* keeps the new width; closing or *Reset* puts the old one back. | Recounts the road-reserve rule for each width; the dashboard's own filters are updated, so the change is real while the panel is open. |
 | 11 | **Gesture Control** | Hands-free before / after comparison. The camera tracks your hand: **hold up an open hand** to open a swipe of two Esri photos, **say** the before and after years, then control it by hand. The panel shows the six steps and highlights the current one. | Follow the steps on screen: **1** allow the camera (and microphone); **2** hold an open hand 🖐 (fingers spread, palm to the camera) still for 1 second until the ring fills; **3** say the BEFORE year ("2013", "twenty thirteen", "dua ribu tiga belas") or tap a year button; **4** the same for AFTER; **5** control the swipe with one hand: **☝️ point** = move the divider, **🤏 pinch and move** = pan, **✌️ hold** = zoom in, **✊ hold** = zoom out; **6** hold an open hand for 1 second again to close (and again to compare other years). Voice during the swipe: "zoom in", "zoom out", "before 2017", "after 2024", "swap", "close" (Malay too: "zoom keluar", "sebelum 2017", "tutup"). The divider can also be dragged with the mouse or arrow keys, and *Skip: open with the mouse* bypasses the hand step. | MediaPipe Hand Landmarker (21 points per hand) runs in the browser on the camera feed; poses come from which fingers are straight (open hand = 3 or more). The open-hand trigger fires after 1 s and ignores dropped frames under 0.3 s; it re-arms when the hand is lowered. A year that has no photo uses the closest capture (the toast says which). Video never leaves the browser. A small mirrored preview shows the tracked hand and the current gesture. |
+| 12 | **3D Hex Density** | Bins every building into 150 m hexagons and raises them as 3D columns that grow out of the map: height = suspected floor area in the hexagon, colour = share of its buildings that are suspected (teal 0% → dark red 100%). Lists the five tallest columns. | Launch; hover a column for its buildings, suspected count, share and m²; click a list row to fly to that column. Right-drag tilts the view. | Hexagonal binning (pointy-top, 150 m centre-to-corner) in a local metric grid with cube rounding; `fill-extrusion` heights animate from 0. |
+| 13 | **Impact Radius** | A circle follows the mouse and counts, live, what lies inside: buildings, suspected buildings and their m², estimated processing fee, a status bar (red / teal / grey), the nearest suspected building and its distance. Buildings inside are outlined in yellow. | Move the mouse over the map; set the radius (100 m–1.5 km) with the slider; click to pin the circle, click again to free it. | Distance from the centre to every building's centre (local metres), recomputed each animation frame; the fee uses the rate set in Analysis. |
+| 14 | **Time Lens** | Shows the latest Esri photo on the map and an older photo of the same spot inside a round lens that follows the mouse, with today's suspected buildings outlined in red, so new construction stands out at a glance. | Move the mouse; pick the lens year (2007–2024 for Teluk Kalong) and the lens size (140–520 px). | A second, non-interactive map with the old Wayback release, kept in sync with the main map and clipped to a circle at the cursor (`clip-path`). |
+| 15 | **Audit Roulette** | A fair random draw for site audits: spins through the suspected buildings like a slot machine (a yellow marker jumps across the map, slowing down), lands on one, flies there and opens its popup. Drawn buildings are listed and never drawn twice. | Press **🎰 Spin**; press again for the next audit; click a drawn building to go back to it. | Browser crypto random numbers with rejection sampling (no modulo bias), so every suspected building in the selected area has the same chance; the flashes ease out over ~6 s. |
 
 Requirements and limits:
 - Voice (tools 6 and 11) needs Chrome or Edge, microphone permission and an internet connection
@@ -296,14 +302,15 @@ Requirements and limits:
 - Gesture Control needs a webcam and camera permission over HTTPS (the live site) or
   `localhost`; MediaPipe (~8 MB model) loads from jsDelivr / Google Storage the first time.
   Good, even lighting, about 1 m from the camera and one hand in view at a time work best.
-- Drone Tour, Radar Sweep, Time Machine, Passport and Gesture Control load map imagery, so the
+- Drone Tour, Radar Sweep, Time Machine, Time Lens, Passport and Gesture Control load map imagery, so the
   booth machine needs a steady connection. Route uses the free OSRM demo server, which can be
   slow or rate-limited; the straight-line fallback keeps the tool working.
 
-Code: `mpk-features.js` (tools 1–10) and `mpk-gesture.js` (tool 11), styles in `mpk.css`.
+Code: `mpk-features.js` (tools 1–10), `mpk-gesture.js` (tool 11) and `mpk-features2.js` (tools 12–15), styles in `mpk.css`.
 Pure logic (geometry, DBSCAN, priority score, route order, lot coverage, policy curve, time-lapse
-frames, the question parser, hand poses, the open-hand hold trigger, spoken-year parsing, voice commands) is
-exported and tested by `tools/test_mpk_features.js` and `tools/test_mpk_gesture.js`.
+frames, the question parser, hand poses, the open-hand hold trigger, spoken-year parsing, voice commands, hexagon
+binning, radius counts, the fair draw) is exported and tested by `tools/test_mpk_features.js`,
+`tools/test_mpk_gesture.js` and `tools/test_mpk_features2.js`.
 
 ---
 
