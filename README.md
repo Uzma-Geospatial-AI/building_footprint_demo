@@ -39,6 +39,13 @@ building_footprint_demo/
 ├── compare/index.html       # before/after swipe page, served at /compare/
 ├── login.html, compare.html # redirects from the old addresses
 ├── uzma.js                  # POI / gazetteer + reference datasets
+├── mpk.js, mpk.css          # MPK Kemaman mode: data, layers, panel, Statistics page
+├── mpk-change.js            # MPK change detection (before / after imagery)
+├── mpk-report.js            # MPK PDF report (English / Bahasa Melayu)
+├── mpk-features.js          # MPK Features page: tools 1–10
+├── mpk-gesture.js           # MPK Features: tool 11, gesture control (camera + voice)
+├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
+├── tools/                   # data builders (Python) and logic tests (Node)
 ├── uzma-dashboard.css       # legacy standalone stylesheet
 ├── GeoAILogo.png            # brand mark
 ├── serembangeo.geojsonn     # Seremban parcels — geometry + land-use classes
@@ -198,24 +205,8 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
   the list of suspected buildings, notes and blank Prepared / Checked / Approved blocks. It is
   marked **DRAFT · FOR REVIEW** with a system ID (`BV-YYYYMMDD-HHMM`) and carries no MPK logo,
   seal or official reference number (`mpk-report.js`, tests in `tools/test_mpk_report.js`).
-- *Features* (sidebar, under Statistics): ten live tools on the MPK data, each with a floating
-  panel on the map (`mpk-features.js`, tests in `tools/test_mpk_features.js`):
-  1. **Drone Tour**: buildings rise in 3D and the camera flies and orbits the top-priority cases
-     (*Start booth mode* loops it; touching the map stops it).
-  2. **Radar Sweep**: a beam sweeps the area and suspected buildings light up as it passes.
-  3. **Hotspot Finder**: DBSCAN clusters (4+ suspected buildings within 150 m), ranked.
-  4. **Priority Score**: 0–100 per suspected building (size 45%, evidence 25%, AI confidence 15%,
-     in a hotspot 15%), shown with its breakdown.
-  5. **Smart Inspection Route**: driving route through the top 8 cases on OSM roads (OSRM public
-     server; straight-line fallback), with distance, drive time and an *Open in Google Maps* link.
-  6. **Ask the Map**: typed or spoken questions in English or Malay ("berapa bangunan haram di
-     Binjai?"), answered on the map and optionally read aloud.
-  7. **Building Passport**: click a building for its case file: Esri close-up with the outline,
-     status, lot / UPI, score, hotspot, land use and a QR code to Google Maps.
-  8. **Lot Coverage X-ray**: building footprint ÷ cadastral lot area, per lot (joined on UPI).
-  9. **Time Machine**: cross-faded time-lapse of every Esri Wayback capture of the top case.
-  10. **Policy Simulator**: drag the road-reserve width and watch counts, footprint, fees and the
-      map update live (restored on close unless *Keep this setting*).
+- *Features* (sidebar, under Statistics): eleven live tools on the MPK data, each opening a
+  floating panel on the map. See [MPK Features](#mpk-features--the-11-tools) below.
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
   buildings within the two road corridors (6,225 buildings). Status colours (red / teal / light
   grey) were checked for colour-blind separation.
@@ -259,9 +250,60 @@ python tools/build_wayback.py                                          # stdlib;
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)
 python tools/build_landsat.py                                          # stdlib; cloud check on ~3,000 Landsat scenes
 node tools/test_mpk_logic.js                                           # pure-logic tests
+node tools/test_mpk_change.js && node tools/test_mpk_report.js         # change detection, PDF report
+node tools/test_mpk_features.js && node tools/test_mpk_gesture.js      # Features tools, gesture control
 ```
 
 The MPK source map image is client material and is not committed.
+
+---
+
+## MPK Features — the 11 tools
+
+Open **MPK Kemaman** mode, then **Features** in the sidebar (under Statistics). Each card has a
+**Launch** button; the tool runs on the map with a floating panel and its own layers, and
+closing the panel (✕, or opening another tool or page) removes everything it added. All tools
+work on the area chosen with the chips (All / Teluk Kalong / corridors) and on the real
+buildings, lots and imagery, nothing is pre-recorded. **Start booth mode** (top of the page)
+runs the Drone Tour on a loop for an exhibition screen.
+
+Shared definitions used by several tools:
+- *Suspected building*: on MPK's suspect list (Teluk Kalong) or inside the road reserve
+  (corridors), as on the dashboard.
+- *Hotspot*: a cluster of at least 4 suspected buildings, each within 150 m of another
+  (DBSCAN on building centres).
+- *Priority score* (0–100): size 45% (log scale, 10 m² → 0, 5,000 m² → full) + evidence 25%
+  (on MPK's list = full; road reserve = 40% at the reserve edge up to full on the centreline)
+  + AI confidence 15% + inside a hotspot 15%.
+
+| # | Tool | What it does | How to use it | How it works |
+|---|---|---|---|---|
+| 1 | **Drone Tour** | Raises every building into 3D (red suspected, teal legal, grey not verified) and flies the camera to the 8 highest-priority cases, orbiting each with its Plus Code, size, lot and reason on screen. | Launch, then watch. *Fly again* or *Loop for booth* at the end. Touching the map stops it. | Extrusion heights animate from 0; MapLibre `flyTo` / `easeTo` with pitch and bearing; the stops come from the priority score. |
+| 2 | **Radar Sweep** | Darkens the map, draws radar rings and sweeps a beam round the area; each suspected building lights up as the beam passes, with a live counter of buildings and m². | Launch; *Scan again* after one turn (9 s). | Each building's compass bearing from the area centre; the beam is redrawn every frame and a filter shows buildings whose bearing the beam has passed. |
+| 3 | **Hotspot Finder** | Finds clusters of suspected buildings, draws a zone round each (H1, H2, …) and lists them by size with area, count and m². | Launch; click a hotspot in the list to zoom to it. | DBSCAN (150 m, 4 buildings) on building centres; convex hull pushed out 30 m. |
+| 4 | **Priority Score** | Recolours suspected buildings from yellow (low) to dark red (urgent) and lists the top 10 with a bar showing what makes up each score. | Launch; click a building in the list to zoom and open its popup. | The score above; the bar splits it into size / evidence / confidence / hotspot. |
+| 5 | **Smart Inspection Route** | Plans a field-visit route through the 8 highest-priority cases on real roads, with numbered stops, total km and drive time. | Launch; *Open in Google Maps* sends the route (stops in order) to a phone or laptop. | OSRM public router (`router.project-osrm.org`, OpenStreetMap roads) solves the visiting order and the road geometry. If it is unreachable, a nearest-neighbour + 2-opt order on straight lines is used (distance × 1.3, 30 km/h) and the panel says so. |
+| 6 | **Ask the Map** | Answers questions about the buildings in English or Malay, highlights the matching buildings and can read the answer aloud. Can also open any other tool. | Type or press 🎙️ and speak, e.g. "How many illegal buildings in Binjai?", "Tunjuk bangunan haram lebih 1000 m²", "Largest legal building in Teluk Kalong", "lot 3020", "start the drone tour". Tick off *Speak the answer* for silence. | A small parser picks the intent (count / show / largest / lot / open a tool), area, status, size limits and lot no.; the browser's Web Speech API does the listening and speaking (Chrome / Edge). |
+| 7 | **Building Passport** | A case file for one building: satellite close-up with the footprint outlined, status, Plus Code, lot / UPI, footprint, AI confidence, why it is flagged, hotspot, land use and a QR code. | Launch (opens the top case), then click any building. Scan the QR with a phone to open the spot in Google Maps. | Esri World Imagery tiles assembled round the building; QR code made in the browser (qrcodejs). |
+| 8 | **Lot Coverage X-ray** | Shades each cadastral lot by how much of it is covered by buildings and lists the most densely built lots, with the median and the number of lots ≥ 60% built. | Launch; click a lot in the list to zoom to it. | Building footprint ÷ lot area (lot area computed from its polygon), buildings joined to lots on UPI. A building counts on the lot under its centre, so a building spanning several lots can exceed 100%; those lots are left out of the list. A screening aid, not an official plot-ratio check. |
+| 9 | **Time Machine** | Flies to the top case and plays every historical Esri photo of it as a cross-faded time-lapse (TK: 2007, 2013, 2017, 2019, 2020, 2024, 2025) with the capture year shown large. | Launch and watch; *Replay* at the end. | Esri World Imagery Wayback releases (one per distinct capture date, from `mpk/wayback.json`), two raster layers alternating with an opacity fade. |
+| 10 | **Policy Simulator** | What-if for the corridor road reserve: drag 3–20 m and the map, counts, m² and estimated processing fee update live, with a curve of suspected buildings against reserve width. | Drag the slider. *Keep this setting* keeps the new width; closing or *Reset* puts the old one back. | Recounts the road-reserve rule for each width; the dashboard's own filters are updated, so the change is real while the panel is open. |
+| 11 | **Gesture Control** | Hands-free before / after comparison. The camera tracks your hands: **clap** to open a swipe of two Esri photos, **say** the before and after years, then control it by hand. | Launch and allow the camera (and microphone for voice). **👏 Clap** opens the swipe (clap again to close). The panel asks "Which year for BEFORE?" then "AFTER?": say a year ("2013", "twenty thirteen", "dua ribu tiga belas") or tap one of the year buttons. Then: **🖐 open hand / ☝️ point** = hover to move the divider, **🤏 pinch and move** = pan, **✌️ hold** = zoom in, **✊ hold** = zoom out. Voice during the swipe: "zoom in", "zoom out", "before 2017", "after 2024", "swap", "close" (Malay too: "zoom keluar", "sebelum 2017", "tutup"). The divider can also be dragged with the mouse or arrow keys. | MediaPipe Hand Landmarker (21 points per hand, 2 hands) runs in the browser on the camera feed; poses come from which fingers are straight, a clap is two hands coming together within 0.8 s. A year that has no photo uses the closest capture (the toast says which). Video never leaves the browser. A small mirrored preview shows the tracked hands and the current gesture. |
+
+Requirements and limits:
+- Voice (tools 6 and 11) needs Chrome or Edge, microphone permission and an internet connection
+  (the browser's speech service). Typing and buttons always work.
+- Gesture Control needs a webcam and camera permission over HTTPS (the live site) or
+  `localhost`; MediaPipe (~8 MB model) loads from jsDelivr / Google Storage the first time.
+  Good, even lighting and one hand in view at a time work best.
+- Drone Tour, Radar Sweep, Time Machine, Passport and Gesture Control load map imagery, so the
+  booth machine needs a steady connection. Route uses the free OSRM demo server, which can be
+  slow or rate-limited; the straight-line fallback keeps the tool working.
+
+Code: `mpk-features.js` (tools 1–10) and `mpk-gesture.js` (tool 11), styles in `mpk.css`.
+Pure logic (geometry, DBSCAN, priority score, route order, lot coverage, policy curve, time-lapse
+frames, the question parser, hand poses, clap detection, spoken-year parsing, voice commands) is
+exported and tested by `tools/test_mpk_features.js` and `tools/test_mpk_gesture.js`.
 
 ---
 

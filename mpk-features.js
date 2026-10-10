@@ -332,7 +332,7 @@ function mpkBuildFeaturesPage() {
         <header class="mpk-feat-hero">
           <div>
             <div class="mpk-feat-kicker">BuildVision · MPK Kemaman</div>
-            <h2>10 smart tools built on the MPK data</h2>
+            <h2>${MPK_FEATURES.length} smart tools built on the MPK data</h2>
             <p>Each one runs live on the real buildings, lots and imagery of Teluk Kalong and the two road corridors.</p>
           </div>
           <button class="mpk-feat-booth" onclick="mpkFeatLaunch('tour', { booth: true })">
