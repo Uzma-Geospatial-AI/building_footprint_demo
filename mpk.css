@@ -278,3 +278,6 @@ body:not(.mpk-mode) .mpk-nav, body:not(.mpk-mode) .mpk-stats-page { display:none
 }
 .mpk-st-cell { display:flex; align-items:center; gap:7px; }
 .mpk-st-cell .sw { margin-right:0 !important; flex-shrink:0; }
+body:not(.mpk-mode) .mpk-pdf-btn { display:none !important; }
+.mpk-stats-actions { display:flex; gap:8px; flex-shrink:0; }
+.mpk-stats-actions .mpk-wb-btn { height:28px; }

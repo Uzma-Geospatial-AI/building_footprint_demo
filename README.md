@@ -192,6 +192,11 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
   donut with counts / shares / m², building-size classes split by status, a per-area table,
   the largest buildings (each with *View* on the map) and an *Export CSV* of every building
   with its status and size.
+- *Export PDF* (top bar in MPK mode, or *Export PDF report* on Statistics): an A4 council-style
+  report for the selected area: particulars, summary, location map, breakdown by area and size,
+  the list of suspected buildings, notes and blank Prepared / Checked / Approved blocks. It is
+  marked **DRAFT · FOR REVIEW** with a system ID (`BV-YYYYMMDD-HHMM`) and carries no MPK logo,
+  seal or official reference number (`mpk-report.js`, tests in `tools/test_mpk_report.js`).
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
   buildings within the two road corridors (6,225 buildings). Status colours (red / teal / light
   grey) were checked for colour-blind separation.

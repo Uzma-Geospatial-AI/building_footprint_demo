@@ -352,7 +352,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261011b',
+  VERSION: '20261011c',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1058,7 +1058,10 @@ function mpkRenderStats() {
       <header class="mpk-stats-head">
         <div><h2>Statistics</h2>
           <p>Buildings in the marked areas only: Teluk Kalong inside the planning boundary, and along the two road corridors.</p></div>
-        <button class="mpk-btn" onclick="mpkExportAllCSV()">Export CSV</button>
+        <div class="mpk-stats-actions">
+          <button class="mpk-btn" onclick="mpkExportReport()">Export PDF report</button>
+          <button class="mpk-wb-btn" onclick="mpkExportAllCSV()">Export CSV</button>
+        </div>
       </header>
       <div class="mpk-chips">${chips}</div>
 
@@ -1475,3 +1478,6 @@ function mpkSearchMarker(lng, lat) {
     .addTo(map);
   MPK_SEARCH.marker.togglePopup();
 }
+
+// labels the report module (mpk-report.js) also uses under Node tests
+if (typeof module !== 'undefined') Object.assign(module.exports, { MPK_AREAS, MPK_STATUS, MPK_JENIS, MPK_SIZE_CLASSES });
