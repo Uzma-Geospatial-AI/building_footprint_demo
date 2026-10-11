@@ -164,7 +164,7 @@ the browser; Planet NICFI monthly mosaics would need an API key.
 of Teluk Kalong to Chukai served as PMTiles (PNG, zoom 11–18, ~2 GB each) from
 `https://digitalearthbasemap.s3.ap-southeast-1.amazonaws.com/terengganu/`:
 *MPK aerial · 24 Sep 2026* (`aoi_mpk_esri_2026-09-24_z18.pmtiles`) and *MPK aerial · 1 Nov 2023*
-(`aoi_mpk_esri_2023-11-01_z18.pmtiles`), extent 103.394–103.494 °E, 4.212–4.315 °N. Google Satellite fills the
+(`aoi_mpk_esri_2023-11-01_z18.pmtiles`), extent 103.394–103.494 °E, 4.212–4.315 °N. Google Maps (road map) fills the
 map outside that extent, the map can zoom one level past 18, and the options leave with MPK mode. Switching
 between the two shows what was built between Nov 2023 and Sep 2026.
 **The bucket must allow this site (CORS) for range requests**, otherwise the browser blocks the files and a

@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261011l" rel="stylesheet">
+<link href="mpk.css?v=20261011m" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -1859,11 +1859,11 @@ const BASEMAPS = {
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
   'uzmasat-tiles':    { tiles:UZMASAT_TILES, tileSize:256, minzoom:8, maxzoom:UZMASAT_MAXZOOM, bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
   // MPK Kemaman aerial imagery (Esri captures, PMTiles on S3, z11–18): Teluk Kalong to Chukai.
-  // Google Satellite fills the map outside their extent; the map may zoom one level past 18.
+  // Google Maps (road map) fills the map outside their extent; the map may zoom one level past 18.
   'mpk-esri-2023':    { tiles:['pmtiles://' + MPK_PMTILES_BASE + 'aoi_mpk_esri_2023-11-01_z18.pmtiles/{z}/{x}/{y}'], tileSize:256, minzoom:11, maxzoom:18,
-                        bounds:MPK_PMTILES_BOUNDS, under:'google-satellite', maxView:19, rebuild:true, mpk:true },
+                        bounds:MPK_PMTILES_BOUNDS, under:'google-road', maxView:19, rebuild:true, mpk:true },
   'mpk-esri-2026':    { tiles:['pmtiles://' + MPK_PMTILES_BASE + 'aoi_mpk_esri_2026-09-24_z18.pmtiles/{z}/{x}/{y}'], tileSize:256, minzoom:11, maxzoom:18,
-                        bounds:MPK_PMTILES_BOUNDS, under:'google-satellite', maxView:19, rebuild:true, mpk:true },
+                        bounds:MPK_PMTILES_BOUNDS, under:'google-road', maxView:19, rebuild:true, mpk:true },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
@@ -3624,7 +3624,7 @@ function checkPmtilesReachable(tileUrl, label) {
   _pmtilesChecked[url] = true;
   fetch(url, { headers: { Range: 'bytes=0-126' } }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); })
     .catch(() => { _pmtilesChecked[url] = false;
-      showToast('⚠️ ' + label + ' could not load: the S3 bucket does not allow this site (CORS). Google Satellite is shown instead.', 7000); });
+      showToast('⚠️ ' + label + ' could not load: the S3 bucket does not allow this site (CORS). Google Maps is shown instead.', 7000); });
 }
 
 function basemapIsSeremban() {
@@ -4280,11 +4280,11 @@ function showLoading(text, sub) {
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 </script>
-<script src="mpk.js?v=20261011l"></script>
-<script src="mpk-change.js?v=20261011l"></script>
-<script src="mpk-report.js?v=20261011l"></script>
-<script src="mpk-features.js?v=20261011l"></script>
-<script src="mpk-gesture.js?v=20261011l"></script>
-<script src="mpk-features2.js?v=20261011l"></script>
+<script src="mpk.js?v=20261011m"></script>
+<script src="mpk-change.js?v=20261011m"></script>
+<script src="mpk-report.js?v=20261011m"></script>
+<script src="mpk-features.js?v=20261011m"></script>
+<script src="mpk-gesture.js?v=20261011m"></script>
+<script src="mpk-features2.js?v=20261011m"></script>
 </body>
 </html>
