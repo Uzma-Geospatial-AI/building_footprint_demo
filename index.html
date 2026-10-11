@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261011k" rel="stylesheet">
+<link href="mpk.css?v=20261011l" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -817,6 +817,16 @@
         <div class="basemap-option" onclick="switchBasemap('osm','OpenStreetMap',this)">
           <div class="basemap-option-thumb">🟦</div>
           <div><div style="font-size:12px;font-weight:500;">OpenStreetMap</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Community map</div></div>
+        </div>
+        <!-- MPK Kemaman aerial imagery (PMTiles, MPK mode only) -->
+        <div class="mpk-aerial-head">Aerial imagery · MPK Kemaman</div>
+        <div class="basemap-option mpk-aerial-opt" onclick="switchBasemap('mpk-esri-2026','MPK aerial · Sep 2026',this)">
+          <div class="basemap-option-thumb mpk-aerial-thumb">26</div>
+          <div><div style="font-size:12px;font-weight:500;">MPK aerial · 24 Sep 2026</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Esri capture · Teluk Kalong–Chukai · zoom 11–18</div></div>
+        </div>
+        <div class="basemap-option mpk-aerial-opt" onclick="switchBasemap('mpk-esri-2023','MPK aerial · Nov 2023',this)">
+          <div class="basemap-option-thumb mpk-aerial-thumb old">23</div>
+          <div><div style="font-size:12px;font-weight:500;">MPK aerial · 1 Nov 2023</div><div style="font-size:10px;color:rgba(66,66,66,0.4);">Esri capture · Teluk Kalong–Chukai · zoom 11–18</div></div>
         </div>
         <div class="basemap-option" id="basemap-opt-uzmasat" onclick="switchBasemap('uzma-sat','UZMA-sat',this)" style="border-top:2px solid rgba(232,119,46,0.2);">
           <div class="basemap-option-thumb" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-color:rgba(232,119,46,0.3);">
@@ -1840,23 +1850,36 @@ if (window.pmtiles && !window._pmtilesRegistered) {
   window._pmtilesRegistered = true;
 }
 
+const MPK_PMTILES_BASE = 'https://digitalearthbasemap.s3.ap-southeast-1.amazonaws.com/terengganu/';
+const MPK_PMTILES_BOUNDS = [103.39357316493988, 4.2120755848177662, 103.49402725696564, 4.3153650975967244];
 const BASEMAPS = {
   'google-road':      { tiles:['https://mt0.google.com/vt/lyrs=m&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-satellite': { tiles:['https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize:256 },
   'google-hybrid':    { tiles:['https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}','https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'], tileSize:256 },
   'osm':              { tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 },
   'uzmasat-tiles':    { tiles:UZMASAT_TILES, tileSize:256, minzoom:8, maxzoom:UZMASAT_MAXZOOM, bounds:[101.87766085815322, 2.6743293354532471, 101.98574632250876, 2.7830234586744691], whiteBackground:true },
+  // MPK Kemaman aerial imagery (Esri captures, PMTiles on S3, z11–18): Teluk Kalong to Chukai.
+  // Google Satellite fills the map outside their extent; the map may zoom one level past 18.
+  'mpk-esri-2023':    { tiles:['pmtiles://' + MPK_PMTILES_BASE + 'aoi_mpk_esri_2023-11-01_z18.pmtiles/{z}/{x}/{y}'], tileSize:256, minzoom:11, maxzoom:18,
+                        bounds:MPK_PMTILES_BOUNDS, under:'google-satellite', maxView:19, rebuild:true, mpk:true },
+  'mpk-esri-2026':    { tiles:['pmtiles://' + MPK_PMTILES_BASE + 'aoi_mpk_esri_2026-09-24_z18.pmtiles/{z}/{x}/{y}'], tileSize:256, minzoom:11, maxzoom:18,
+                        bounds:MPK_PMTILES_BOUNDS, under:'google-satellite', maxView:19, rebuild:true, mpk:true },
 };
 function buildMapStyle(key) {
   const bm = BASEMAPS[key];
   const src = { type:'raster', tiles:bm.tiles, tileSize:bm.tileSize, minzoom:bm.minzoom||0, maxzoom:bm.maxzoom||19 };
   if (bm.scheme) src.scheme = bm.scheme;
   if (bm.bounds) src.bounds = bm.bounds;
-  const layers = [];
+  const layers = [], sources = { basemap:src };
   if (bm.whiteBackground) layers.push({ id:'whitebg', type:'background', paint:{ 'background-color':'#ffffff' } });
+  if (bm.under) {                                   // another basemap underneath, shown outside this one's extent
+    const u = BASEMAPS[bm.under];
+    sources['basemap-under'] = { type:'raster', tiles:u.tiles, tileSize:u.tileSize, maxzoom:u.maxzoom||19 };
+    layers.push({ id:'basemap-under', type:'raster', source:'basemap-under' });
+  }
   layers.push({ id:'basemap', type:'raster', source:'basemap' });
   // glyphs: fonts for map text labels (e.g. MPK building sizes)
-  return { version:8, glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources:{ basemap:src }, layers };
+  return { version:8, glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources, layers };
 }
 
 // ============================================================
@@ -3496,7 +3519,7 @@ function switchBasemap(key, label, el) {
 
   // UZMA-sat imagery only stays sharp to zoom 15 — cap navigation there so the user
   // can't zoom into the blurry (upscaled) range. Other basemaps keep the full range.
-  try { map.setMaxZoom(key === 'uzma-sat' ? UZMASAT_MAXZOOM : GLOBAL_MAXZOOM); } catch(e) {}
+  try { map.setMaxZoom(key === 'uzma-sat' ? UZMASAT_MAXZOOM : (BASEMAPS[key] && BASEMAPS[key].maxView) || GLOBAL_MAXZOOM); } catch(e) {}
 
   const uzmaControls = document.getElementById('uzmasat-controls');
 
@@ -3557,8 +3580,12 @@ function switchBasemap(key, label, el) {
 
   const bm = BASEMAPS[key];
   if (bm) {
-    // Coming from UZMA-sat: style has the pmtiles source + white background — must rebuild
-    if (basemapIsSeremban()) {
+    if (bm.mpk) {
+      checkPmtilesReachable(bm.tiles[0], label);
+      if (map.getZoom() < 12 && typeof MPK !== 'undefined' && MPK.active) map.fitBounds(MPK_PMTILES_BOUNDS, { padding: 40, duration: 1000 });
+    }
+    // Coming from (or going to) a PMTiles basemap: sources differ in bounds / zoom — must rebuild
+    if (basemapIsSeremban() || bm.rebuild) {
       const center = map.getCenter();
       const zoom   = map.getZoom();
       map.setStyle(buildMapStyle(key), { diff: false });
@@ -3586,6 +3613,18 @@ function switchBasemap(key, label, el) {
       });
     }
   }
+}
+
+// PMTiles are read straight from S3 with range requests: if the bucket does not allow this site
+// (CORS), say so once instead of showing an empty map
+const _pmtilesChecked = {};
+function checkPmtilesReachable(tileUrl, label) {
+  const url = tileUrl.replace(/^pmtiles:\/\//, '').replace(/\/\{z\}.*$/, '');
+  if (_pmtilesChecked[url]) return;
+  _pmtilesChecked[url] = true;
+  fetch(url, { headers: { Range: 'bytes=0-126' } }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); })
+    .catch(() => { _pmtilesChecked[url] = false;
+      showToast('⚠️ ' + label + ' could not load: the S3 bucket does not allow this site (CORS). Google Satellite is shown instead.', 7000); });
 }
 
 function basemapIsSeremban() {
@@ -4241,11 +4280,11 @@ function showLoading(text, sub) {
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 </script>
-<script src="mpk.js?v=20261011k"></script>
-<script src="mpk-change.js?v=20261011k"></script>
-<script src="mpk-report.js?v=20261011k"></script>
-<script src="mpk-features.js?v=20261011k"></script>
-<script src="mpk-gesture.js?v=20261011k"></script>
-<script src="mpk-features2.js?v=20261011k"></script>
+<script src="mpk.js?v=20261011l"></script>
+<script src="mpk-change.js?v=20261011l"></script>
+<script src="mpk-report.js?v=20261011l"></script>
+<script src="mpk-features.js?v=20261011l"></script>
+<script src="mpk-gesture.js?v=20261011l"></script>
+<script src="mpk-features2.js?v=20261011l"></script>
 </body>
 </html>

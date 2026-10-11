@@ -160,6 +160,23 @@ whole satellite tile. Striped Landsat 7 images (after May 2003) are used only wh
 other Landsat scene is reasonably clear. No other free imagery source can be shown in
 the browser; Planet NICFI monthly mosaics would need an API key.
 
+**Aerial imagery basemaps** (MPK mode, basemap menu → *Aerial imagery · MPK Kemaman*): two sharp Esri captures
+of Teluk Kalong to Chukai served as PMTiles (PNG, zoom 11–18, ~2 GB each) from
+`https://digitalearthbasemap.s3.ap-southeast-1.amazonaws.com/terengganu/`:
+*MPK aerial · 24 Sep 2026* (`aoi_mpk_esri_2026-09-24_z18.pmtiles`) and *MPK aerial · 1 Nov 2023*
+(`aoi_mpk_esri_2023-11-01_z18.pmtiles`), extent 103.394–103.494 °E, 4.212–4.315 °N. Google Satellite fills the
+map outside that extent, the map can zoom one level past 18, and the options leave with MPK mode. Switching
+between the two shows what was built between Nov 2023 and Sep 2026.
+**The bucket must allow this site (CORS) for range requests**, otherwise the browser blocks the files and a
+warning appears; the same applies to the Seremban UZMA-sat archive in that bucket. S3 → bucket → Permissions →
+CORS:
+
+```json
+[{ "AllowedOrigins": ["https://buildvision.uzmadigitalearth.app", "http://localhost:8000"],
+   "AllowedMethods": ["GET", "HEAD"], "AllowedHeaders": ["Range", "If-Match", "If-None-Match"],
+   "ExposeHeaders": ["ETag", "Content-Range", "Content-Length", "Accept-Ranges"], "MaxAgeSeconds": 3000 }]
+```
+
 **Change detection** (panel card): pick one satellite, a *Before* and an *After* date, and
 tick one or more things to detect (each becomes its own coloured layer with a show/hide
 checkbox, and the same layers appear on the Compare page) — *New buildings* (footprints on land that was green before and is built

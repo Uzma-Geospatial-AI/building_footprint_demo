@@ -352,7 +352,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261011k',
+  VERSION: '20261011l',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -670,6 +670,10 @@ function mpkExit() {
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   mpkRemoveLayers();
   mpkSetSerembanVisible(true);
+  // the MPK aerial basemaps only cover Kemaman
+  if (BASEMAPS[currentBasemap] && BASEMAPS[currentBasemap].mpk) {
+    switchBasemap('google-road', 'Google Maps', document.querySelector(`.basemap-option[onclick*="'google-road'"]`));
+  }
   map.getCanvas().style.cursor = 'grab';
 
   const tab = document.getElementById('ptab-mpk');
@@ -1202,7 +1206,7 @@ function mpkShowWaybackImagery() {
 // Cap map zoom at the satellite's sharpest level (zooming out if needed); null releases it
 function mpkImageryZoomCap(maxView) {
   if (!map) return;
-  const cap = maxView == null ? (currentBasemap === 'uzma-sat' ? UZMASAT_MAXZOOM : GLOBAL_MAXZOOM) : maxView;
+  const cap = maxView == null ? (currentBasemap === 'uzma-sat' ? UZMASAT_MAXZOOM : (BASEMAPS[currentBasemap] && BASEMAPS[currentBasemap].maxView) || GLOBAL_MAXZOOM) : maxView;
   map.setMaxZoom(cap);
   if (map.getZoom() > cap) map.easeTo({ zoom: cap, duration: 600 });
 }
