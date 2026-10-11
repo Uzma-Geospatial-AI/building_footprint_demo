@@ -212,12 +212,86 @@ function mpkTimeFrames(history, area) {
 }
 
 // ---------- Pure: "Ask the map" (English and Malay) ----------
+// Words the question parser understands; anything else left in a question is taken as a place name
+const MPK_ASK_VOCAB = new Set(('a an the and or of for to from with without me my i we you your us our can could would will '
+  + 'please pls tell know show find give list display see get let what whats which who where how many much is are was were be '
+  + 'there theres here any all some this that these those it its on in at near around inside within by about between per '
+  + 'total number count amount area areas region zone place places building buildings bldg house houses structure structures '
+  + 'illegal illegally legal suspected suspect suspicious unverified verified not approved approval permit permits planning '
+  + 'permission lacking over under above below more less than bigger smaller larger greater largest biggest smallest square '
+  + 'metre metres meter meters sqm m2 m² hey hi hello ok okay thanks thank lot lots plot no nombor footprint size sizes '
+  + 'do does did have has many data info information about '
+  + 'berapa banyak ada tak tidak yang dan atau dalam kat dekat sekitar kawasan untuk dari daripada ke dengan tanpa kebenaran '
+  + 'bangunan rumah kilang haram sah lulus disyaki syak belum disahkan tunjuk papar cari senarai jumlah bilangan lebih kurang '
+  + 'melebihi atas bawah terbesar besar paling sekali saya nak mahu boleh tolong apa mana seluruh semua luas keluasan meter '
+  + 'persegi hai terima kasih ni tu itu ini je jer ke kah buah unit '
+  + 'tour drone fly terbang radar scan imbas hotspot hotspots cluster route inspection inspect laluan time machine history '
+  + 'historical sejarah wayback priority urgent keutamaan coverage density simulator simulate policy reserve rizab passport '
+  + 'profile reset clear start open launch run mula buka '
+  + 'teluk kalong bandar putra berenjut binjai chukai cukai corridor corridors koridor industrial perindustrian marked '
+  + 'kemaman mpk terengganu majlis perbandaran').split(' '));
+
+// The place a question names that is not one of the study areas, e.g. "illegal buildings in Kerteh" -> "kerteh"
+function mpkAskPlace(text) {
+  const words = String(text || '').toLowerCase().replace(/[^a-z0-9\u00b2\s'-]/g, ' ').split(/\s+/)
+    .filter(w => w && !/^\d/.test(w) && !MPK_ASK_VOCAB.has(w));
+  const place = words.join(' ').trim();
+  return place.length >= 3 ? place : null;
+}
+
+// Is a building inside a resolved place? place: { rings: [[ring], …] } | { bbox: [w, s, e, n] } | { center, radius }
+function mpkInPlace(p, place) {
+  if (place.rings) {
+    const inRing = ring => {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i], [xj, yj] = ring[j];
+        if ((yi > p.lat) !== (yj > p.lat) && p.lng < (xj - xi) * (p.lat - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    return place.rings.some(r => inRing(r));
+  }
+  if (place.bbox) { const [w, so, e, n] = place.bbox; return p.lng >= w && p.lng <= e && p.lat >= so && p.lat <= n; }
+  return mpkMetres([p.lng, p.lat], place.center) <= place.radius;
+}
+
+// A named land-use zone (OSM) matching the place text, or null
+function mpkAskLocalPlace(place, zones) {
+  if (!place || place.length < 4) return null;
+  const norm = t => t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const q = norm(place);
+  const named = zones.filter(z => z.properties.name && z.properties.zone !== 'district');
+  // one word ("Kerteh") must match a whole name, or "Kilang Penapisan Minyak Kerteh" would answer for the town
+  return named.find(z => norm(z.properties.name) === q)
+    || (q.includes(' ') ? named.find(z => norm(z.properties.name).includes(q)) : null)
+    || named.find(z => { const n = norm(z.properties.name); return n.length >= 6 && q.includes(n); })
+    || null;
+}
+
+// A full place name (OSM land-use zone, 2+ words) written in the question, longest first, or null.
+// Wins over the study-area words: "Taman Chukai Utama" is a housing estate, not the Chukai corridor.
+function mpkAskNamedIn(text, zones) {
+  const norm = t => ' ' + String(t).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  const t = norm(text);
+  let best = null;
+  for (const z of zones) {
+    const n = z.properties.name;
+    if (!n || z.properties.zone === 'district' || n.trim().split(/\s+/).length < 2) continue;
+    if (t.includes(norm(n)) && (!best || n.length > best.length)) best = n;
+  }
+  return best;
+}
+
+const MPK_ASK_COVERAGE = 'My data covers Teluk Kalong Industrial Area and the Bandar Putra–Berenjut and Binjai–Bandar Chukai road corridors.';
+
 function mpkAsk(text) {
   const t = ' ' + String(text || '').toLowerCase().replace(/(\d),(?=\d{3})/g, '$1').replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ') + ' ';
-  const q = { intent: null, area: null, status: null, min: null, max: null, lot: null };
+  const q = { intent: null, area: null, status: null, min: null, max: null, lot: null, place: null, district: false };
   if (/teluk|kalong/.test(t)) q.area = 'tk';
   else if (/putra|berenjut/.test(t)) q.area = 'bpb';
-  else if (/binjai|chukai/.test(t)) q.area = 'bbc';
+  else if (/binjai|chukai|cukai/.test(t)) q.area = 'bbc';
+  else q.district = /\b(kemaman|mpk)\b/.test(t);
   if (/illegal|haram|suspect|disyaki|syak|tidak sah|tak sah|tanpa kebenaran/.test(t)) q.status = 'suspected';
   else if (/not verified|unverified|belum|unknown/.test(t)) q.status = 'unverified';
   else if (/\blegal\b|\bsah\b|approved|lulus/.test(t)) q.status = 'legal';
@@ -244,6 +318,14 @@ function mpkAsk(text) {
   else if (has(/how many|how much|berapa|count|jumlah|total|bilangan/)) q.intent = 'count';
   else if (q.status || q.area || q.min != null || q.max != null || has(/\b(show|tunjuk|papar|cari|find)\b/)) q.intent = 'show';
   else q.intent = 'help';
+  // a place the parser does not know: answered only if it can be found and holds our data
+  if (!q.area && !['reset', 'tour', 'radar', 'hotspots', 'route', 'timemachine', 'priority', 'coverage', 'simulator', 'passport'].includes(q.intent)) {
+    q.place = mpkAskPlace(text);
+    // just a place name ("Kerteh"): count there; a long sentence we do not follow: say so, do not guess
+    if (q.place && q.intent === 'help') {
+      if (q.place.split(' ').length <= 3) q.intent = 'count'; else q.place = null;
+    }
+  }
   return q;
 }
 
@@ -261,7 +343,8 @@ function mpkAskMatch(q, features, s) {
 }
 
 // One-line answer for count / show / largest / lot questions
-function mpkAskAnswer(q, features, s) {
+// `where`: the place's name when the buildings were already cut to a place
+function mpkAskAnswer(q, features, s, where) {
   const hits = mpkAskMatch(q, features, s);
   const n = hits.length, m2 = hits.reduce((a, f) => a + f.properties.area_m2, 0);
   const fmt = v => Math.round(v).toLocaleString('en-MY');
@@ -269,20 +352,33 @@ function mpkAskAnswer(q, features, s) {
     + (n === 1 ? 'building' : 'buildings')
     + (q.min != null ? ` over ${fmt(q.min)} m²` : '') + (q.max != null ? ` under ${fmt(q.max)} m²` : '')
     + (q.lot ? ` on lot ${q.lot}` : '')
-    + (q.area ? ' in ' + MPK_AREAS[q.area].short : ' in the marked areas');
+    + (where ? ' in ' + where : q.area ? ' in ' + MPK_AREAS[q.area].short : ' in the marked areas');
   if (q.intent === 'largest') {
     const top = hits.slice().sort((a, b) => b.properties.area_m2 - a.properties.area_m2)[0];
     if (!top) return { text: `No ${what}.`, ids: [] };
     return { text: `The largest ${what.replace(/^buildings?/, 'building').replace('buildings', 'building')} is ${top.properties.plus_code}: `
       + `${fmt(top.properties.area_m2)} m².`, ids: [top.properties.id], focus: top.properties.id };
   }
-  return { text: n ? `${fmt(n)} ${what}, ${fmt(m2)} m² of footprint.` : `No ${what}.`, ids: hits.map(f => f.properties.id) };
+  let text = n ? `${fmt(n)} ${what}, ${fmt(m2)} m² of footprint.` : `No ${what}.`;
+  if (!n && where && features.length) {              // the place has buildings, just none that match
+    const by = { suspected: 0, legal: 0, unverified: 0 };
+    features.forEach(f => { by[mpkStatus(f.properties, s)]++; });
+    text += ` Our data has ${fmt(features.length)} buildings there: ${fmt(by.suspected)} suspected illegal, ${fmt(by.legal)} legal and `
+      + `${fmt(by.unverified)} not verified.`;
+  }
+  if (n && !q.status) {                              // no status asked: say how they split
+    const by = { suspected: 0, legal: 0, unverified: 0 };
+    hits.forEach(f => { by[mpkStatus(f.properties, s)]++; });
+    text = `${fmt(n)} ${what}: ${fmt(by.suspected)} suspected illegal, ${fmt(by.legal)} legal and ${fmt(by.unverified)} not verified; `
+      + `${fmt(m2)} m² of footprint.`;
+  }
+  return { text, ids: hits.map(f => f.properties.id) };
 }
 
 if (typeof module !== 'undefined') {
   module.exports = { mpkMetres, mpkRingArea, mpkPolyArea, mpkBearing, mpkOffset, mpkConvexHull, mpkDbscan, mpkHotspots,
     mpkPriority, mpkPriorityList, mpkRouteOrder, mpkPathLength, mpkGmapsDir, mpkLotCoverage, mpkPolicyCurve, mpkTimeFrames,
-    mpkAsk, mpkAskMatch, mpkAskAnswer, MPK_PRIORITY_WEIGHTS };
+    mpkAsk, mpkAskMatch, mpkAskAnswer, mpkAskPlace, mpkInPlace, mpkAskLocalPlace, mpkAskNamedIn, MPK_ASK_COVERAGE, MPK_PRIORITY_WEIGHTS };
 }
 
 // ============================================================
@@ -695,7 +791,8 @@ const MPK_FEAT_RUN = {
   ask() {
     const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
     const examples = ['How many illegal buildings in Binjai?', 'Show suspected buildings over 1000 m²', 'Largest legal building in Teluk Kalong',
-                      'Berapa bangunan haram di Teluk Kalong?', 'Tunjuk hotspot', 'Start the drone tour'];
+                      'Berapa bangunan haram di Teluk Kalong?', 'Illegal buildings in Taman Chukai Utama', 'Illegal buildings in Kerteh',
+                      'Tunjuk hotspot', 'Start the drone tour'];
     mpkHud('Ask the Map', `
       <form class="mpk-ask" onsubmit="event.preventDefault();mpkAskRun(this.q.value)">
         <input name="q" id="mpk-ask-q" type="text" placeholder="Ask in English or Malay…" autocomplete="off" aria-label="Question">
@@ -707,6 +804,9 @@ const MPK_FEAT_RUN = {
       <label class="mpk-ask-voice"><input type="checkbox" id="mpk-ask-speak" checked> Speak the answer</label>`,
       { icon: '🎙️', wide: true });
     mpkFeatSrc('mpk-feat-ask', mpkFC([]));
+    mpkFeatSrc('mpk-feat-ask-place', mpkFC([]));
+    mpkFeatLayer({ id: 'mpk-feat-ask-place', type: 'line', source: 'mpk-feat-ask-place',
+      paint: { 'line-color': '#7E57C2', 'line-width': 2.5, 'line-dasharray': [2, 1.5] } });
     mpkFeatLayer({ id: 'mpk-feat-ask-fill', type: 'fill', source: 'mpk-feat-ask', paint: { 'fill-color': '#FFEB3B', 'fill-opacity': 0.55 } });
     mpkFeatLayer({ id: 'mpk-feat-ask-line', type: 'line', source: 'mpk-feat-ask', paint: { 'line-color': '#F57F17', 'line-width': 2.5 } });
     mpkFeatLayer({ id: 'mpk-feat-ask-dot', type: 'circle', source: 'mpk-feat-ask', maxzoom: 15,
@@ -859,17 +959,85 @@ function mpkFeatSimSet(r, quiet) {
   void quiet;
 }
 
+// Search box for place names: the whole Kemaman district (from the land-use file), else the search box
+function mpkAskViewbox() {
+  const d = MPK.data.landuse && MPK.data.landuse.features.find(f => f.properties.zone === 'district');
+  if (!d) return MPK_SEARCH_VIEWBOX;
+  const [[w, so], [e, n]] = mpkBoundsOf([d]);
+  return [w, n, e, so].map(v => v.toFixed(3)).join(',');
+}
+
+// Ask the map: find where a place is (OSM land-use names first, then OpenStreetMap search in Kemaman)
+const MPK_ASK_PLACES = new Map();
+async function mpkAskResolvePlace(place) {
+  if (MPK_ASK_PLACES.has(place)) return MPK_ASK_PLACES.get(place);
+  let found = null;
+  const zone = MPK.data.landuse && mpkAskLocalPlace(place, MPK.data.landuse.features);
+  if (zone) {
+    const polys = zone.geometry.type === 'Polygon' ? [zone.geometry.coordinates] : zone.geometry.coordinates;
+    found = { name: zone.properties.name, rings: polys.map(r => r[0]), geometry: zone.geometry };
+  } else {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+        format: 'jsonv2', q: place, viewbox: mpkAskViewbox(), bounded: 1, countrycodes: 'my', limit: 8 });
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 7000);
+      const list = await (await fetch(url, { headers: { 'Accept-Language': 'en' }, signal: ctl.signal })).json();
+      // prefer a town / village / estate, then anything named after the words asked, then the first hit
+      // only a hit named after the words asked counts (a railway tagged "Kerteh" is not Kerteh);
+      // among those, a town / village / estate first
+      const named = x => (x.name || '').toLowerCase().includes(place);
+      const r = list.find(x => (x.category === 'place' || x.category === 'boundary') && named(x)) || list.find(named);
+      clearTimeout(t);
+      if (r) {
+        const [s0, n0, w0, e0] = r.boundingbox.map(Number), center = [+r.lon, +r.lat];
+        const name = r.name || r.display_name.split(',')[0];
+        // a town or estate: its own box (+300 m); a single spot: 1 km around it
+        found = (n0 - s0) > 0.004 && (n0 - s0) < 0.08
+          ? { name, bbox: [w0 - 0.003, s0 - 0.003, e0 + 0.003, n0 + 0.003], center }
+          : { name, center, radius: 1000 };
+      }
+    } catch (e) {
+      MPK_ASK_PLACES.delete(place);
+      return { error: true };
+    }
+  }
+  MPK_ASK_PLACES.set(place, found);
+  return found;
+}
+
+function mpkAskPlaceShape(found) {
+  if (found.geometry) return { type: 'Feature', properties: {}, geometry: found.geometry };
+  if (found.bbox) {
+    const [w, so, e, n] = found.bbox;
+    return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[w, so], [e, so], [e, n], [w, n], [w, so]]] } };
+  }
+  const ring = [];
+  for (let a = 0; a <= 360; a += 8) ring.push(mpkOffset(found.center, a, found.radius));
+  return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } };
+}
+
 // Ask the map: run a question
-function mpkAskRun(text) {
+async function mpkAskRun(text) {
   const input = document.getElementById('mpk-ask-q');
   if (input && input.value !== text) input.value = text;
+  const seq = (mpkAskRun.seq = (mpkAskRun.seq || 0) + 1);
   const q = mpkAsk(text), out = document.getElementById('mpk-ask-answer');
+  const named = MPK.data.landuse && mpkAskNamedIn(text, MPK.data.landuse.features);
+  if (named && !['reset', 'tour', 'radar', 'hotspots', 'route', 'timemachine', 'priority', 'coverage', 'simulator', 'passport'].includes(q.intent)) {
+    q.place = named; q.area = null;
+    if (q.intent === 'help') q.intent = 'count';
+  }
   const say = msg => {
-    if (out) out.innerHTML = `<b>${msg}</b>`;
+    if (seq !== mpkAskRun.seq) return;
+    if (out) out.innerHTML = `<b>${mpkEsc(msg)}</b>`;
     const speak = document.getElementById('mpk-ask-speak');
     if (speak && speak.checked && window.speechSynthesis) {
       try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(msg); u.lang = 'en-GB'; speechSynthesis.speak(u); } catch (e) {}
     }
+  };
+  const show = (feats, place) => {
+    map.getSource('mpk-feat-ask').setData(mpkFC(feats));
+    if (map.getSource('mpk-feat-ask-place')) map.getSource('mpk-feat-ask-place').setData(mpkFC(place ? [mpkAskPlaceShape(place)] : []));
   };
   const launch = ['tour', 'radar', 'hotspots', 'route', 'timemachine', 'priority', 'coverage', 'simulator', 'passport'];
   if (launch.includes(q.intent)) {
@@ -878,19 +1046,39 @@ function mpkAskRun(text) {
     setTimeout(() => mpkFeatLaunch(q.intent), 700);
     return;
   }
-  if (q.intent === 'reset') { map.getSource('mpk-feat-ask').setData(mpkFC([])); say('Cleared.'); return; }
+  if (q.intent === 'reset') { show([]); say('Cleared.'); return; }
   if (q.intent === 'help') {
-    say('Ask about illegal, legal or not-verified buildings, an area, a size such as over 1000 square metres, or a lot number.');
+    show([]);
+    say('Sorry, I did not understand that question, so I will not guess. Ask about illegal, legal or not-verified buildings, '
+      + 'a place, a size such as over 1000 square metres, or a lot number. ' + MPK_ASK_COVERAGE);
+    return;
+  }
+  let place = null;
+  if (q.place) {
+    if (out) out.innerHTML = `Looking for “${mpkEsc(q.place)}” in Kemaman…`;
+    place = await mpkAskResolvePlace(q.place);
+    if (seq !== mpkAskRun.seq) return;
+    if (place && place.error) { show([]); say(`I could not look up “${q.place}” right now (no connection to the map search). Try again, or ask about a study area.`); return; }
+    if (!place) { show([]); say(`I could not find “${q.place}” in Kemaman, so I have no data for it. ` + MPK_ASK_COVERAGE); return; }
+  }
+  const all = MPK.data.buildings.features;
+  const feats = place ? all.filter(f => mpkInPlace(f.properties, place)) : all;
+  if (place && !feats.length) {
+    show([], place);
+    const c = place.center || mpkBoundsOf([mpkAskPlaceShape(place)]).reduce((a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+    map.flyTo({ center: c, zoom: 13.5, pitch: 0, duration: 1200 });
+    say(`No data for ${place.name}: it is outside the areas we monitor. ` + MPK_ASK_COVERAGE);
     return;
   }
   if (q.area && q.area !== MPK.area && MPK.area !== 'all') mpkSelectArea('all');
-  const ans = mpkAskAnswer(q, MPK.data.buildings.features, MPK.settings);
+  const ans = mpkAskAnswer(q, feats, MPK.settings, place && (place.radius ? `and around ${place.name} (1 km)` : place.name));
   const ids = new Set(ans.ids);
-  const hits = MPK.data.buildings.features.filter(f => ids.has(f.properties.id));
-  map.getSource('mpk-feat-ask').setData(mpkFC(hits));
-  say(ans.text);
+  const hits = all.filter(f => ids.has(f.properties.id));
+  show(hits, place);
+  say((q.district ? 'For Kemaman, only the marked study areas have data. ' : '') + ans.text);
   if (ans.focus) mpkZoomTo(ans.focus);
   else if (hits.length) map.fitBounds(mpkBoundsOf(hits), { padding: 90, maxZoom: 18, pitch: 0, duration: 1000 });
+  else if (place) map.fitBounds(mpkBoundsOf([mpkAskPlaceShape(place)]), { padding: 90, maxZoom: 16, pitch: 0, duration: 1000 });
 }
 
 function mpkAskListen() {

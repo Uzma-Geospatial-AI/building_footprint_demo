@@ -77,11 +77,11 @@ assert.deepStrictEqual(F.mpkTimeFrames([
 // Ask the map: English and Malay
 const ask = F.mpkAsk;
 assert.deepStrictEqual(ask('How many illegal buildings in Binjai?'),
-  { intent: 'count', area: 'bbc', status: 'suspected', min: null, max: null, lot: null });
+  { intent: 'count', area: 'bbc', status: 'suspected', min: null, max: null, lot: null, place: null, district: false });
 assert.deepStrictEqual(ask('Berapa bangunan haram di Teluk Kalong?'),
-  { intent: 'count', area: 'tk', status: 'suspected', min: null, max: null, lot: null });
+  { intent: 'count', area: 'tk', status: 'suspected', min: null, max: null, lot: null, place: null, district: false });
 assert.deepStrictEqual(ask('Tunjuk bangunan sah lebih 1,000 m2'),
-  { intent: 'show', area: null, status: 'legal', min: 1000, max: null, lot: null });
+  { intent: 'show', area: null, status: 'legal', min: 1000, max: null, lot: null, place: null, district: false });
 assert.strictEqual(ask('show legal buildings').status, 'legal');
 assert.strictEqual(ask('Largest legal building in Teluk Kalong').intent, 'largest');
 assert.strictEqual(ask('zoom to lot 3020').lot, '3020');
@@ -95,5 +95,46 @@ assert.strictEqual(F.mpkAskAnswer(ask('how many illegal buildings in Teluk Kalon
 assert.strictEqual(F.mpkAskAnswer(ask('largest illegal building'), feats, s).focus, 6);
 assert.strictEqual(F.mpkAskAnswer(ask('show buildings on lot 3020'), feats, s).ids[0], 9);
 assert.strictEqual(F.mpkAskAnswer(ask('legal buildings in Binjai'), feats, s).text, 'No legal buildings in Binjai – Chukai.');
+
+// Places the parser does not know are kept, not ignored, so the map can say it has no data there
+assert.deepStrictEqual([ask('hey can I know illegal building enjoy').place, ask('hey can I know illegal building enjoy').status], ['enjoy', 'suspected']);
+assert.strictEqual(ask('How many illegal buildings in Kerteh?').place, 'kerteh');
+assert.strictEqual(ask('berapa bangunan haram kat Kijal').place, 'kijal');
+assert.strictEqual(ask('Illegal buildings in Cukai').area, 'bbc');                         // Malay spelling of Chukai
+assert.strictEqual(ask('How many illegal buildings are there?').place, null);
+assert.strictEqual(ask('Show me suspected buildings bigger than 500 m2 please').place, null);
+assert.strictEqual(ask('Largest legal building in Teluk Kalong').place, null);
+assert.strictEqual(ask('illegal buildings in kemaman').district, true);
+assert.strictEqual(ask('illegal buildings in kemaman').place, null);
+assert.strictEqual(ask('Start the drone tour').place, null);
+assert.deepStrictEqual([ask('Kerteh').intent, ask('Kerteh').place], ['count', 'kerteh']);  // just a place: count there
+assert.deepStrictEqual([ask('what is the weather like today in my office').intent, ask('what is the weather like today in my office').place], ['help', null]);
+
+// Inside a place: polygon, box or radius
+const sq2 = { rings: [[[103.39, 4.19], [103.41, 4.19], [103.41, 4.21], [103.39, 4.21], [103.39, 4.19]]] };
+assert.strictEqual(F.mpkInPlace({ lng: 103.4, lat: 4.2 }, sq2), true);
+assert.strictEqual(F.mpkInPlace({ lng: 103.42, lat: 4.2 }, sq2), false);
+assert.strictEqual(F.mpkInPlace({ lng: 103.4, lat: 4.2 }, { bbox: [103.3, 4.1, 103.5, 4.3] }), true);
+assert.strictEqual(F.mpkInPlace({ lng: 103.4, lat: 4.2 }, { center: [103.4, 4.205], radius: 600 }), true);
+assert.strictEqual(F.mpkInPlace({ lng: 103.4, lat: 4.2 }, { center: [103.4, 4.21], radius: 600 }), false);
+
+// Named land-use zones
+const zones = [{ properties: { name: 'Taman Chukai Utama', zone: 'residential' } }, { properties: { name: 'Chukai', zone: 'commercial' } },
+               { properties: { name: 'Daerah Kemaman', zone: 'district' } }, { properties: { name: 'Kawasan Perindustrian Jakar 2', zone: 'industrial' } }];
+assert.strictEqual(F.mpkAskNamedIn('Illegal buildings in Taman Chukai Utama?', zones), 'Taman Chukai Utama');
+assert.strictEqual(F.mpkAskNamedIn('illegal buildings in chukai', zones), null);          // one word: left to the study area
+assert.strictEqual(F.mpkAskNamedIn('berapa bangunan di daerah kemaman', zones), null);    // the district outline is not a place
+assert.strictEqual(F.mpkAskLocalPlace('jakar 2', zones).properties.name, 'Kawasan Perindustrian Jakar 2');
+assert.strictEqual(F.mpkAskLocalPlace('enjoy', zones), null);
+assert.strictEqual(F.mpkAskLocalPlace('chukai', zones).properties.name, 'Chukai');                  // whole name
+assert.strictEqual(F.mpkAskLocalPlace('jakar', zones), null);                                        // one word: not part of a name
+assert.strictEqual(F.mpkAskAnswer(ask('how many illegal buildings over 4000'), feats.filter(f => f.properties.kategori === 'lulus'), s, 'Taman X').text,
+  'No suspected illegal buildings over 4,000 m² in Taman X. Our data has 1 buildings there: 0 suspected illegal, 1 legal and 0 not verified.');
+
+// Answers say how the buildings split when no status was asked, and name the place
+assert.strictEqual(F.mpkAskAnswer(ask('how many buildings'), feats, s, 'Taman X').text,
+  '9 buildings in Taman X: 7 suspected illegal, 1 legal and 1 not verified; 8,410 m² of footprint.');
+assert.strictEqual(F.mpkAskAnswer(ask('how many illegal buildings'), feats, s, 'Taman X').text,
+  '7 suspected illegal buildings in Taman X, 6,010 m² of footprint.');
 
 console.log('mpk features: all tests passed');
