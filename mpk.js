@@ -302,13 +302,15 @@ const MPK_AREAS = {
 };
 // Every suspected building is drawn in one red so "red = suspected" reads at a glance;
 // the type is given in the popup, the list and the CSV.
-const MPK_SUSPECT_COLOR = '#c62828';
+const MPK_SUSPECT_COLOR = '#FF1744';   // bright red; outline #B2102F
+// Bright fills with a darker outline of the same hue, readable on the road map and on imagery
+const MPK_OUTLINE = { suspected: '#B2102F', legal: '#00873A', unverified: '#0039CB', others: '#C56200' };
 const MPK_STATUS = {
   suspected:  { label: 'Suspected illegal', color: MPK_SUSPECT_COLOR,
                 hint: 'On the MPK suspect list (Teluk Kalong) or encroaching the road reserve (corridors)' },
-  legal:      { label: 'Legal · approved building plan', color: '#26a69a',
+  legal:      { label: 'Legal · approved building plan', color: '#00C853',
                 hint: 'Covered by a building plan approved by MPK (Teluk Kalong, Pelan Bangunan Lulus)' },
-  unverified: { label: 'Not verified', color: '#CFD8DC',
+  unverified: { label: 'Not verified', color: '#2962FF',
                 hint: 'No approval record to confirm either way' },
 };
 const MPK_JENIS = {
@@ -342,7 +344,7 @@ const MPK_LAYER_GROUPS = {
   sizes:     { label: 'Building size labels', swatch: [], layers: ['mpk-size-label'], legend: [] },
   unverified: { label: MPK_STATUS.unverified.label, swatch: [MPK_STATUS.unverified.color],
                layers: ['mpk-unverified-fill'], legend: [] },
-  others:    { label: 'Outside the study areas', swatch: ['#ECEFF1'],
+  others:    { label: 'Outside the study areas', swatch: ['#FF9100'],
                layers: ['mpk-other-fill', 'mpk-other-line'], legend: [] },
   pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
@@ -357,7 +359,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261012f',
+  VERSION: '20261013a',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -497,20 +499,20 @@ function mpkAddLayers() {
     if (MPK.data.others) {
       // the hand-drawn footprints outside the study areas: on the map, no status
       map.addSource('mpk-other', { type: 'geojson', data: MPK.data.others });
-      map.addLayer({ id: 'mpk-other-fill', type: 'fill', source: 'mpk-other', paint: { 'fill-color': '#ECEFF1', 'fill-opacity': 0.55 } });
+      map.addLayer({ id: 'mpk-other-fill', type: 'fill', source: 'mpk-other', paint: { 'fill-color': '#FF9100', 'fill-opacity': 0.5 } });
       map.addLayer({ id: 'mpk-other-line', type: 'line', source: 'mpk-other',
-        paint: { 'line-color': '#78909C', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 17, 1.1] } });
+        paint: { 'line-color': MPK_OUTLINE.others, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.2] } });
     }
     map.addLayer({ id: 'mpk-unverified-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('unverified'),
-      paint: { 'fill-color': MPK_STATUS.unverified.color, 'fill-opacity': 0.6, 'fill-outline-color': '#90A4AE' } });
+      paint: { 'fill-color': MPK_STATUS.unverified.color, 'fill-opacity': 0.55, 'fill-outline-color': MPK_OUTLINE.unverified } });
     map.addLayer({ id: 'mpk-legal-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('legal'),
       paint: { 'fill-color': MPK_STATUS.legal.color, 'fill-opacity': 0.6 } });
     map.addLayer({ id: 'mpk-legal-line', type: 'line', source: 'mpk-buildings', filter: mpkStatusFilter('legal'),
-      paint: { 'line-color': '#00695C', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.4] } });
+      paint: { 'line-color': MPK_OUTLINE.legal, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.5, 17, 1.5] } });
     map.addLayer({ id: 'mpk-suspect-fill', type: 'fill', source: 'mpk-buildings', filter: suspect,
-      paint: { 'fill-color': MPK_SUSPECT_COLOR, 'fill-opacity': 0.45 } });
+      paint: { 'fill-color': MPK_SUSPECT_COLOR, 'fill-opacity': 0.65 } });
     map.addLayer({ id: 'mpk-suspect-line', type: 'line', source: 'mpk-buildings', filter: suspect,
-      paint: { 'line-color': '#b71c1c', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.6, 17, 2] } });
+      paint: { 'line-color': MPK_OUTLINE.suspected, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.7, 17, 2.2] } });
     map.addLayer({ id: 'mpk-suspect-extrude', type: 'fill-extrusion', source: 'mpk-buildings', filter: suspect,
       layout: { visibility: 'none' },
       paint: { 'fill-extrusion-color': MPK_SUSPECT_COLOR, 'fill-extrusion-height': 8, 'fill-extrusion-base': 0,
@@ -776,7 +778,7 @@ function mpkBuildPanel() {
         ${statusRows}
         ${MPK.data.others ? `<div class="mpk-st-row mpk-layer-group${MPK.layerOn.others ? '' : ' is-off'}" id="mpk-group-others"
             title="Hand-drawn footprints outside Teluk Kalong's boundary and the Binjai – Chukai corridor: shown on the map, no status">
-          <i class="sw" style="background:#ECEFF1;border:1px solid #78909C"></i>
+          <i class="sw" style="background:#FF9100;border:1px solid #C56200"></i>
           <div class="mpk-st-main"><div class="mpk-st-label">Outside the study areas</div>
             <div class="mpk-st-sub">${mpkNum(MPK.data.others.features.length)} buildings · map only, no status</div></div>
           ${toggle('others', 'Outside the study areas')}
@@ -1039,7 +1041,7 @@ function mpkShowOtherPopup(p, lngLat) {
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
   const zone = MPK.data.landuse ? mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features)) : null;
   const html = `
-    <div class="popup-header" style="background:#78909C">
+    <div class="popup-header" style="background:#C56200">
       <div class="popup-fc">Outside the study areas · no status</div>
       <div class="popup-name">${mpkEscHtml(p.plus_code)}</div>
     </div>

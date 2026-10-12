@@ -356,7 +356,7 @@ body:not(.mpk-mode) .mpk-hud { display:none !important; }
 .mpk-hud-item.prio > span:nth-child(2) { flex:1; min-width:0; }
 .mpk-hud-parts { display:flex; width:70px; height:8px; border-radius:4px; overflow:hidden; background:rgba(30,44,68,0.06); flex-shrink:0; gap:1px; }
 .mpk-hud-parts i, .mpk-hud-key i { display:block; height:100%; }
-.p-size { background:#1E2C44; } .p-evidence { background:#c62828; } .p-confidence { background:#26a69a; } .p-cluster { background:#FF8F00; }
+.p-size { background:#1E2C44; } .p-evidence { background:#c62828; } .p-confidence { background:#00C853; } .p-cluster { background:#FF8F00; }
 .mpk-hud-key { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; font-size:10.5px; color:var(--charcoal-light); }
 .mpk-hud-key span { display:inline-flex; align-items:center; gap:4px; }
 .mpk-hud-key i { width:9px; height:9px; border-radius:2px; }

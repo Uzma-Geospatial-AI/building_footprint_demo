@@ -226,14 +226,16 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 - *Features* (sidebar, under Statistics): fifteen live tools on the MPK data, each opening a
   floating panel on the map. See [MPK Features](#mpk-features--the-15-tools) below.
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
-  buildings within the Binjai – Bandar Chukai corridor (1,969 buildings, all hand-drawn from the 2026 imagery). Status colours (red / teal / light
-  grey) were checked for colour-blind separation.
+  buildings within the Binjai – Bandar Chukai corridor (1,969 buildings, all hand-drawn from the 2026 imagery). Status colours are bright so they read on the road map and on imagery:
+  suspected `#FF1744` red, legal `#00C853` green, not verified `#2962FF` blue, outside the study areas `#FF9100` orange, each
+  with a darker outline of its own hue (checked with a colour-blind palette validator; red / green rely on the outline and
+  the legend labels too).
 
 **Building status** — every building is shown in one of three statuses, each with its own
 map layer, switch and count (with a share bar) in the panel:
 *Suspected illegal* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
 encroachment in the corridors), *Legal · approved building plan* (green: covered by a plan in MPK's
-register of approved building plans) and *Not verified* (grey: no approved plan found, which may be a
+register of approved building plans) and *Not verified* (blue: no approved plan found, which may be a
 gap in the register rather than an offence). Teluk Kalong inside the boundary: 345 legal, 26 suspected,
 1,183 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.
@@ -273,7 +275,7 @@ with each council.
   Kalong 1,554 inside the boundary and Binjai – Chukai 415 (1,969; the hand-drawn footprints are whole buildings, where Open
   Buildings split them into many pieces, so counts are lower for the same floor area). The file holds 12,734 records, of which 261 have no geometry; the
   other **10,504 footprints, outside the study areas,** are in `mpk_buildings_luar.geojson` and drawn on the map as
-  *Outside the study areas* (light grey, switch in the Overview panel, click for Plus Code, lot / UPI, area and land use)
+  *Outside the study areas* (orange, switch in the Overview panel, click for Plus Code, lot / UPI, area and land use)
   with no status, since no approval rule covers them; they are not counted in the statistics or the report. All 12,473 are shown. The API's `is_mockup` suspects are matched to the 2026 footprints by overlap (41 of 49 found);
   Teluk Kalong classes from the approved plans: `lulus` (with `pelan_fail`, `pelan_tarikh`, `pelan_status`, `pelan_jenis`,
   `pelan_n`), `mockup`, `tiada_pelan` (`asal` keeps the first-pass class)
