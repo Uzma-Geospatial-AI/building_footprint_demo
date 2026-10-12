@@ -129,12 +129,12 @@ plaintext never enters the repo (see *Deployment*).
 A mockup for Majlis Perbandaran Kemaman. Pick **MPK Kemaman** in the topbar area
 switcher: every Seremban control is hidden and only MPK content is shown.
 
-Three study areas from MPK, selectable as chips in the **Illegal Construction** panel tab:
+Two study areas, selectable as chips in the **Illegal Construction** panel tab (MPK's third, the Bandar Putra – Berenjut
+corridor, lies outside the 2026 hand-drawn footprints and was removed):
 
 | Area | Flagged as suspected |
 |---|---|
 | Kawasan Industri Teluk Kalong | the buildings flagged `is_mockup` in the [building API](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/kemaman_buildings_industri_filled.geojson) (49 buildings, 45 inside the boundary) — the MPK mockup list — **minus those an MPK-approved building plan covers** (19), leaving 26 |
-| Koridor Bandar Putra – Berenjut | buildings within the road-reserve slider (3–20 m) of the road centreline |
 | Koridor Binjai – Bandar Chukai | same as above |
 
 The panel shows counts per type, suspected area, a revenue estimate (processing fee +
@@ -226,7 +226,7 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 - *Features* (sidebar, under Statistics): fifteen live tools on the MPK data, each opening a
   floating panel on the map. See [MPK Features](#mpk-features--the-15-tools) below.
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
-  buildings within the two road corridors (2,420 buildings). Status colours (red / teal / light
+  buildings within the Binjai – Bandar Chukai corridor (1,969 buildings, all hand-drawn from the 2026 imagery). Status colours (red / teal / light
   grey) were checked for colour-blind separation.
 
 **Building status** — every building is shown in one of three statuses, each with its own
@@ -268,10 +268,10 @@ with each council.
 - `mpk_buildings.geojson` — building footprints, classified per area. **Teluk Kalong and Binjai–Bandar Chukai: digitised by hand
   from Esri imagery of 24 Sep 2026** ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/aoi_mpk_esri_2026-09-24_z18.geojson),
   12,734 footprints over the extent of the MPK aerial basemap; labelled EPSG:32647 but in Web Mercator, converted and re-measured by
-  `tools/build_mpk_manual.py`, `sumber` = `manual_esri_20260924`, confidence 1). Bandar Putra–Berenjut lies outside that extent and keeps
-  Google Open Buildings v3. In scope: Teluk Kalong 1,554 inside the boundary, Binjai–Chukai 415, Bandar Putra–Berenjut 451 (2,420; the
-  hand-drawn footprints are whole buildings, where Open Buildings split them into many pieces, so counts are lower for the same
-  floor area). The API's `is_mockup` suspects are matched to the 2026 footprints by overlap (41 of 49 found);
+  `tools/build_mpk_manual.py`, `sumber` = `manual_esri_20260924`, confidence 1). **Only these footprints are used**: Google Open Buildings and the Bandar
+  Putra – Berenjut corridor (outside their extent) were removed, as were footprints outside the study areas. In scope: Teluk
+  Kalong 1,554 inside the boundary and Binjai – Chukai 415 (1,969; the hand-drawn footprints are whole buildings, where Open
+  Buildings split them into many pieces, so counts are lower for the same floor area). The API's `is_mockup` suspects are matched to the 2026 footprints by overlap (41 of 49 found);
   Teluk Kalong classes from the approved plans: `lulus` (with `pelan_fail`, `pelan_tarikh`, `pelan_status`, `pelan_jenis`,
   `pelan_n`), `mockup`, `tiada_pelan` (`asal` keeps the first-pass class)
 - `pelan_lulus.geojson` — MPK's approved building plans for the map (one feature per record and shape kind, `bangunan` =

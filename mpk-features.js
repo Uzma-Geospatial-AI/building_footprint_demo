@@ -229,7 +229,7 @@ const MPK_ASK_VOCAB = new Set(('a an the and or of for to from with without me m
   + 'tour drone fly terbang radar scan imbas hotspot hotspots cluster route inspection inspect laluan time machine history '
   + 'historical sejarah wayback priority urgent keutamaan coverage density simulator simulate policy reserve rizab passport '
   + 'profile reset clear start open launch run mula buka '
-  + 'teluk kalong bandar putra berenjut binjai chukai cukai corridor corridors koridor industrial perindustrian marked '
+  + 'teluk kalong binjai chukai cukai corridor corridors koridor industrial perindustrian marked '
   + 'kemaman mpk terengganu majlis perbandaran').split(' '));
 
 // The place a question names that is not one of the study areas, e.g. "illegal buildings in Kerteh" -> "kerteh"
@@ -284,13 +284,12 @@ function mpkAskNamedIn(text, zones) {
   return best;
 }
 
-const MPK_ASK_COVERAGE = 'My data covers Teluk Kalong Industrial Area and the Bandar Putra–Berenjut and Binjai–Bandar Chukai road corridors.';
+const MPK_ASK_COVERAGE = 'My data covers Teluk Kalong Industrial Area and the Binjai–Bandar Chukai road corridor.';
 
 function mpkAsk(text) {
   const t = ' ' + String(text || '').toLowerCase().replace(/(\d),(?=\d{3})/g, '$1').replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ') + ' ';
   const q = { intent: null, area: null, status: null, min: null, max: null, lot: null, place: null, district: false };
   if (/teluk|kalong/.test(t)) q.area = 'tk';
-  else if (/putra|berenjut/.test(t)) q.area = 'bpb';
   else if (/binjai|chukai|cukai/.test(t)) q.area = 'bbc';
   else q.district = /\b(kemaman|mpk)\b/.test(t);
   if (/illegal|haram|suspect|disyaki|syak|tidak sah|tak sah|tanpa kebenaran/.test(t)) q.status = 'suspected';
@@ -433,7 +432,7 @@ function mpkBuildFeaturesPage() {
           <div>
             <div class="mpk-feat-kicker">BuildVision · MPK Kemaman</div>
             <h2>${MPK_FEATURES.length} smart tools built on the MPK data</h2>
-            <p>Each one runs live on the real buildings, lots and imagery of Teluk Kalong and the two road corridors.</p>
+            <p>Each one runs live on the real buildings, lots and imagery of Teluk Kalong and the Binjai – Bandar Chukai corridor.</p>
           </div>
           <button class="mpk-feat-booth" onclick="mpkFeatLaunch('tour', { booth: true })">
             <span>▶</span><b>Start booth mode</b><small>Drone tour on a loop · tap the map to stop</small></button>

@@ -129,7 +129,7 @@ const MPK_PLAN_PRIORITY = [[95, 'Urgent'], [75, 'High'], [50, 'Medium'], [25, 'L
 //   ranked:    [{ p, pr: { score } }] suspected buildings of the area
 //   buildings: features of the area (to find included non-suspected buildings)
 //   store:     { added: [{ id, lat, lng, title, note, score, m2, kawasan }], edits: { [id]: { score, note, excluded, include } } }
-//   area:      'all' | 'tk' | 'bpb' | 'bbc' (added cases outside it are left out)
+//   area:      'all' | 'tk' | 'bbc' (added cases outside it are left out)
 function mpkPlanItems(ranked, buildings, store, area) {
   const edits = (store && store.edits) || {}, out = [], seen = new Set();
   for (const x of ranked) {
@@ -163,7 +163,7 @@ function mpkPlanStoreClean(o) {
     if (!c || !isFinite(c.lat) || !isFinite(c.lng) || Math.abs(c.lat) > 90 || Math.abs(c.lng) > 180) return;
     out.added.push({ id: str(String(c.id), 40) || String(out.added.length + 1), lat: +c.lat, lng: +c.lng, title: str(c.title, 120),
       note: str(c.note, 1000), score: score(c.score) == null ? 50 : score(c.score), m2: isFinite(c.m2) && c.m2 > 0 ? +c.m2 : 0,
-      kawasan: ['tk', 'bpb', 'bbc'].includes(c.kawasan) ? c.kawasan : null, created: str(c.created, 30) });
+      kawasan: ['tk', 'bbc'].includes(c.kawasan) ? c.kawasan : null, created: str(c.created, 30) });
   });
   Object.entries(o.edits && typeof o.edits === 'object' ? o.edits : {}).forEach(([id, e]) => {
     if (!/^\d+$/.test(id) || !e || typeof e !== 'object') return;
@@ -628,7 +628,7 @@ function mpkPlanEdit(cid) {
 
 // Which study area a point falls in (by area extent), or null
 function mpkPlanAreaAt(lng, lat) {
-  for (const k of ['tk', 'bpb', 'bbc']) {
+  for (const k of Object.keys(MPK_AREAS)) {
     const [[w, so], [e, n]] = MPK.bounds[k];
     if (lng >= w - 0.002 && lng <= e + 0.002 && lat >= so - 0.002 && lat <= n + 0.002) return k;
   }

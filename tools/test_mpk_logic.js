@@ -12,8 +12,8 @@ const feats = [
   f(2, 'tk', 'mockup', { dalam: true, lot: '52497', upi: '11030800052497' }, 50),   // API is_mockup building
   f(3, 'tk', 'luar', { jarak_m: 200 }, 200),       // Teluk Kalong rules no longer flag anything
   f(4, 'tk', 'tiada_lot', { dalam: true }, 30),
-  f(5, 'bpb', 'koridor', { jarak_jalan_m: 8.5 }, 70),
-  f(6, 'bpb', 'koridor', { jarak_jalan_m: 12 }, 90),
+  f(5, 'bbc', 'koridor', { jarak_jalan_m: 8.5 }, 70),
+  f(6, 'bbc', 'koridor', { jarak_jalan_m: 12 }, 90),
   f(7, 'bbc', 'koridor', { jarak_jalan_m: null }, 40),
   f(8, 'tk', 'mockup', {}, 20),
 ];
@@ -37,16 +37,16 @@ assert.strictEqual(all.cukai, 840);
 assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 8]);   // largest first
 
 // stats, one area
-const bpb = mpkStats(feats, s, rates, 'bpb');
-assert.strictEqual(bpb.total, 2);
-assert.strictEqual(bpb.count, 1);
-assert.deepStrictEqual(bpb.byJenis, { mockup: 0, rizab: 1 });
+const bbc = mpkStats(feats, s, rates, 'bbc');
+assert.strictEqual(bbc.total, 3);
+assert.strictEqual(bbc.count, 1);
+assert.deepStrictEqual(bbc.byJenis, { mockup: 0, rizab: 1 });
 
 // Three clear statuses: suspected (red), legal = an MPK-approved building plan covers it (green), not verified
 assert.deepStrictEqual(feats.map(x => mpkStatus(x.properties, s)),
   ['legal', 'suspected', 'unverified', 'unverified', 'suspected', 'unverified', 'unverified', 'suspected']);
 assert.deepStrictEqual(all.byStatus, { suspected: 3, legal: 1, unverified: 4 });
-assert.deepStrictEqual(bpb.byStatus, { suspected: 1, legal: 0, unverified: 1 });
+assert.deepStrictEqual(bbc.byStatus, { suspected: 1, legal: 0, unverified: 2 });
 
 // map filter mirrors mpkJenis
 assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
@@ -59,7 +59,7 @@ assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
 const csv = mpkCSV(all.suspects, rates, s).trim().split('\n');
 assert.strictEqual(csv.length, 4);
 assert.strictEqual(csv[0], 'id,area,type,plus_code,lng,lat,distance_m,area_m2,confidence,lot,upi,est_processing_fee_rm,est_annual_assessment_tax_rm');
-assert.strictEqual(csv[1], '5,bandar_putra_berenjut,road_reserve,X5,103.4,4.2,8.5,70,0.8,,,140.00,420.00');
+assert.strictEqual(csv[1], '5,binjai_bandar_chukai,road_reserve,X5,103.4,4.2,8.5,70,0.8,,,140.00,420.00');
 assert.strictEqual(csv[2], '2,teluk_kalong,suspected_list,X2,103.4,4.2,,50,0.8,52497,11030800052497,100.00,300.00');
 
 // Wayback helpers
@@ -182,7 +182,7 @@ assert.deepStrictEqual(bd.all.byStatus.suspected, { n: 2, m2: 650, pct: 200 / 3 
 assert.deepStrictEqual(bd.all.byStatus.unverified, { n: 0, m2: 0, pct: 0 });
 assert.strictEqual(bd.tk.total, 2);
 assert.strictEqual(bd.bbc.byStatus.suspected.n, 1);
-assert.strictEqual(bd.bpb.total, 0);
+assert.deepStrictEqual(Object.keys(bd), ['all', 'tk', 'bbc']);           // two study areas
 assert.deepStrictEqual(bd.all.sizes.map(c => c.n), [1, 1, 1, 0, 0]);      // 50, 100, 600 m²
 assert.deepStrictEqual(bd.all.sizes[2].byStatus, { suspected: 1, legal: 0, unverified: 0 });
 

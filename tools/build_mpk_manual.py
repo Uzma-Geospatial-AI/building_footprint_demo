@@ -8,14 +8,13 @@ units, ~1.2% too large).
 
 Run after tools/build_mpk_illegal.py (which writes the cadastral lots and the corridor roads) and
 before tools/apply_pelan_lulus.py. In mpk/mpk_buildings.geojson:
-  tk   Teluk Kalong: every manual footprint within MAX_DIST_M of the planning boundary; inside it
-       dalam = true and kategori 'mockup' when the footprint is one of the API's suspect buildings
-       (is_mockup, matched by overlap), else 'tiada_lot' (apply_pelan_lulus.py then decides legal /
-       not verified from MPK's approved building plans); outside it 'luar' with jarak_m.
+  tk   Teluk Kalong: every manual footprint inside the planning boundary, dalam = true, kategori
+       'mockup' when the footprint is one of the API's suspect buildings (is_mockup, matched by
+       overlap), else 'tiada_lot' (apply_pelan_lulus.py then decides legal / not verified from MPK's
+       approved building plans). Footprints outside the study areas are left out.
   bbc  Binjai – Bandar Chukai: manual footprints within CORRIDOR_HALF_M of the corridor road, with
        jarak_jalan_m = closest vertex distance to the road centreline.
-  bpb  Bandar Putra – Berenjut lies outside the manual extent: its existing footprints (Google Open
-       Buildings) are kept as they are.
+  bpb  Bandar Putra – Berenjut lies outside the manual extent and is dropped (its road too).
 Every footprint gets lot / upi from the NDCDB lot under its centre, a Plus Code, area_m2 and
 sumber = 'manual_esri_20260924' (confidence 1: drawn by a person, not detected by a model).
 
@@ -32,13 +31,12 @@ SRC_URL = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/
 API_URL = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/kemaman_buildings_industri_filled.geojson'
 MPK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk')
 SOURCE = 'manual_esri_20260924'
-MAX_DIST_M = 1000                       # Teluk Kalong: keep outside footprints this close (as before)
 CORRIDOR_HALF_M = 50                    # corridor half-width from the road centreline (as before)
 R = 6378137.0
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 110574
 EXPECTED_SRC = 12734
-EXPECTED = {('tk', 'mockup'): 42, ('tk', 'tiada_lot'): 1512, ('bbc', 'koridor'): 415, ('bpb', 'koridor'): 451}
+EXPECTED = {('tk', 'mockup'): 42, ('tk', 'tiada_lot'): 1512, ('bbc', 'koridor'): 415}
 
 
 def load(src):
@@ -121,15 +119,12 @@ def main():
     assert len(src) == EXPECTED_SRC, ('manual footprints', len(src))
     boundary = load(os.path.join(MPK_DIR, 'tk_sempadan.geojson'))['features'][0]['geometry']
     tk_ring = boundary['coordinates'][0] if boundary['type'] == 'Polygon' else boundary['coordinates'][0][0]
-    tk_edges = list(zip(tk_ring[:-1], tk_ring[1:]))
     roads = {f['properties']['kawasan']: [(l[i], l[i + 1]) for l in f['geometry']['coordinates'] for i in range(len(l) - 1)]
              for f in load(os.path.join(MPK_DIR, 'koridor_jalan.geojson'))['features']}
     lots = load(os.path.join(MPK_DIR, 'lot_kadaster.geojson'))['features']
     lot_index = Rings([f['geometry']['coordinates'][0] for f in lots])
     api = [f for f in load(args.api)['features'] if f['properties'].get('is_mockup') is True]
     mock_rings = [f['geometry']['coordinates'][0] for f in api]
-    old = load(os.path.join(MPK_DIR, 'mpk_buildings.geojson'))['features']
-    keep = [f for f in old if f['properties']['kawasan'] == 'bpb']
 
     def centre(ring):
         pts = ring[:-1]
@@ -155,14 +150,10 @@ def main():
                     matched_mock.add(k)
                     break
         else:
-            d_tk = min(seg_dist([lng, lat], a, b) for a, b in tk_edges)
-            if d_tk <= MAX_DIST_M:
-                props = {'kawasan': 'tk', 'kategori': 'luar', 'jarak_m': int(math.ceil(d_tk))}
-            else:
-                road = roads.get('bbc', [])
-                if road and min(seg_dist([lng, lat], a, b) for a, b in road) <= CORRIDOR_HALF_M:
-                    d = min(seg_dist(p, a, b) for p in outer + [[lng, lat]] for a, b in road)
-                    props = {'kawasan': 'bbc', 'kategori': 'koridor', 'jarak_jalan_m': round(d, 1)}
+            road = roads.get('bbc', [])
+            if road and min(seg_dist([lng, lat], a, b) for a, b in road) <= CORRIDOR_HALF_M:
+                d = min(seg_dist(p, a, b) for p in outer + [[lng, lat]] for a, b in road)
+                props = {'kawasan': 'bbc', 'kategori': 'koridor', 'jarak_jalan_m': round(d, 1)}
         if props is None:
             continue
         props.update({'area_m2': round(area, 1), 'confidence': 1.0, 'sumber': SOURCE, 'src_fid': f['properties'].get('fid'),
@@ -174,7 +165,7 @@ def main():
         geom = {'type': 'Polygon', 'coordinates': polys[0]} if len(polys) == 1 else {'type': 'MultiPolygon', 'coordinates': polys}
         out.append({'type': 'Feature', 'properties': props, 'geometry': geom})
 
-    features = out + keep
+    features = out
     for i, f in enumerate(features):
         f['properties']['id'] = i + 1
     counts = Counter((f['properties']['kawasan'], f['properties']['kategori']) for f in features)
@@ -185,6 +176,12 @@ def main():
     with open(os.path.join(MPK_DIR, 'mpk_buildings.geojson'), 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': features}, f, ensure_ascii=False, separators=(',', ':'))
     print('wrote mpk/mpk_buildings.geojson:', len(features), 'buildings')
+    road_file = os.path.join(MPK_DIR, 'koridor_jalan.geojson')
+    rd = load(road_file)
+    rd['features'] = [f for f in rd['features'] if f['properties']['kawasan'] == 'bbc']
+    with open(road_file, 'w', encoding='utf-8') as f:
+        json.dump(rd, f, ensure_ascii=False, separators=(',', ':'))
+    print('wrote mpk/koridor_jalan.geojson: Binjai – Bandar Chukai only')
 
 
 if __name__ == '__main__':

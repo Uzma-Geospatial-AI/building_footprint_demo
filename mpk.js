@@ -1,11 +1,12 @@
 // ============================================================
 // MPK KEMAMAN — SUSPECTED ILLEGAL CONSTRUCTION MODE
-// Three study areas from MPK:
-//   tk   Teluk Kalong Industrial Area — buildings inside the PBT boundary on no approved
-//        lot, or outside the boundary within the buffer
-//   bpb  Koridor Bandar Putra – Berenjut } buildings within the road-reserve distance of
-//   bbc  Koridor Binjai – Bandar Chukai  } the road centreline
-// Data: mpk/*.geojson, built by tools/vectorize_teluk_kalong.py + tools/build_mpk_illegal.py
+// Two study areas from MPK (footprints digitised by hand from Esri imagery of 24 Sep 2026):
+//   tk   Teluk Kalong Industrial Area — buildings inside the PBT boundary, legal when an
+//        MPK-approved building plan covers them
+//   bbc  Koridor Binjai – Bandar Chukai — buildings within the road-reserve distance of the
+//        road centreline
+// Data: mpk/*.geojson, built by tools/build_mpk_illegal.py, tools/build_mpk_manual.py and
+// tools/apply_pelan_lulus.py
 // ============================================================
 
 // ---------- Pure logic (also exported for tools/test_mpk_logic.js) ----------
@@ -28,7 +29,7 @@ function mpkStatus(p, s) {
 }
 
 // The marked areas the dashboard reports on: Teluk Kalong buildings inside the planning
-// boundary, and buildings within the two road corridors
+// boundary, and buildings within the Binjai – Bandar Chukai road corridor
 function mpkInScope(p) {
   return (p.kawasan === 'tk' && p.dalam === true) || p.kategori === 'koridor';
 }
@@ -50,7 +51,7 @@ function mpkBreakdown(features, s) {
   const empty = () => ({ total: 0, m2: 0,
     byStatus: { suspected: { n: 0, m2: 0, pct: 0 }, legal: { n: 0, m2: 0, pct: 0 }, unverified: { n: 0, m2: 0, pct: 0 } },
     sizes: MPK_SIZE_CLASSES.map(c => ({ label: c.label, n: 0, byStatus: { suspected: 0, legal: 0, unverified: 0 } })) });
-  const out = { all: empty(), tk: empty(), bpb: empty(), bbc: empty() };
+  const out = { all: empty(), ...Object.fromEntries(Object.keys(MPK_AREAS).map(k => [k, empty()])) };
   for (const f of features) {
     const p = f.properties, st = mpkStatus(p, s), cls = mpkSizeClass(p.area_m2);
     for (const key of ['all', p.kawasan]) {
@@ -106,7 +107,7 @@ function mpkCSVAll(features, s) {
 }
 
 // English codes written to the CSV export
-const MPK_CSV_AREA = { tk: 'teluk_kalong', bpb: 'bandar_putra_berenjut', bbc: 'binjai_bandar_chukai' };
+const MPK_CSV_AREA = { tk: 'teluk_kalong', bbc: 'binjai_bandar_chukai' };
 const MPK_CSV_TYPE = { mockup: 'suspected_list', rizab: 'road_reserve' };
 
 function mpkCSV(suspects, rates, s) {
@@ -297,7 +298,6 @@ if (typeof module !== 'undefined') {
 // ---------- Browser mode ----------
 const MPK_AREAS = {
   tk:  { name: 'Teluk Kalong Industrial Area', short: 'Teluk Kalong' },
-  bpb: { name: 'Bandar Putra – Berenjut Corridor', short: 'B. Putra – Berenjut' },
   bbc: { name: 'Binjai – Bandar Chukai Corridor', short: 'Binjai – Chukai' },
 };
 // Every suspected building is drawn in one red so "red = suspected" reads at a glance;
@@ -313,7 +313,7 @@ const MPK_STATUS = {
 };
 const MPK_JENIS = {
   mockup:        { label: 'Suspected building (Teluk Kalong list)', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
-  rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bpb', 'bbc'] },
+  rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bbc'] },
 };
 
 // Land-use classes of mpk/landuse.geojson (OpenStreetMap, grouped by tools/build_landuse.py)
@@ -355,7 +355,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261012c',
+  VERSION: '20261012e',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -423,7 +423,7 @@ async function mpkEnsureData() {
   }));
   const data = Object.fromEntries(entries);
   // the dashboard reports on the marked areas only: Teluk Kalong inside the planning boundary
-  // and the two road corridors (buildings outside them are dropped)
+  // and the Binjai – Bandar Chukai corridor (buildings outside them are dropped)
   data.buildings = { ...data.buildings, features: data.buildings.features.filter(f => mpkInScope(f.properties)) };
   await Promise.all(Object.entries(MPK.OPTIONAL_FILES).map(async ([key, url]) => {
     try {
@@ -437,7 +437,6 @@ async function mpkEnsureData() {
   MPK.bounds = {
     all: mpkBoundsOf([...b, ...data.boundary.features, ...data.roads.features]),
     tk: mpkBoundsOf(data.boundary.features),
-    bpb: mpkBoundsOf(data.roads.features.filter(f => f.properties.kawasan === 'bpb')),
     bbc: mpkBoundsOf(data.roads.features.filter(f => f.properties.kawasan === 'bbc')),
   };
   MPK.data = data;
@@ -661,7 +660,7 @@ async function mpkEnter() {
   const panelSub = document.getElementById('panel-sub');
   MPK.prevTitle = { title: title.textContent, sub: sub.textContent, panelSub: panelSub.textContent };
   title.textContent = 'Illegal Construction Monitoring — MPK Kemaman';
-  sub.textContent = 'Teluk Kalong · Bandar Putra–Berenjut · Binjai–Bandar Chukai';
+  sub.textContent = 'Teluk Kalong · Binjai–Bandar Chukai';
   panelSub.textContent = 'MPK Kemaman · Buildings suspected of lacking planning permission';
 
   const tab = document.getElementById('ptab-mpk');
@@ -807,10 +806,10 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
         <div class="mpk-total"><span>First-year revenue potential</span><strong id="mpk-r-total">—</strong></div>
       </div>
 
-      <div class="mpk-note">Buildings shown: Teluk Kalong inside the planning boundary, and within the two road corridors.
+      <div class="mpk-note">Buildings shown: Teluk Kalong inside the planning boundary, and along the Binjai – Bandar Chukai corridor.
         Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
-        (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Footprints: Teluk Kalong and Binjai–Chukai
-        digitised by hand from Esri imagery of 24 Sep 2026; Bandar Putra–Berenjut from Google Open Buildings (AI).
+        (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Footprints: digitised by hand from Esri imagery
+        of 24 Sep 2026.
         Legal = covered by an MPK-approved building plan (Pelan Bangunan Lulus, 966 records). Boundary digitised
         from MPK's map; road centrelines and land use from OpenStreetMap (not
         official RTD zoning); cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
@@ -832,12 +831,11 @@ function mpkSubTab(sub) {
 function mpkSelectArea(area) {
   MPK.area = area;
   document.querySelectorAll('.mpk-chip').forEach(c => c.classList.toggle('active', c.dataset.area === area));
-  const showKoridor = area === 'all' || area === 'bpb' || area === 'bbc';
+  const showKoridor = area === 'all' || area === 'bbc';
   document.getElementById('mpk-rizab-card').style.display = showKoridor ? '' : 'none';
   document.getElementById('mpk-hero-sub').textContent = {
-    all: 'Teluk Kalong (inside the planning boundary) and the two road corridors',
+    all: 'Teluk Kalong (inside the planning boundary) and the Binjai – Bandar Chukai corridor',
     tk: 'Teluk Kalong Industrial Area · buildings inside the planning boundary',
-    bpb: 'Bandar Putra – Berenjut · buildings along the road corridor',
     bbc: 'Binjai – Bandar Chukai · buildings along the road corridor',
   }[area];
   if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
@@ -1123,7 +1121,7 @@ function mpkRenderStats() {
     <div class="mpk-stats-inner">
       <header class="mpk-stats-head">
         <div><h2>Statistics</h2>
-          <p>Buildings in the marked areas only: Teluk Kalong inside the planning boundary, and along the two road corridors.</p></div>
+          <p>Buildings in the marked areas only: Teluk Kalong inside the planning boundary, and along the Binjai – Bandar Chukai corridor.</p></div>
         <div class="mpk-stats-actions">
           <button class="mpk-btn" onclick="mpkExportReport()">Export PDF report</button>
           <button class="mpk-wb-btn" onclick="mpkExportAllCSV()">Export CSV</button>
