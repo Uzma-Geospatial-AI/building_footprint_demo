@@ -269,9 +269,12 @@ with each council.
   from Esri imagery of 24 Sep 2026** ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/aoi_mpk_esri_2026-09-24_z18.geojson),
   12,734 footprints over the extent of the MPK aerial basemap; labelled EPSG:32647 but in Web Mercator, converted and re-measured by
   `tools/build_mpk_manual.py`, `sumber` = `manual_esri_20260924`, confidence 1). **Only these footprints are used**: Google Open Buildings and the Bandar
-  Putra – Berenjut corridor (outside their extent) were removed, as were footprints outside the study areas. In scope: Teluk
+  Putra – Berenjut corridor (outside their extent) were removed. In scope: Teluk
   Kalong 1,554 inside the boundary and Binjai – Chukai 415 (1,969; the hand-drawn footprints are whole buildings, where Open
-  Buildings split them into many pieces, so counts are lower for the same floor area). The API's `is_mockup` suspects are matched to the 2026 footprints by overlap (41 of 49 found);
+  Buildings split them into many pieces, so counts are lower for the same floor area). The file holds 12,734 records, of which 261 have no geometry; the
+  other **10,504 footprints, outside the study areas,** are in `mpk_buildings_luar.geojson` and drawn on the map as
+  *Outside the study areas* (light grey, switch in the Overview panel, click for Plus Code, lot / UPI, area and land use)
+  with no status, since no approval rule covers them; they are not counted in the statistics or the report. All 12,473 are shown. The API's `is_mockup` suspects are matched to the 2026 footprints by overlap (41 of 49 found);
   Teluk Kalong classes from the approved plans: `lulus` (with `pelan_fail`, `pelan_tarikh`, `pelan_status`, `pelan_jenis`,
   `pelan_n`), `mockup`, `tiada_pelan` (`asal` keeps the first-pass class)
 - `pelan_lulus.geojson` — MPK's approved building plans for the map (one feature per record and shape kind, `bangunan` =

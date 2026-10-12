@@ -11,7 +11,9 @@ before tools/apply_pelan_lulus.py. In mpk/mpk_buildings.geojson:
   tk   Teluk Kalong: every manual footprint inside the planning boundary, dalam = true, kategori
        'mockup' when the footprint is one of the API's suspect buildings (is_mockup, matched by
        overlap), else 'tiada_lot' (apply_pelan_lulus.py then decides legal / not verified from MPK's
-       approved building plans). Footprints outside the study areas are left out.
+       approved building plans).
+Footprints outside the study areas go to mpk/mpk_buildings_luar.geojson (map only, no status:
+there is no approval rule for them), with area_m2, Plus Code and lot / upi.
   bbc  Binjai – Bandar Chukai: manual footprints within CORRIDOR_HALF_M of the corridor road, with
        jarak_jalan_m = closest vertex distance to the road centreline.
   bpb  Bandar Putra – Berenjut lies outside the manual extent and is dropped (its road too).
@@ -36,6 +38,7 @@ R = 6378137.0
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 110574
 EXPECTED_SRC = 12734
+EXPECTED_OTHER = 10504                   # 12,734 records: 261 have no geometry; 1,969 in the study areas
 EXPECTED = {('tk', 'mockup'): 42, ('tk', 'tiada_lot'): 1512, ('bbc', 'koridor'): 415}
 
 
@@ -130,7 +133,7 @@ def main():
         pts = ring[:-1]
         return [sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)]
 
-    out, matched_mock = [], set()
+    out, others, matched_mock = [], [], set()
     for f in src:
         polys = [[[merc_to_lnglat(*c) for c in ring] for ring in poly] for poly in f['geometry']['coordinates']]
         polys = [p for p in polys if len(p[0]) >= 4]
@@ -155,7 +158,7 @@ def main():
                 d = min(seg_dist(p, a, b) for p in outer + [[lng, lat]] for a, b in road)
                 props = {'kawasan': 'bbc', 'kategori': 'koridor', 'jarak_jalan_m': round(d, 1)}
         if props is None:
-            continue
+            props = {'luar_kajian': True}
         props.update({'area_m2': round(area, 1), 'confidence': 1.0, 'sumber': SOURCE, 'src_fid': f['properties'].get('fid'),
                       'plus_code': plus_code(lat, lng), 'lng': round(lng, 6), 'lat': round(lat, 6)})
         li = lot_index.find(lng, lat)
@@ -163,7 +166,7 @@ def main():
             props['lot'] = lots[li]['properties']['lot']
             props['upi'] = lots[li]['properties']['upi']
         geom = {'type': 'Polygon', 'coordinates': polys[0]} if len(polys) == 1 else {'type': 'MultiPolygon', 'coordinates': polys}
-        out.append({'type': 'Feature', 'properties': props, 'geometry': geom})
+        (others if props.get('luar_kajian') else out).append({'type': 'Feature', 'properties': props, 'geometry': geom})
 
     features = out
     for i, f in enumerate(features):
@@ -176,6 +179,15 @@ def main():
     with open(os.path.join(MPK_DIR, 'mpk_buildings.geojson'), 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': features}, f, ensure_ascii=False, separators=(',', ':'))
     print('wrote mpk/mpk_buildings.geojson:', len(features), 'buildings')
+    assert len(others) == EXPECTED_OTHER, ('outside the study areas', len(others))
+    for i, f in enumerate(others):
+        p = f['properties']
+        p.pop('luar_kajian', None)
+        p['id'] = 100001 + i                           # never clashes with a study-area id
+    with open(os.path.join(MPK_DIR, 'mpk_buildings_luar.geojson'), 'w', encoding='utf-8') as f:
+        json.dump({'type': 'FeatureCollection', 'features': others}, f, ensure_ascii=False, separators=(',', ':'))
+    print('wrote mpk/mpk_buildings_luar.geojson:', len(others), 'buildings outside the study areas',
+          f'(total {len(features) + len(others)})')
     road_file = os.path.join(MPK_DIR, 'koridor_jalan.geojson')
     rd = load(road_file)
     rd['features'] = [f for f in rd['features'] if f['properties']['kawasan'] == 'bbc']

@@ -342,6 +342,8 @@ const MPK_LAYER_GROUPS = {
   sizes:     { label: 'Building size labels', swatch: [], layers: ['mpk-size-label'], legend: [] },
   unverified: { label: MPK_STATUS.unverified.label, swatch: [MPK_STATUS.unverified.color],
                layers: ['mpk-unverified-fill'], legend: [] },
+  others:    { label: 'Outside the study areas', swatch: ['#ECEFF1'],
+               layers: ['mpk-other-fill', 'mpk-other-line'], legend: [] },
   pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
                legend: [['Plan covering a building', '.pelan'], ['No building found on the plan', '.pelan-none']] },
@@ -355,7 +357,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261012e',
+  VERSION: '20261012f',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -363,14 +365,14 @@ const MPK = {
     roads: 'mpk/koridor_jalan.geojson',
   },
   // Optional imagery indexes: if one fails to load, only its imagery mode is hidden
-  OPTIONAL_FILES: { landuse: 'mpk/landuse.geojson', pelan: 'mpk/pelan_lulus.geojson', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
+  OPTIONAL_FILES: { others: 'mpk/mpk_buildings_luar.geojson', landuse: 'mpk/landuse.geojson', pelan: 'mpk/pelan_lulus.geojson', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
-  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-pelan-fill', 'mpk-pelan-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-pelan-fill', 'mpk-pelan-line', 'mpk-other-fill', 'mpk-other-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-unverified-fill', 'mpk-legal-fill', 'mpk-legal-line', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-size-label'],
-  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-pelan', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-other', 'mpk-pelan', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -492,6 +494,13 @@ function mpkAddLayers() {
         paint: { 'line-color': '#1E2C44', 'line-width': 2.5, 'line-dasharray': [4, 2, 1, 2] } });
     }
     // not verified (quiet grey) < legal (green) < suspected (red), so the two that matter stand out
+    if (MPK.data.others) {
+      // the hand-drawn footprints outside the study areas: on the map, no status
+      map.addSource('mpk-other', { type: 'geojson', data: MPK.data.others });
+      map.addLayer({ id: 'mpk-other-fill', type: 'fill', source: 'mpk-other', paint: { 'fill-color': '#ECEFF1', 'fill-opacity': 0.55 } });
+      map.addLayer({ id: 'mpk-other-line', type: 'line', source: 'mpk-other',
+        paint: { 'line-color': '#78909C', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 17, 1.1] } });
+    }
     map.addLayer({ id: 'mpk-unverified-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('unverified'),
       paint: { 'fill-color': MPK_STATUS.unverified.color, 'fill-opacity': 0.6, 'fill-outline-color': '#90A4AE' } });
     map.addLayer({ id: 'mpk-legal-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('legal'),
@@ -599,9 +608,15 @@ function mpkSetSerembanVisible(on) {
 function mpkBindEvents() {
   if (MPK.boundMap === map) return;
   MPK.boundMap = map;
-  ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill'].forEach(layer => {
+  map.on('click', 'mpk-other-fill', e => {
+    if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture)) return;
+    const onStudy = map.queryRenderedFeatures(e.point, { layers: ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill']
+      .filter(id => map.getLayer(id)) }).length;
+    if (!onStudy) mpkShowOtherPopup(e.features[0].properties, e.lngLat);
+  });
+  ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill', 'mpk-other-fill'].forEach(layer => {
     map.on('click', layer, e => {
-      if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture)) return;
+      if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture) || layer === 'mpk-other-fill') return;
       mpkShowPopup(e.features[0].properties, e.lngLat);
     });
     map.on('mouseenter', layer, () => { if (MPK.active) map.getCanvas().style.cursor = 'pointer'; });
@@ -759,6 +774,13 @@ function mpkBuildPanel() {
       <div class="mpk-card mpk-status">
         <div class="mpk-status-bar" id="mpk-status-bar"></div>
         ${statusRows}
+        ${MPK.data.others ? `<div class="mpk-st-row mpk-layer-group${MPK.layerOn.others ? '' : ' is-off'}" id="mpk-group-others"
+            title="Hand-drawn footprints outside Teluk Kalong's boundary and the Binjai – Chukai corridor: shown on the map, no status">
+          <i class="sw" style="background:#ECEFF1;border:1px solid #78909C"></i>
+          <div class="mpk-st-main"><div class="mpk-st-label">Outside the study areas</div>
+            <div class="mpk-st-sub">${mpkNum(MPK.data.others.features.length)} buildings · map only, no status</div></div>
+          ${toggle('others', 'Outside the study areas')}
+        </div>` : ''}
         <div class="mpk-st-row mpk-layer-group${MPK.layerOn.sizes ? '' : ' is-off'}" id="mpk-group-sizes">
           <i class="sw sizes">m²</i>
           <div class="mpk-st-main"><div class="mpk-st-label">Building size labels</div>
@@ -1010,6 +1032,26 @@ function mpkShowPlanPopup(p, lngLat) {
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '300px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+}
+
+// A hand-drawn footprint outside the study areas: facts only, no legal status
+function mpkShowOtherPopup(p, lngLat) {
+  const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
+  const zone = MPK.data.landuse ? mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features)) : null;
+  const html = `
+    <div class="popup-header" style="background:#78909C">
+      <div class="popup-fc">Outside the study areas · no status</div>
+      <div class="popup-name">${mpkEscHtml(p.plus_code)}</div>
+    </div>
+    <div class="popup-body">
+      ${zone ? row('Land use (OSM)', zone) : ''}
+      ${row('Lot no.', p.lot ? mpkEscHtml(p.lot) : 'no cadastral lot')}
+      ${p.upi ? row('UPI', mpkEscHtml(p.upi)) : ''}
+      ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
+      ${row('Footprint source', mpkSourceLabel(p))}
+    </div>`;
+  if (MPK.popup) MPK.popup.remove();
+  MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
 function mpkZoomTo(id) {
