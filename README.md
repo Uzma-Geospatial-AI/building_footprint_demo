@@ -226,7 +226,7 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 - *Features* (sidebar, under Statistics): fifteen live tools on the MPK data, each opening a
   floating panel on the map. See [MPK Features](#mpk-features--the-15-tools) below.
 - Only the **marked areas** are loaded: Teluk Kalong buildings inside the planning boundary and
-  buildings within the two road corridors (6,225 buildings). Status colours (red / teal / light
+  buildings within the two road corridors (2,420 buildings). Status colours (red / teal / light
   grey) were checked for colour-blind separation.
 
 **Building status** — every building is shown in one of three statuses, each with its own
@@ -234,8 +234,8 @@ map layer, switch and count (with a share bar) in the panel:
 *Suspected illegal* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
 encroachment in the corridors), *Legal · approved building plan* (green: covered by a plan in MPK's
 register of approved building plans) and *Not verified* (grey: no approved plan found, which may be a
-gap in the register rather than an offence). Teluk Kalong inside the boundary: 673 legal, 26 suspected,
-3,482 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
+gap in the register rather than an offence). Teluk Kalong inside the boundary: 345 legal, 26 suspected,
+1,183 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.
 
 **Approved building plans** (MPK's *Pelan Bangunan Lulus* register for Teluk Kalong, 966 records,
@@ -243,8 +243,8 @@ file no., approval date and status and the approved building type.
 `tools/apply_pelan_lulus.py` matches them to the buildings. A plan covers a building when a plan polygon
 holds the building's centre, the building holds a plan polygon's centre, or at least two vertices of the
 plan's CAD outline lie on or within 2 m of the footprint (most records are open CAD lines, not polygons).
-320 plans cover 673 buildings; the other plans are site boundaries, fences and lot lines, or buildings not
-in the footprint data. This replaces the earlier rule ("on an approved lot" digitised from MPK's map).
+658 plans cover 345 buildings (one hand-drawn footprint often holds several approved plans); the other plans
+are site boundaries, fences and lot lines, or buildings not in the footprint data. This replaces the earlier rule ("on an approved lot" digitised from MPK's map).
 Map layers → *Approved building plans · MPK* (off at start) draws the plans: dark teal where a building
 stands on the plan, purple where none was found; click one for its file no., lot, date, status and
 building type. Applicant and architect names are not copied into the app.
@@ -265,7 +265,13 @@ with each council.
   coordinates printed on the map; ~6 px ≈ 60 m mean residual)
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
-- `mpk_buildings.geojson` — Google Open Buildings v3, classified per area, plus the API's `is_mockup` buildings for Teluk Kalong;
+- `mpk_buildings.geojson` — building footprints, classified per area. **Teluk Kalong and Binjai–Bandar Chukai: digitised by hand
+  from Esri imagery of 24 Sep 2026** ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/aoi_mpk_esri_2026-09-24_z18.geojson),
+  12,734 footprints over the extent of the MPK aerial basemap; labelled EPSG:32647 but in Web Mercator, converted and re-measured by
+  `tools/build_mpk_manual.py`, `sumber` = `manual_esri_20260924`, confidence 1). Bandar Putra–Berenjut lies outside that extent and keeps
+  Google Open Buildings v3. In scope: Teluk Kalong 1,554 inside the boundary, Binjai–Chukai 415, Bandar Putra–Berenjut 451 (2,420; the
+  hand-drawn footprints are whole buildings, where Open Buildings split them into many pieces, so counts are lower for the same
+  floor area). The API's `is_mockup` suspects are matched to the 2026 footprints by overlap (41 of 49 found);
   Teluk Kalong classes from the approved plans: `lulus` (with `pelan_fail`, `pelan_tarikh`, `pelan_status`, `pelan_jenis`,
   `pelan_n`), `mockup`, `tiada_pelan` (`asal` keeps the first-pass class)
 - `pelan_lulus.geojson` — MPK's approved building plans for the map (one feature per record and shape kind, `bangunan` =
@@ -280,7 +286,8 @@ with each council.
 ```bash
 python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
-python tools/apply_pelan_lulus.py                                      # stdlib; approved building plans (run after the line above)
+python tools/build_mpk_manual.py                                       # stdlib; 2026 hand-drawn footprints for Teluk Kalong + Binjai–Chukai
+python tools/apply_pelan_lulus.py                                      # stdlib; approved building plans (run after the lines above)
 python tools/build_landuse.py                                          # stdlib; OSM land use for Kemaman (Overpass)
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)

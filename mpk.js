@@ -355,7 +355,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261012b',
+  VERSION: '20261012c',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -809,7 +809,8 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
 
       <div class="mpk-note">Buildings shown: Teluk Kalong inside the planning boundary, and within the two road corridors.
         Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
-        (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings.
+        (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Footprints: Teluk Kalong and Binjai–Chukai
+        digitised by hand from Esri imagery of 24 Sep 2026; Bandar Putra–Berenjut from Google Open Buildings (AI).
         Legal = covered by an MPK-approved building plan (Pelan Bangunan Lulus, 966 records). Boundary digitised
         from MPK's map; road centrelines and land use from OpenStreetMap (not
         official RTD zoning); cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
@@ -974,7 +975,7 @@ function mpkShowPopup(p, lngLat) {
       ${row('Lot no.', p.lot || 'no cadastral lot')}
       ${p.upi ? row('UPI', p.upi) : ''}
       ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
-      ${row('AI confidence', Math.round(p.confidence * 100) + '%')}
+      ${row('Footprint source', mpkSourceLabel(p))}
       ${jenis ? row('Est. processing fee', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
       ${jenis ? row('Est. assessment tax', mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr') : ''}
     </div>`;
@@ -984,6 +985,9 @@ function mpkShowPopup(p, lngLat) {
   MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
+// Where a footprint comes from: drawn by hand on Esri imagery, or detected by Google's model
+const mpkSourceLabel = p => p.sumber === 'manual_esri_20260924' ? 'Manual · Esri 24 Sep 2026'
+  : 'Google Open Buildings (AI, ' + Math.round((p.confidence || 0) * 100) + '% confidence)';
 const mpkEscHtml = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // '2009-09-30' -> '30 Sep 2009' (dates outside 1950–2100 in the register are shown as given)
 function mpkPlanDateLabel(d) {

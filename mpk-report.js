@@ -46,7 +46,7 @@ const MPK_REPORT_TEXT = {
     reasonList: 'On MPK suspect list',
     reasonRoad: (d, r) => `Within ${d} m of road centreline (reserve ${r} m)`,
     notes: r => [
-      'Building footprints: Google Open Buildings (AI-detected). Teluk Kalong suspected buildings: the list in the Uzma/MPK building data (is_mockup).',
+      'Building footprints: Teluk Kalong and Binjai–Chukai digitised by hand from Esri imagery of 24 Sep 2026; Bandar Putra–Berenjut from Google Open Buildings (AI-detected). Teluk Kalong suspected buildings: the list in the Uzma/MPK building data (is_mockup) without an approved plan.',
       'Approved building plans: MPK’s register (Pelan Bangunan Lulus, 966 records). Planning boundary digitised from MPK’s map; cadastral lots from NDCDB; road centrelines from OpenStreetMap.',
       `Corridor buildings are flagged when any part lies within ${r} m of the road centreline (assumed road reserve).`,
       '"Legal" means an MPK-approved building plan covers the building; "not verified" means no approved plan was found for it, which may be a gap in the register rather than an offence.',
@@ -84,7 +84,7 @@ const MPK_REPORT_TEXT = {
     reasonList: 'Dalam senarai syak MPK',
     reasonRoad: (d, r) => `Dalam ${d} m dari garis tengah jalan (rizab ${r} m)`,
     notes: r => [
-      'Tapak bangunan: Google Open Buildings (dikesan AI). Bangunan disyaki di Teluk Kalong: senarai dalam data bangunan Uzma/MPK (is_mockup).',
+      'Tapak bangunan: Teluk Kalong dan Binjai–Chukai didigitkan secara manual daripada imej Esri 24 Sep 2026; Bandar Putra–Berenjut daripada Google Open Buildings (dikesan AI). Bangunan disyaki di Teluk Kalong: senarai dalam data bangunan Uzma/MPK (is_mockup) yang tiada pelan lulus.',
       'Pelan bangunan lulus: daftar MPK (Pelan Bangunan Lulus, 966 rekod). Sempadan perancangan didigitkan daripada peta MPK; lot kadaster daripada NDCDB; garis tengah jalan daripada OpenStreetMap.',
       `Bangunan koridor ditanda apabila mana-mana bahagiannya terletak dalam ${r} m dari garis tengah jalan (andaian rizab jalan).`,
       '"Sah" bermaksud bangunan diliputi pelan bangunan yang diluluskan MPK; "belum disahkan" bermaksud tiada pelan lulus dijumpai untuknya, yang mungkin jurang dalam daftar dan bukan kesalahan.',

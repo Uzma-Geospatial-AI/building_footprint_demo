@@ -440,14 +440,19 @@ function mpkLensSize(v) {
 
 // ---------- 15. Inspection Planner ----------
 const MPK_PLAN_DAYNAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MPK_PLAN_KEY = 'mpk_plan_cases_v1';
+const MPK_PLAN_KEY = 'mpk_plan_cases_v2';           // v2: building ids from the 2026 manual footprints
 const mpkPlanDate = d => `${MPK_PLAN_DAYNAMES[d.getDay()]} ${d.getDate()} ${MPK_MONTH_NAMES[d.getMonth()]}`;
 const mpkEsc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Officer cases and edits live in this browser (no server); Export / Import moves them between machines
 function mpkPlanLoad() {
-  try { return mpkPlanStoreClean(JSON.parse(localStorage.getItem(MPK_PLAN_KEY) || 'null')); }
-  catch (e) { return mpkPlanStoreClean(null); }
+  try {
+    const now = localStorage.getItem(MPK_PLAN_KEY);
+    if (now) return mpkPlanStoreClean(JSON.parse(now));
+    // from v1: new cases carry over; edits pointed at the old footprint ids, so they are dropped
+    const v1 = mpkPlanStoreClean(JSON.parse(localStorage.getItem('mpk_plan_cases_v1') || 'null'));
+    return mpkPlanStoreClean({ added: v1.added, edits: {} });
+  } catch (e) { return mpkPlanStoreClean(null); }
 }
 function mpkPlanSave() {
   try { localStorage.setItem(MPK_PLAN_KEY, JSON.stringify(MPK_FEAT.plan.store)); }

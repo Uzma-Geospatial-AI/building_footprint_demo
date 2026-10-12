@@ -111,7 +111,8 @@ function mpkHotspots(features, s, eps = 150, minPts = 4) {
 
 // ---------- Pure: enforcement priority (0–100) ----------
 // size 45% (log scale, 10 m² → 0, 5,000 m² → 1) · evidence 25% (on MPK's list = 1; road
-// reserve = 0.4 at the reserve edge up to 1 on the centreline) · AI confidence 15% · in a hotspot 15%
+// reserve = 0.4 at the reserve edge up to 1 on the centreline) · footprint confidence 15% (1 for footprints
+// digitised by hand, the model's score for Google Open Buildings) · in a hotspot 15%
 const MPK_PRIORITY_WEIGHTS = { size: 0.45, evidence: 0.25, confidence: 0.15, cluster: 0.15 };
 function mpkPriority(p, s, inHotspot) {
   const clamp = v => Math.max(0, Math.min(1, v));
@@ -392,7 +393,7 @@ const MPK_FEATURES = [
   { key: 'hotspots', icon: '🔥', title: 'Hotspot Finder', tag: 'Spatial clustering (DBSCAN)',
     text: 'Finds clusters of suspected buildings automatically and draws a zone around each one, ranked by size: where enforcement teams get the most out of one visit.' },
   { key: 'priority', icon: '🎯', title: 'Priority Score', tag: 'Explainable 0–100 ranking',
-    text: 'Scores every suspected building on size, evidence, AI confidence and clustering. The map recolours by urgency and each score shows its breakdown.' },
+    text: 'Scores every suspected building on size, evidence, footprint confidence and clustering. The map recolours by urgency and each score shows its breakdown.' },
   { key: 'route', icon: '🧭', title: 'Smart Inspection Route', tag: 'Optimised field visit',
     text: 'Plans the shortest driving route through the top cases on real roads, with distance and drive time, and sends it to Google Maps in one tap.' },
   { key: 'ask', icon: '🎙️', title: 'Ask the Map', tag: 'Voice or text, English & Malay',
@@ -709,7 +710,7 @@ const MPK_FEAT_RUN = {
                'circle-stroke-color': '#fff', 'circle-stroke-width': 1 } });
     const W = MPK_PRIORITY_WEIGHTS;
     mpkHud('Priority Score', `
-      <div class="mpk-hud-sub">Score = size ${W.size * 100}% + evidence ${W.evidence * 100}% + AI confidence ${W.confidence * 100}% + in a hotspot ${W.cluster * 100}%</div>
+      <div class="mpk-hud-sub">Score = size ${W.size * 100}% + evidence ${W.evidence * 100}% + footprint confidence ${W.confidence * 100}% + in a hotspot ${W.cluster * 100}%</div>
       <div class="mpk-hud-ramp"><span>Low</span><i></i><span>Urgent</span></div>
       <div class="mpk-hud-list">${ranked.slice(0, 10).map(({ p, pr }) => `
         <button class="mpk-hud-item prio" onclick="mpkZoomTo(${p.id})">
@@ -850,7 +851,7 @@ const MPK_FEAT_RUN = {
       <div class="mpk-hud-list">${real.slice(0, 8).map((l, i) => `
         <button class="mpk-hud-item" onclick="mpkFeatCovFly(${i})"><b>Lot ${l.lot}</b>
           <span class="num">${Math.round(l.pct)}% · ${mpkNum(l.builtM2)} / ${mpkNum(l.lotM2)} m²</span></button>`).join('')}</div>
-      <div class="mpk-hud-note">Building footprints (AI-detected) ÷ cadastral lot area; each building counts on the lot under its centre.
+      <div class="mpk-hud-note">Building footprints ÷ cadastral lot area; each building counts on the lot under its centre.
         ${lots.length - real.length ? `${lots.length - real.length} lots hold a building that spans several lots (over 100%) and are left out of the list. ` : ''}A screening aid, not an official plot-ratio check.</div>`,
       { icon: '🧱', side: true });
     mpkFeatFit(MPK.bounds[MPK.area], { padding: { top: 50, bottom: 50, left: 50, right: 400 } });
@@ -1156,7 +1157,7 @@ function mpkPassportShow(id) {
     ${row('Area', MPK_AREAS[p.kawasan].name)}
     ${row('Lot / UPI', (p.lot || '—') + (p.upi ? ' · ' + p.upi : ''))}
     ${row('Footprint', mpkFmtM2(p.area_m2))}
-    ${row('AI confidence', Math.round(p.confidence * 100) + '%')}
+    ${row('Footprint', mpkSourceLabel(p))}
     ${mpkJenis(p, s) ? row('Why flagged', mpkFeatReason(p, s)) : ''}
     ${hot ? row('Hotspot', `${hot.id} · ${hot.n} suspected nearby`) : ''}
     ${zone ? row('Land use (OSM)', zone) : ''}

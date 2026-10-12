@@ -31,7 +31,7 @@ URL = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Banguna
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk')
 BUILDINGS = os.path.join(ROOT, 'mpk_buildings.geojson')
 OUT_PLANS = os.path.join(ROOT, 'pelan_lulus.geojson')
-EXPECTED = {'records': 966, 'lulus': 673, 'mockup': 26, 'tiada_pelan': 3482}
+EXPECTED = {'records': 966, 'lulus': 345, 'mockup': 26, 'tiada_pelan': 1183}   # 2026 manual footprints
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 111320
 GRID = 0.001                                         # ~110 m index cells
@@ -178,8 +178,9 @@ def main():
 
     counts = Counter(f['properties']['kategori'] for f in tk)
     print('Teluk Kalong buildings:', dict(counts), '· plans covering a building:', len(hit), 'of', len(plans))
-    for k in ('lulus', 'mockup', 'tiada_pelan'):
-        assert counts[k] == EXPECTED[k], (k, counts[k], EXPECTED[k])
+    if os.environ.get('MPK_NO_EXPECT') != '1':          # set it to 1 when the footprints themselves changed
+        for k in ('lulus', 'mockup', 'tiada_pelan'):
+            assert counts[k] == EXPECTED[k], (k, counts[k], EXPECTED[k])
     with open(BUILDINGS, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
 
