@@ -523,3 +523,7 @@ body:not(.mpk-mode) .mpk-aerial-head, body:not(.mpk-mode) .mpk-aerial-opt { disp
 .mpk-aerial-head { padding:8px 13px 4px; border-top:2px solid rgba(232,119,46,0.2); font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--orange-dark); }
 .mpk-aerial-thumb { background:linear-gradient(135deg, #2E5D3A, #7A8F5A); color:#fff; font-size:10.5px !important; font-weight:800; }
 .mpk-aerial-thumb.old { background:linear-gradient(135deg, #6D5A3F, #A88F66); }
+
+/* MPK approved building plans layer */
+.mpk-layers .sw.pelan { background:rgba(0,105,92,0.15); border:1.5px solid #00695C; }
+.mpk-layers .sw.pelan-none { background:rgba(126,87,194,0.15); border:1.5px solid #7E57C2; }

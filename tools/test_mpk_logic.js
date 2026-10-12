@@ -42,7 +42,7 @@ assert.strictEqual(bpb.total, 2);
 assert.strictEqual(bpb.count, 1);
 assert.deepStrictEqual(bpb.byJenis, { mockup: 0, rizab: 1 });
 
-// Three clear statuses: suspected (red), legal = on an MPK-approved lot (green), not verified
+// Three clear statuses: suspected (red), legal = an MPK-approved building plan covers it (green), not verified
 assert.deepStrictEqual(feats.map(x => mpkStatus(x.properties, s)),
   ['legal', 'suspected', 'unverified', 'unverified', 'suspected', 'unverified', 'unverified', 'suspected']);
 assert.deepStrictEqual(all.byStatus, { suspected: 3, legal: 1, unverified: 4 });

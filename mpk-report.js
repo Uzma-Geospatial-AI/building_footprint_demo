@@ -32,24 +32,24 @@ const MPK_REPORT_TEXT = {
     statusText: 'Draft for review by MPK. Findings require site verification before any action.',
     sec: ['Summary', 'Location map', 'Breakdown by area', 'Building size', 'Suspected buildings', 'Notes and limitations', 'Verification'],
     summary: (b, f) => `${f(b.total)} buildings with a total footprint of ${f(b.m2)} m² were assessed. `
-      + `${b.byStatus.legal.pct.toFixed(1)}% stand on an MPK-approved lot (legal), `
+      + `${b.byStatus.legal.pct.toFixed(1)}% are covered by an MPK-approved building plan (legal), `
       + `${b.byStatus.suspected.pct.toFixed(1)}% (${f(b.byStatus.suspected.n)} buildings, ${f(b.byStatus.suspected.m2)} m²) `
       + `are suspected of lacking planning permission, and ${b.byStatus.unverified.pct.toFixed(1)}% could not be verified `
       + 'against an approval record.',
-    statusLabel: { suspected: 'Suspected illegal', legal: 'Legal · on approved lot', unverified: 'Not verified' },
+    statusLabel: { suspected: 'Suspected illegal', legal: 'Legal · approved building plan', unverified: 'Not verified' },
     total: 'Total', buildings: 'Buildings', share: 'Share', footprint: 'Footprint (m²)', area: 'Area',
     suspected: 'Suspected', legal: 'Legal', unverified: 'Not verified', sizeCol: 'Footprint size',
     sizes: ['Under 100 m²', '100 – 500 m²', '500 – 1,000 m²', '1,000 – 5,000 m²', '5,000 m² and over'],
-    mapKey: 'Red: suspected illegal · Teal: legal (on approved lot) · Grey: not verified · Dashed orange: planning boundary',
+    mapKey: 'Red: suspected illegal · Teal: legal (approved building plan) · Grey: not verified · Dashed orange: planning boundary',
     listNote: 'Listed largest first. Locations can be found with the Plus Code (e.g. in Google Maps) or the cadastral lot / UPI.',
     no: 'No.', reason: 'Reason', none: 'No suspected buildings in this area',
     reasonList: 'On MPK suspect list',
     reasonRoad: (d, r) => `Within ${d} m of road centreline (reserve ${r} m)`,
     notes: r => [
       'Building footprints: Google Open Buildings (AI-detected). Teluk Kalong suspected buildings: the list in the Uzma/MPK building data (is_mockup).',
-      'Planning boundary and approved lots digitised from MPK’s map; cadastral lots from NDCDB; road centrelines from OpenStreetMap.',
+      'Approved building plans: MPK’s register (Pelan Bangunan Lulus, 966 records). Planning boundary digitised from MPK’s map; cadastral lots from NDCDB; road centrelines from OpenStreetMap.',
       `Corridor buildings are flagged when any part lies within ${r} m of the road centreline (assumed road reserve).`,
-      '"Legal" means the building stands on an MPK-approved lot; it does not confirm Kebenaran Merancang or building plan approval.',
+      '"Legal" means an MPK-approved building plan covers the building; "not verified" means no approved plan was found for it, which may be a gap in the register rather than an offence.',
       'This draft is produced automatically for planning review. Every case requires site verification before enforcement.',
     ],
     signers: ['Prepared by', 'Checked by', 'Approved by'], signLines: ['Signature', 'Name', 'Designation', 'Date'],
@@ -70,24 +70,24 @@ const MPK_REPORT_TEXT = {
     statusText: 'Draf untuk semakan MPK. Penemuan perlu disahkan di tapak sebelum sebarang tindakan diambil.',
     sec: ['Ringkasan', 'Peta lokasi', 'Pecahan mengikut kawasan', 'Saiz bangunan', 'Bangunan disyaki', 'Nota dan batasan', 'Pengesahan'],
     summary: (b, f) => `Sebanyak ${f(b.total)} bangunan dengan jumlah keluasan tapak ${f(b.m2)} m² telah dinilai. `
-      + `${b.byStatus.legal.pct.toFixed(1)}% terletak di atas lot yang diluluskan MPK (sah), `
+      + `${b.byStatus.legal.pct.toFixed(1)}% mempunyai pelan bangunan yang diluluskan MPK (sah), `
       + `${b.byStatus.suspected.pct.toFixed(1)}% (${f(b.byStatus.suspected.n)} bangunan, ${f(b.byStatus.suspected.m2)} m²) `
       + `disyaki tiada kebenaran merancang, dan ${b.byStatus.unverified.pct.toFixed(1)}% tidak dapat disahkan `
       + 'dengan rekod kelulusan.',
-    statusLabel: { suspected: 'Disyaki haram', legal: 'Sah · di atas lot diluluskan', unverified: 'Belum disahkan' },
+    statusLabel: { suspected: 'Disyaki haram', legal: 'Sah · pelan bangunan lulus', unverified: 'Belum disahkan' },
     total: 'Jumlah', buildings: 'Bangunan', share: 'Peratus', footprint: 'Keluasan tapak (m²)', area: 'Kawasan',
     suspected: 'Disyaki', legal: 'Sah', unverified: 'Belum disahkan', sizeCol: 'Saiz keluasan tapak',
     sizes: ['Bawah 100 m²', '100 – 500 m²', '500 – 1,000 m²', '1,000 – 5,000 m²', '5,000 m² dan ke atas'],
-    mapKey: 'Merah: disyaki haram · Hijau kebiruan: sah (di atas lot diluluskan) · Kelabu: belum disahkan · Oren putus-putus: sempadan perancangan',
+    mapKey: 'Merah: disyaki haram · Hijau kebiruan: sah (pelan bangunan lulus) · Kelabu: belum disahkan · Oren putus-putus: sempadan perancangan',
     listNote: 'Disenaraikan mengikut saiz terbesar. Lokasi boleh dicari menggunakan Plus Code (cth. dalam Google Maps) atau lot kadaster / UPI.',
     no: 'Bil.', reason: 'Sebab', none: 'Tiada bangunan disyaki di kawasan ini',
     reasonList: 'Dalam senarai syak MPK',
     reasonRoad: (d, r) => `Dalam ${d} m dari garis tengah jalan (rizab ${r} m)`,
     notes: r => [
       'Tapak bangunan: Google Open Buildings (dikesan AI). Bangunan disyaki di Teluk Kalong: senarai dalam data bangunan Uzma/MPK (is_mockup).',
-      'Sempadan perancangan dan lot diluluskan didigitkan daripada peta MPK; lot kadaster daripada NDCDB; garis tengah jalan daripada OpenStreetMap.',
+      'Pelan bangunan lulus: daftar MPK (Pelan Bangunan Lulus, 966 rekod). Sempadan perancangan didigitkan daripada peta MPK; lot kadaster daripada NDCDB; garis tengah jalan daripada OpenStreetMap.',
       `Bangunan koridor ditanda apabila mana-mana bahagiannya terletak dalam ${r} m dari garis tengah jalan (andaian rizab jalan).`,
-      '"Sah" bermaksud bangunan terletak di atas lot yang diluluskan MPK; ia tidak mengesahkan Kebenaran Merancang atau kelulusan pelan bangunan.',
+      '"Sah" bermaksud bangunan diliputi pelan bangunan yang diluluskan MPK; "belum disahkan" bermaksud tiada pelan lulus dijumpai untuknya, yang mungkin jurang dalam daftar dan bukan kesalahan.',
       'Draf ini dijana secara automatik untuk semakan perancangan. Setiap kes perlu disahkan di tapak sebelum tindakan penguatkuasaan.',
     ],
     signers: ['Disediakan oleh', 'Disemak oleh', 'Diluluskan oleh'], signLines: ['Tandatangan', 'Nama', 'Jawatan', 'Tarikh'],

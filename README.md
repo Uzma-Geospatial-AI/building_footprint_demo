@@ -133,7 +133,7 @@ Three study areas from MPK, selectable as chips in the **Illegal Construction** 
 
 | Area | Flagged as suspected |
 |---|---|
-| Kawasan Industri Teluk Kalong | the buildings flagged `is_mockup` in the [building API](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/kemaman_buildings_industri_filled.geojson) (49 buildings) — the MPK mockup list |
+| Kawasan Industri Teluk Kalong | the buildings flagged `is_mockup` in the [building API](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/kemaman_buildings_industri_filled.geojson) (49 buildings, 45 inside the boundary) — the MPK mockup list — **minus those an MPK-approved building plan covers** (19), leaving 26 |
 | Koridor Bandar Putra – Berenjut | buildings within the road-reserve slider (3–20 m) of the road centreline |
 | Koridor Binjai – Bandar Chukai | same as above |
 
@@ -231,10 +231,23 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 
 **Building status** — every building is shown in one of three statuses, each with its own
 map layer, switch and count (with a share bar) in the panel:
-*Suspected illegal* (red: the API suspect list in Teluk Kalong, road-reserve encroachment in
-the corridors), *Legal · on approved lot* (green: stands on an MPK-approved lot) and
-*Not verified* (grey: no approval record to confirm either way). Popups are coloured and
-worded by status.
+*Suspected illegal* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
+encroachment in the corridors), *Legal · approved building plan* (green: covered by a plan in MPK's
+register of approved building plans) and *Not verified* (grey: no approved plan found, which may be a
+gap in the register rather than an offence). Teluk Kalong inside the boundary: 673 legal, 26 suspected,
+3,482 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
+file no., approval date and status and the approved building type.
+
+**Approved building plans** (MPK's *Pelan Bangunan Lulus* register for Teluk Kalong, 966 records,
+[source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson)):
+`tools/apply_pelan_lulus.py` matches them to the buildings. A plan covers a building when a plan polygon
+holds the building's centre, the building holds a plan polygon's centre, or at least two vertices of the
+plan's CAD outline lie on or within 2 m of the footprint (most records are open CAD lines, not polygons).
+320 plans cover 673 buildings; the other plans are site boundaries, fences and lot lines, or buildings not
+in the footprint data. This replaces the earlier rule ("on an approved lot" digitised from MPK's map).
+Map layers → *Approved building plans · MPK* (off at start) draws the plans: dark teal where a building
+stands on the plan, purple where none was found; click one for its file no., lot, date, status and
+building type. Applicant and architect names are not copied into the app.
 
 **Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
 for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,
@@ -247,12 +260,16 @@ with each council.
 
 **Data** (`mpk/`, code in `mpk.js` / `mpk.css`):
 
-- `tk_sempadan.geojson`, `tk_lot_lulus.geojson` — Teluk Kalong boundary and approved lots,
-  digitised from MPK's map by `tools/vectorize_teluk_kalong.py` (georeferenced from the
+- `tk_sempadan.geojson`, `tk_lot_lulus.geojson` — Teluk Kalong boundary and (superseded by the approved
+  building plans, kept as the builder's first-pass input) approved lots, digitised from MPK's map by `tools/vectorize_teluk_kalong.py` (georeferenced from the
   coordinates printed on the map; ~6 px ≈ 60 m mean residual)
 - `koridor_jalan.geojson` — MPK's corridor points snapped to OpenStreetMap centrelines
 - `lot_kadaster.geojson` — NDCDB cadastral lots ([source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/lots_sempadan_industri_kemaman.geojson)); each building carries the `lot` / `upi` it stands on
-- `mpk_buildings.geojson` — Google Open Buildings v3, classified per area, plus the API's `is_mockup` buildings (kategori `mockup`) for Teluk Kalong
+- `mpk_buildings.geojson` — Google Open Buildings v3, classified per area, plus the API's `is_mockup` buildings for Teluk Kalong;
+  Teluk Kalong classes from the approved plans: `lulus` (with `pelan_fail`, `pelan_tarikh`, `pelan_status`, `pelan_jenis`,
+  `pelan_n`), `mockup`, `tiada_pelan` (`asal` keeps the first-pass class)
+- `pelan_lulus.geojson` — MPK's approved building plans for the map (one feature per record and shape kind, `bangunan` =
+  covers a building), built by `tools/apply_pelan_lulus.py`
 - `landuse.geojson` — OSM land-use zones + district boundary for Kemaman, built by `tools/build_landuse.py`
 - `wayback.json` — distinct Esri Wayback images per area, built by `tools/build_wayback.py`
 - `sentinel.json` — least-cloudy Sentinel-2 scene per area and month, built by `tools/build_sentinel.py`
@@ -263,6 +280,7 @@ with each council.
 ```bash
 python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
+python tools/apply_pelan_lulus.py                                      # stdlib; approved building plans (run after the line above)
 python tools/build_landuse.py                                          # stdlib; OSM land use for Kemaman (Overpass)
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)

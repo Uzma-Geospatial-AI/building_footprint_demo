@@ -20,7 +20,7 @@ function mpkJenis(p, s) {
 
 // One of three statuses per building, so legal and illegal are easy to tell apart:
 //   suspected  — on the suspect list / encroaching the road reserve (mpkJenis)
-//   legal      — stands on an MPK-approved lot (Teluk Kalong)
+//   legal      — an MPK-approved building plan covers it (Teluk Kalong, tools/apply_pelan_lulus.py)
 //   unverified — no approval record to confirm either way
 function mpkStatus(p, s) {
   if (mpkJenis(p, s)) return 'suspected';
@@ -306,8 +306,8 @@ const MPK_SUSPECT_COLOR = '#c62828';
 const MPK_STATUS = {
   suspected:  { label: 'Suspected illegal', color: MPK_SUSPECT_COLOR,
                 hint: 'On the MPK suspect list (Teluk Kalong) or encroaching the road reserve (corridors)' },
-  legal:      { label: 'Legal · on approved lot', color: '#26a69a',
-                hint: 'Stands on a lot approved by MPK (Teluk Kalong)' },
+  legal:      { label: 'Legal · approved building plan', color: '#26a69a',
+                hint: 'Covered by a building plan approved by MPK (Teluk Kalong, Pelan Bangunan Lulus)' },
   unverified: { label: 'Not verified', color: '#CFD8DC',
                 hint: 'No approval record to confirm either way' },
 };
@@ -342,6 +342,9 @@ const MPK_LAYER_GROUPS = {
   sizes:     { label: 'Building size labels', swatch: [], layers: ['mpk-size-label'], legend: [] },
   unverified: { label: MPK_STATUS.unverified.label, swatch: [MPK_STATUS.unverified.color],
                layers: ['mpk-unverified-fill'], legend: [] },
+  pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
+               layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
+               legend: [['Plan covering a building', '.pelan'], ['No building found on the plan', '.pelan-none']] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
@@ -352,7 +355,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261012a',
+  VERSION: '20261012b',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -360,14 +363,14 @@ const MPK = {
     roads: 'mpk/koridor_jalan.geojson',
   },
   // Optional imagery indexes: if one fails to load, only its imagery mode is hidden
-  OPTIONAL_FILES: { landuse: 'mpk/landuse.geojson', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
+  OPTIONAL_FILES: { landuse: 'mpk/landuse.geojson', pelan: 'mpk/pelan_lulus.geojson', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
-  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-pelan-fill', 'mpk-pelan-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-unverified-fill', 'mpk-legal-fill', 'mpk-legal-line', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-size-label'],
-  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-pelan', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -375,7 +378,7 @@ const MPK = {
   settings: { rizab: 10 },
   area: 'all',
   // land use starts off so the map shows the buildings first (switch it on in Analysis)
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, k !== 'landuse'])),
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, k !== 'landuse' && k !== 'pelan'])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -455,6 +458,17 @@ function mpkAddLayers() {
     map.addLayer({ id: 'mpk-kadaster-line', type: 'line', source: 'mpk-kadaster',
       paint: { 'line-color': '#00ACC1', 'line-opacity': 0.85,
                'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.4] } });
+    if (MPK.data.pelan) {
+      // MPK's approved building plans (CAD outlines and shapes): dark teal where a building stands
+      // on the plan, purple where no building was found on it
+      map.addSource('mpk-pelan', { type: 'geojson', data: MPK.data.pelan });
+      const pelanColor = ['case', ['get', 'bangunan'], '#00695C', '#7E57C2'];
+      map.addLayer({ id: 'mpk-pelan-fill', type: 'fill', source: 'mpk-pelan', filter: ['==', ['geometry-type'], 'Polygon'],
+        paint: { 'fill-color': pelanColor, 'fill-opacity': 0.12 } });
+      map.addLayer({ id: 'mpk-pelan-line', type: 'line', source: 'mpk-pelan', filter: ['!=', ['geometry-type'], 'Point'],
+        paint: { 'line-color': pelanColor, 'line-opacity': 0.9,
+                 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.5, 18, 1.6] } });
+    }
     map.addLayer({ id: 'mpk-boundary-fill', type: 'fill', source: 'mpk-boundary',
       paint: { 'fill-color': '#E8772E', 'fill-opacity': 0.04 } });
     map.addLayer({ id: 'mpk-boundary-line', type: 'line', source: 'mpk-boundary',
@@ -595,6 +609,12 @@ function mpkBindEvents() {
     map.on('mouseleave', layer, () => { if (MPK.active) map.getCanvas().style.cursor = 'grab'; });
   });
   // a land-use zone answers only where there is no building under the click
+  ['mpk-pelan-fill', 'mpk-pelan-line'].forEach(layer => map.on('click', layer, e => {
+    if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture)) return;
+    const onBuilding = map.queryRenderedFeatures(e.point, { layers: ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill']
+      .filter(id => map.getLayer(id)) }).length;
+    if (!onBuilding) mpkShowPlanPopup(e.features[0].properties, e.lngLat);
+  }));
   map.on('click', 'mpk-landuse-fill', e => {
     if (!MPK.active || !e.features.length) return;
     const onBuilding = map.queryRenderedFeatures(e.point, { layers: ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill']
@@ -710,7 +730,7 @@ function mpkBuildPanel() {
       ${toggle(group, st.label)}
     </div>`;
   }).join('');
-  const analysisGroups = ['landuse', 'reference'].map(k => {
+  const analysisGroups = ['landuse', 'pelan', 'reference'].filter(k => k !== 'pelan' || MPK.data.pelan).map(k => {
     const g = MPK_LAYER_GROUPS[k];
     const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>` : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
     const legend = g.legend.map(([label, v]) =>
@@ -790,7 +810,8 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
       <div class="mpk-note">Buildings shown: Teluk Kalong inside the planning boundary, and within the two road corridors.
         Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
         (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Other buildings: Google Open Buildings.
-        Boundary & approved lots digitised from MPK's map; road centrelines and land use from OpenStreetMap (not
+        Legal = covered by an MPK-approved building plan (Pelan Bangunan Lulus, 966 records). Boundary digitised
+        from MPK's map; road centrelines and land use from OpenStreetMap (not
         official RTD zoning); cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
         Every case needs site verification.</div>
     </div>
@@ -905,9 +926,10 @@ function mpkOnRate() {
 // ---------- Map interaction ----------
 function mpkStatusText(p, jenis) {
   if (jenis) return 'Suspected illegal · ' + MPK_JENIS[jenis].label;
-  if (p.kategori === 'lulus') return 'Legal · on an MPK-approved lot';
+  if (p.kategori === 'lulus') return 'Legal · MPK-approved building plan';
+  if (p.kategori === 'tiada_pelan') return 'Not verified · no approved building plan on record';
   if (p.kategori === 'luar') return 'Not verified · outside the planning boundary';
-  if (p.kawasan === 'tk') return 'Not verified · inside the boundary, no approved lot on record';
+  if (p.kawasan === 'tk') return 'Not verified · inside the boundary, no approved building plan on record';
   return 'Not verified · in corridor, no approval record';
 }
 
@@ -946,6 +968,9 @@ function mpkShowPopup(p, lngLat) {
       ${p.kategori === 'luar' ? row('Distance from boundary', p.jarak_m + ' m') : ''}
       ${p.kategori === 'koridor' ? row('Distance from road centreline',
         p.jarak_jalan_m == null ? 'no road data' : p.jarak_jalan_m + ' m') : ''}
+      ${p.pelan_fail ? row('Approved plan', mpkEscHtml(p.pelan_fail) + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '')) : ''}
+      ${p.pelan_tarikh ? row('Approved on', mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + mpkEscHtml(p.pelan_status) : '')) : ''}
+      ${p.pelan_jenis ? row('Approved building', mpkEscHtml(p.pelan_jenis)) : ''}
       ${row('Lot no.', p.lot || 'no cadastral lot')}
       ${p.upi ? row('UPI', p.upi) : ''}
       ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
@@ -957,6 +982,32 @@ function mpkShowPopup(p, lngLat) {
   // focusAfterOpen off: otherwise the Enter that picked a search result also "presses" the
   // popup's freshly focused close button and shuts it straight away
   MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+}
+
+const mpkEscHtml = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// '2009-09-30' -> '30 Sep 2009' (dates outside 1950–2100 in the register are shown as given)
+function mpkPlanDateLabel(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+  return m && +m[1] >= 1950 && +m[1] <= 2100 ? mpkDayLabel(m[0]) : String(d || '');
+}
+
+// An approved building plan (from MPK's register) where no building stands under the click
+function mpkShowPlanPopup(p, lngLat) {
+  const row = (k, v) => v ? `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>` : '';
+  const html = `
+    <div class="popup-header" style="background:${p.bangunan ? '#00695C' : '#7E57C2'}">
+      <div class="popup-fc">Approved building plan · MPK${p.bangunan ? '' : ' · no building found on it'}</div>
+      <div class="popup-name">${mpkEscHtml(p.fail || 'No file number')}</div>
+    </div>
+    <div class="popup-body">
+      ${row('Lot', mpkEscHtml(p.lot))}
+      ${row('Approved on', mpkPlanDateLabel(p.tarikh))}
+      ${row('Status', mpkEscHtml(p.status))}
+      ${row('Building', mpkEscHtml(p.jenis))}
+      ${p.luas ? row('Floor area (plan)', mpkNum(p.luas) + ' m²') : ''}
+    </div>`;
+  if (MPK.popup) MPK.popup.remove();
+  MPK.popup = new maplibregl.Popup({ maxWidth: '300px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
 function mpkZoomTo(id) {
@@ -1079,7 +1130,7 @@ function mpkRenderStats() {
       <div class="mpk-stats-cards">
         <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings</div></div>
         <div class="mpk-stat"><div class="v">${mpkNum(b.m2)}</div><div class="l">Total footprint (m²)</div></div>
-        <div class="mpk-stat legal"><div class="v">${mpkPct(b.byStatus.legal.pct)}</div><div class="l">Legal · on approved lot</div></div>
+        <div class="mpk-stat legal"><div class="v">${mpkPct(b.byStatus.legal.pct)}</div><div class="l">Legal · approved plan</div></div>
         <div class="mpk-stat danger"><div class="v">${mpkPct(b.byStatus.suspected.pct)}</div><div class="l">Suspected illegal</div></div>
         <div class="mpk-stat"><div class="v">${mpkPct(b.byStatus.unverified.pct)}</div><div class="l">Not verified</div></div>
       </div>
