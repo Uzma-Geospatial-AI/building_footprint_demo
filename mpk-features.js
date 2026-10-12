@@ -1118,7 +1118,9 @@ function mpkLoadQR() {
 function mpkTileMosaic(f) {
   const [sw, ne] = mpkBoundsOf([f]);
   const span = Math.max(mpkMetres(sw, [ne[0], sw[1]]), mpkMetres(sw, [sw[0], ne[1]]));
-  const z = span < 40 ? 19 : span < 90 ? 18 : 17;
+  // Esri World Imagery stops at z18 over Kemaman (z19 answers "Map data not yet available"),
+  // so small buildings use z18 tiles drawn at 2x instead
+  const z = span < 90 ? 18 : 17, k = span < 40 ? 2 : 1, T = 256 * k;
   const world = 256 * Math.pow(2, z);
   const px = lng => (lng + 180) / 360 * world;
   const py = lat => { const r = lat * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * world; };
@@ -1129,11 +1131,11 @@ function mpkTileMosaic(f) {
     for (let dy = -1; dy <= 1; dy++) {
       const x = tx + dx, y = ty + dy;
       tiles += `<img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}" alt=""
-        style="left:calc(50% + ${Math.round(x * 256 - cx)}px);top:calc(50% + ${Math.round(y * 256 - cy)}px)">`;
+        style="width:${T}px;height:${T}px;left:calc(50% + ${Math.round((x * 256 - cx) * k)}px);top:calc(50% + ${Math.round((y * 256 - cy) * k)}px)">`;
     }
   }
   const rings = f.geometry.type === 'Polygon' ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map(p => p[0]);
-  const outline = rings.map(r => `<polygon points="${r.map(c => (px(c[0]) - cx).toFixed(1) + ',' + (py(c[1]) - cy).toFixed(1)).join(' ')}"/>`).join('');
+  const outline = rings.map(r => `<polygon points="${r.map(c => ((px(c[0]) - cx) * k).toFixed(1) + ',' + ((py(c[1]) - cy) * k).toFixed(1)).join(' ')}"/>`).join('');
   return `<div class="mpk-pp-tiles">${tiles}<svg viewBox="-1 -1 2 2" overflow="visible">${outline}</svg></div>`;
 }
 
