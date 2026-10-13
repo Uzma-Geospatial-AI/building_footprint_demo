@@ -352,7 +352,7 @@ const MPK_LAYER_GROUPS = {
   pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
                legend: [['Approved plan covering a building', '.pelan', 'covers'], ['Approved, no building found', '.pelan-none', 'none'],
-                        ['Rejected plan (TOLAK)', '.pelan-tolak', 'tolak']] },
+                        ['Rejected plan (TOLAK)', '.pelan-tolak', 'tolak'], ['Plan drawing, no decision recorded', '.pelan-tiada', 'tiada']] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013h',
+  VERSION: '20261013i',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -469,7 +469,8 @@ function mpkAddLayers() {
       // MPK's approved building plans (CAD outlines and shapes): dark teal where a building stands
       // on the plan, purple where no building was found on it
       map.addSource('mpk-pelan', { type: 'geojson', data: MPK.data.pelan });
-      const pelanColor = ['case', ['==', ['get', 'keputusan'], 'tolak'], '#D50000', ['get', 'bangunan'], '#00695C', '#7E57C2'];
+      const pelanColor = ['case', ['==', ['get', 'keputusan'], 'tolak'], '#D50000', ['==', ['get', 'keputusan'], 'tiada'], '#78909C',
+        ['get', 'bangunan'], '#00695C', '#7E57C2'];
       map.addLayer({ id: 'mpk-pelan-fill', type: 'fill', source: 'mpk-pelan', filter: ['==', ['geometry-type'], 'Polygon'],
         paint: { 'fill-color': pelanColor, 'fill-opacity': 0.12 } });
       map.addLayer({ id: 'mpk-pelan-line', type: 'line', source: 'mpk-pelan', filter: ['!=', ['geometry-type'], 'Point'],
@@ -584,7 +585,8 @@ function mpkApplyLayerVisibility() {
   const which = ['any', false,
     ...(mpkSubOn('pelan', 'covers') ? [['all', ok, ['get', 'bangunan']]] : []),
     ...(mpkSubOn('pelan', 'none') ? [['all', ok, ['!', ['get', 'bangunan']]]] : []),
-    ...(mpkSubOn('pelan', 'tolak') ? [['==', ['get', 'keputusan'], 'tolak']] : [])];
+    ...(mpkSubOn('pelan', 'tolak') ? [['==', ['get', 'keputusan'], 'tolak']] : []),
+    ...(mpkSubOn('pelan', 'tiada') ? [['==', ['get', 'keputusan'], 'tiada']] : [])];
   if (map.getLayer('mpk-pelan-fill')) map.setFilter('mpk-pelan-fill', ['all', ['==', ['geometry-type'], 'Polygon'], which]);
   if (map.getLayer('mpk-pelan-line')) map.setFilter('mpk-pelan-line', ['all', ['!=', ['geometry-type'], 'Point'], which]);
   mpkApplyBuildingFilters();
@@ -1170,14 +1172,14 @@ function mpkPlanDateLabel(d) {
 function mpkShowPlanPopup(p, lngLat) {
   const row = (k, v) => v ? `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>` : '';
   const html = `
-    <div class="popup-header" style="background:${p.keputusan === 'tolak' ? '#D50000' : p.bangunan ? '#00695C' : '#7E57C2'}">
-      <div class="popup-fc">${p.keputusan === 'tolak' ? 'Rejected building plan (TOLAK) · MPK' : 'Approved building plan · MPK' + (p.bangunan ? '' : ' · no building found on it')}</div>
+    <div class="popup-header" style="background:${p.keputusan === 'tolak' ? '#D50000' : p.keputusan === 'tiada' ? '#78909C' : p.bangunan ? '#00695C' : '#7E57C2'}">
+      <div class="popup-fc">${p.keputusan === 'tolak' ? 'Rejected building plan (TOLAK) · MPK' : p.keputusan === 'tiada' ? 'Plan drawing · no decision recorded' : 'Approved building plan · MPK' + (p.bangunan ? '' : ' · no building found on it')}</div>
       <div class="popup-name">${mpkEscHtml(p.fail || 'No file number')}</div>
     </div>
     <div class="popup-body">
       ${row('Lot', mpkEscHtml(p.lot))}
       ${row('Register', mpkEscHtml(p.sumber === 'Kedai' ? 'Shops (Pelan Bangunan Kedai)' : 'Teluk Kalong'))}
-      ${row(p.keputusan === 'tolak' ? 'Decided on' : 'Approved on', mpkPlanDateLabel(p.tarikh))}
+      ${p.keputusan === 'tiada' ? row('Status in the register', mpkEscHtml(p.status || 'blank')) : row(p.keputusan === 'tolak' ? 'Decided on' : 'Approved on', mpkPlanDateLabel(p.tarikh))}
       ${row('Status', mpkEscHtml(p.status))}
       ${row('Building', mpkEscHtml(p.jenis))}
       ${p.luas ? row('Floor area (plan)', mpkNum(p.luas) + ' m²') : ''}

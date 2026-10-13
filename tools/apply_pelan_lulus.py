@@ -5,9 +5,10 @@ digitised from the CAD plans):
   tk     Pelan Bangunan Teluk Kalong Lulus, 966 records, all approved
          https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson
   kedai  Pelan Bangunan Kedai (shops, Chukai and Binjai), 4,547 records; only those with a geometry
-         inside Kemaman and a decision are used: approved (LULUS, LULUS BERSYARAT / DGN SYARAT,
-         DILULUSKAN and the misspellings LUUS / ULUS) or rejected (TOLAK). Blank, -9999 and other
-         values (place names, dates, numbers) are not a decision and are left out.
+         inside Kemaman are shown. Approved (LULUS, LULUS BERSYARAT / DGN SYARAT, DILULUSKAN and the
+         misspellings LUUS / ULUS) and rejected (TOLAK) records decide a building's status; records
+         with no decision (blank, -9999, TAMBAHAN, place names, dates) are drawn as plan drawings
+         only. Records without geometry, or whose coordinates fall outside Kemaman, cannot be placed.
          https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson
 
 Run after tools/build_mpk_manual.py. A plan covers a building when a plan polygon holds the
@@ -219,10 +220,7 @@ def main():
         if not (KEMAMAN[0] <= c[0] <= KEMAMAN[2] and KEMAMAN[1] <= c[1] <= KEMAMAN[3]):
             skipped['outside Kemaman (mis-placed)'] += 1
             continue
-        k = decision(pr.get('Status_Kelulusan'))
-        if not k:
-            skipped['no decision in the record'] += 1
-            continue
+        k = decision(pr.get('Status_Kelulusan')) or 'tiada'      # tiada: drawing only, no decision
         plans.append({'key': 'K%d' % n, 'sumber': 'Kedai', 'pr': pr, 'geometry': g, 'keputusan': k})
 
     data = load(BUILDINGS)
@@ -243,7 +241,7 @@ def main():
             for gy in range(int(min(ys) / GRID), int(max(ys) / GRID) + 1):
                 grid[(gx, gy)].append(i)
 
-    covered = defaultdict(lambda: {'lulus': [], 'tolak': []})
+    covered = defaultdict(lambda: {'lulus': [], 'tolak': [], 'tiada': []})
     hit = set()
     for p in plans:
         rings, pts = parts(p['geometry'])

@@ -256,12 +256,13 @@ file no., approval date and status and the approved building type.
 
 **Shop building plans** (MPK's *Pelan Bangunan Kedai* register, Chukai and Binjai, 4,547 records,
 [source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson)): the register is
-uneven, so only records with a geometry inside Kemaman and a decision are used: 340 approved (LULUS, LULUS BERSYARAT / DGN
-SYARAT, and the misspellings LUUS / ULUS) and 2 rejected (TOLAK). Left out: 1,112 without geometry, 2,229 whose coordinates
-fall outside Kemaman (mis-placed), 864 with no decision (blank, -9999, place names, dates). In the Binjai – Chukai corridor
+uneven. Every record with a geometry inside Kemaman is drawn (1,206): 340 approved (LULUS, LULUS BERSYARAT / DGN SYARAT,
+and the misspellings LUUS / ULUS), 2 rejected (TOLAK) and 864 with no decision (blank, -9999, TAMBAHAN, place names, dates),
+shown grey as *Plan drawing, no decision recorded* and not used for status. Cannot be placed: 1,112 without geometry and
+2,229 whose coordinates fall outside Kemaman (mis-placed, e.g. the "TK" records at 102.42° E). In the Binjai – Chukai corridor
 an approved plan makes a building **legal** (40) and a building covered only by a rejected plan is **suspected · building
 plan rejected by MPK (TOLAK)** (1); 101 buildings outside the study areas show their plan in the popup. Map layers →
-*Approved building plans · MPK* has a third entry, *Rejected plan (TOLAK)* (red). Both registers are applied by
+*Approved building plans · MPK* has a third entry, *Rejected plan (TOLAK)* (red), and a fourth, *Plan drawing, no decision recorded* (grey). Both registers are applied by
 `tools/apply_pelan_lulus.py`.
 
 **Approved building plans** (MPK's *Pelan Bangunan Lulus* register for Teluk Kalong, 966 records,
