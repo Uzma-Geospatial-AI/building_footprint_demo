@@ -219,7 +219,7 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
   tick box (each land-use class, the district boundary, the two kinds of approved plan, cadastral lots, planning
   boundary, study corridor); the group switch still turns a whole group on or off, and ticking an entry turns its
   group on. The two study-area outlines (*Study area · Teluk Kalong*, the planning boundary, and *Study area ·
-  Binjai – Chukai*, the corridor band and road) start off and follow the area chips: each lights up only when it is ticked
+  Binjai – Chukai*, the corridor band and road) start on and follow the area chips: each shows only when it is ticked
   and its own chip (or *All*) is selected. The area chips also filter the buildings on the map: *Teluk Kalong* or *Binjai – Chukai* draws that area's buildings
   only (statuses and m² labels), *All* draws both. The Overview panel has the same switch (*Study area · …*, named after the selected chip), kept in step with the
   tick boxes. The PDF report's map always outlines the area it reports on.
