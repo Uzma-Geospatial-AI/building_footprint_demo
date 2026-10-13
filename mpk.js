@@ -353,6 +353,12 @@ const MPK_LAYER_GROUPS = {
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
                legend: [['Approved plan covering a building', '.pelan', 'covers'], ['Approved, no building found', '.pelan-none', 'none'],
                         ['Rejected plan (TOLAK)', '.pelan-tolak', 'tolak'], ['Plan drawing, no decision recorded', '.pelan-tiada', 'tiada']] },
+  rekod:     { label: 'All plan records · Teluk Kalong register', swatchClass: 'rekod-lulus',
+               layers: ['mpk-rekod-pt'],
+               legend: [['Lulus / Diluluskan · 570', '.rekod-lulus', 'lulus'],
+                        ['Lulus Bersyarat · 400', '.rekod-syarat', 'syarat'],
+                        ['Sokong / Sedia Ada / Tolak · 7', '.rekod-lain', 'lain'],
+                        ['No valid status · 22,237', '.rekod-tiada', 'tiada']] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
@@ -363,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013u',
+  VERSION: '20261013v',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -375,10 +381,13 @@ const MPK = {
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
+  // every record of the Teluk Kalong register as a point (tools/build_rekod_semua.py), loaded the
+  // first time its layer is switched on; the counts are that script's output
+  REKOD: { file: 'mpk/rekod_semua.geojson', total: 23214, placed: 22086, data: null, loading: false },
   LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-pelan-fill', 'mpk-pelan-line', 'mpk-other-fill', 'mpk-other-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-unverified-fill', 'mpk-legal-fill', 'mpk-legal-line', 'mpk-suspect-fill', 'mpk-suspect-line',
-           'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-size-label'],
-  SOURCES: ['mpk-wayback', 'mpk-size-pts', 'mpk-other', 'mpk-pelan', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
+           'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-rekod-pt', 'mpk-size-label'],
+  SOURCES: ['mpk-wayback', 'mpk-rekod', 'mpk-size-pts', 'mpk-other', 'mpk-pelan', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
   SUSPECT_LAYERS: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude'],
   active: false,
   data: null,
@@ -386,7 +395,7 @@ const MPK = {
   settings: { rizab: 10 },
   area: 'all',
   // land use starts off so the map shows the buildings first (switch it on in Analysis)
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'others'].includes(k)])),
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'others', 'rekod'].includes(k)])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -524,6 +533,15 @@ function mpkAddLayers() {
                'fill-extrusion-opacity': 0.85 } });
     map.addLayer({ id: 'mpk-highlight-line', type: 'line', source: 'mpk-highlight',
       paint: { 'line-color': '#FDD835', 'line-width': 3 } });
+    // the register's records: valid statuses drawn larger and on top of the blank ones
+    map.addSource('mpk-rekod', { type: 'geojson', data: MPK.REKOD.data || { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'mpk-rekod-pt', type: 'circle', source: 'mpk-rekod', layout: { visibility: 'none',
+        'circle-sort-key': ['match', ['get', 'k'], 'tiada', 0, 1] },
+      paint: { 'circle-color': ['match', ['get', 'k'], ...Object.entries(MPK_REKOD_COLOR).flat(), '#90A4AE'],
+               'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, ['match', ['get', 'k'], 'tiada', 1.5, 3],
+                                 18, ['match', ['get', 'k'], 'tiada', 4, 7]],
+               'circle-stroke-color': '#ffffff', 'circle-stroke-width': ['match', ['get', 'k'], 'tiada', 0.3, 1],
+               'circle-opacity': ['match', ['get', 'k'], 'tiada', 0.7, 0.95] } });
     // footprint size (m²) on every building once zoomed in
     map.addSource('mpk-size-pts', { type: 'geojson', data: { type: 'FeatureCollection',
       features: MPK.data.buildings.features.map(f => ({ type: 'Feature', properties: { m2: f.properties.area_m2, kawasan: f.properties.kawasan },
@@ -589,6 +607,11 @@ function mpkApplyLayerVisibility() {
     ...(mpkSubOn('pelan', 'tiada') ? [['==', ['get', 'keputusan'], 'tiada']] : [])];
   if (map.getLayer('mpk-pelan-fill')) map.setFilter('mpk-pelan-fill', ['all', ['==', ['geometry-type'], 'Polygon'], which]);
   if (map.getLayer('mpk-pelan-line')) map.setFilter('mpk-pelan-line', ['all', ['!=', ['geometry-type'], 'Point'], which]);
+  // register records: the status groups switched on
+  if (map.getLayer('mpk-rekod-pt')) {
+    map.setFilter('mpk-rekod-pt', ['in', ['get', 'k'], ['literal', Object.keys(MPK_REKOD_COLOR).filter(k => mpkSubOn('rekod', k))]]);
+  }
+  if (MPK.layerOn.rekod && !MPK.REKOD.data) mpkLoadRekod();
   mpkApplyBuildingFilters();
   mpkSyncStudyArea();
   mpkRefresh3D();
@@ -657,6 +680,26 @@ function mpkRemoveLayers() {
   MPK.SOURCES.forEach(id => { try { if (map.getSource(id)) map.removeSource(id); } catch (e) {} });
 }
 
+const MPK_REKOD_COLOR = { lulus: '#00897B', syarat: '#F9A825', lain: '#7E57C2', tiada: '#90A4AE' };
+
+// Fetches the register's records (3.6 MB) the first time their layer is switched on
+async function mpkLoadRekod() {
+  if (MPK.REKOD.data || MPK.REKOD.loading) return;
+  MPK.REKOD.loading = true;
+  showToast('Loading ' + mpkNum(MPK.REKOD.total) + ' plan records…', 2500);
+  try {
+    const res = await fetch(MPK.REKOD.file + '?v=' + MPK.VERSION);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    MPK.REKOD.data = await res.json();
+    const src = map && map.getSource('mpk-rekod');
+    if (src) src.setData(MPK.REKOD.data);
+  } catch (e) {
+    showToast('⚠️ Could not load the plan records: ' + e.message, 5000);
+  } finally {
+    MPK.REKOD.loading = false;
+  }
+}
+
 function mpkSetVis(id, vis) {
   if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
 }
@@ -719,6 +762,13 @@ function mpkBindEvents() {
       .filter(id => map.getLayer(id)) }).length;
     if (!onBuilding) mpkShowPlanPopup(e.features[0].properties, e.lngLat);
   }));
+  // registered after the building layers, so on a record its popup replaces the building's
+  map.on('click', 'mpk-rekod-pt', e => {
+    if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture)) return;
+    mpkShowRekodPopup(e.features[0].properties, e.features[0].geometry.coordinates);
+  });
+  map.on('mouseenter', 'mpk-rekod-pt', () => { if (MPK.active) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'mpk-rekod-pt', () => { if (MPK.active) map.getCanvas().style.cursor = 'grab'; });
   map.on('click', 'mpk-landuse-fill', e => {
     if (!MPK.active || !e.features.length) return;
     const onBuilding = map.queryRenderedFeatures(e.point, { layers: ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill']
@@ -835,7 +885,7 @@ function mpkBuildPanel() {
       ${toggle(group, st.label)}
     </div>`;
   }).join('');
-  const analysisGroups = ['landuse', 'pelan', 'reference'].filter(k => k !== 'pelan' || MPK.data.pelan).map(k => {
+  const analysisGroups = ['landuse', 'pelan', 'rekod', 'reference'].filter(k => k !== 'pelan' || MPK.data.pelan).map(k => {
     const g = MPK_LAYER_GROUPS[k];
     const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>` : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
     // every legend entry is its own switch (the group switch still turns them all on / off)
@@ -847,6 +897,7 @@ function mpkBuildPanel() {
     return `<div class="mpk-layer-group${MPK.layerOn[k] ? '' : ' is-off'}" id="mpk-group-${k}">
       <div class="mpk-layer-row"><span class="mpk-sw-group">${sw}</span><div class="mpk-layer-main">${g.label}</div>${toggle(k, g.label)}</div>
       ${legend ? `<div class="mpk-layer-legend">${legend}</div>` : ''}
+      ${k === 'rekod' ? `<div class="mpk-layer-note">${mpkNum(MPK.REKOD.total)} records: ${mpkNum(MPK.REKOD.placed)} on the map, ${mpkNum(MPK.REKOD.total - MPK.REKOD.placed)} with no usable coordinates. One point per record, at its centre; one plan is often many CAD records.</div>` : ''}
     </div>`;
   }).join('');
 
@@ -1259,6 +1310,34 @@ function mpkShowPlanPopup(p, lngLat) {
       ${row('Status', mpkEscHtml(p.status))}
       ${row('Building', mpkEscHtml(p.jenis))}
       ${p.luas ? row('Floor area (plan)', mpkNum(p.luas) + ' m²') : ''}
+    </div>`;
+  if (MPK.popup) MPK.popup.remove();
+  MPK.popup = new maplibregl.Popup({ maxWidth: '300px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+}
+
+// One record of the Teluk Kalong register (a point at its centre)
+const MPK_REKOD_ISSUE = { tiada_koordinat: 'no coordinates', koordinat_tidak_munasabah: 'impossible coordinates',
+  luar_teluk_kalong: 'outside the Teluk Kalong area', tiada_dalam_geojson_lulus: 'valid status, missing from the approved plans',
+  status_salah_medan: 'the status field holds another field' };
+function mpkShowRekodPopup(p, lngLat) {
+  const row = (k, v) => v ? `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>` : '';
+  const valid = p.k !== 'tiada';
+  const issues = String(p.u || '').split(';').filter(Boolean).map(x => MPK_REKOD_ISSUE[x] || x);
+  const html = `
+    <div class="popup-header" style="background:${p.k === 'tiada' ? '#607D8B' : p.k === 'syarat' ? '#B26A00' : MPK_REKOD_COLOR[p.k]}">
+      <div class="popup-fc">Plan record #${mpkEscHtml(p.i)} · Teluk Kalong register</div>
+      <div class="popup-name">${mpkEscHtml(p.f || 'No file number')}</div>
+    </div>
+    <div class="popup-body">
+      ${row('Status', mpkEscHtml(valid ? p.c : 'No valid status (' + String(p.c).toLowerCase() + ')'))}
+      ${row('As written', mpkEscHtml(p.s))}
+      ${row('Lot', mpkEscHtml(p.l))}
+      ${row('Applicant', mpkEscHtml(p.p))}
+      ${row('Building', mpkEscHtml(p.j))}
+      ${p.t ? row('Approved on', mpkPlanDateLabel(p.t)) : ''}
+      ${row('CAD piece', mpkEscHtml(p.g) + (p.a ? ' · ' + mpkNum(p.a) + ' m²' : ''))}
+      ${row('Area', p.d ? 'Teluk Kalong' : 'Outside Teluk Kalong')}
+      ${issues.length ? row('Data issues', mpkEscHtml(issues.join(', '))) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '300px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);

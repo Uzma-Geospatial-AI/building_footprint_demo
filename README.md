@@ -307,6 +307,10 @@ with each council.
   `pelan_n`), `mockup`, `tiada_pelan` (`asal` keeps the first-pass class)
 - `pelan_lulus.geojson` — MPK's approved building plans for the map (one feature per record and shape kind, `bangunan` =
   covers a building), built by `tools/apply_pelan_lulus.py`
+- `rekod_semua.geojson` — every record of the Teluk Kalong plan register (23,214; 22,086 with usable coordinates) as a point at its
+  centre, grouped by status (Lulus / Diluluskan 570, Lulus Bersyarat 400, Sokong / Sedia Ada / Tolak 7, no valid status 22,237).
+  Analysis → *All plan records* (off at start; the 3.6 MB file loads the first time it is switched on, click a point for the record).
+  Built by `tools/build_rekod_semua.py` from `rekod_semua.csv` (cleaned export of `Pelan_Bangunan_Teluk_Kalong.xlsx`)
 - `landuse.geojson` — OSM land-use zones + district boundary for Kemaman, built by `tools/build_landuse.py`
 - `wayback.json` — distinct Esri Wayback images per area, built by `tools/build_wayback.py`
 - `sentinel.json` — least-cloudy Sentinel-2 scene per area and month, built by `tools/build_sentinel.py`
@@ -319,6 +323,7 @@ python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, s
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
 python tools/build_mpk_manual.py                                       # stdlib; 2026 hand-drawn footprints for Teluk Kalong + Binjai–Chukai
 python tools/apply_pelan_lulus.py                                      # stdlib; Teluk Kalong + shop building plans (run after the lines above)
+python tools/build_rekod_semua.py path/to/rekod_semua.csv                 # stdlib; all 23,214 Teluk Kalong register records as points
 python tools/build_landuse.py                                          # stdlib; OSM land use for Kemaman (Overpass)
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)
