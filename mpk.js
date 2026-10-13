@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013w',
+  VERSION: '20261013x',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -794,6 +794,7 @@ async function mpkEnter() {
     return;
   }
   hideLoading();
+  if (typeof mpkDaftarInit === 'function' && !MPK.daftarReady) { mpkDaftarInit(); MPK.daftarReady = true; }   // registrations: before the layers are drawn
   MPK.active = true;
   document.body.classList.add('mpk-mode');
 
@@ -905,6 +906,7 @@ function mpkBuildPanel() {
     <div class="mpk-subtabs" role="tablist">
       <button type="button" role="tab" data-sub="overview" class="active" onclick="mpkSubTab('overview')">Overview</button>
       <button type="button" role="tab" data-sub="analysis" onclick="mpkSubTab('analysis')">Analysis</button>
+      ${typeof mpkDaftarTabHTML === 'function' ? `<button type="button" role="tab" data-sub="daftar" onclick="mpkSubTab('daftar')">Registrations</button>` : ''}
     </div>
 
     <div id="mpk-sub-overview">
@@ -992,7 +994,9 @@ ${MPK.data.daftar ? mpkRegisterCardHTML() : ''}
         official RTD zoning); cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
         Every case needs site verification.</div>
     </div>
+${typeof mpkDaftarTabHTML === 'function' ? `<div id="mpk-sub-daftar" hidden>${mpkDaftarTabHTML()}</div>` : ''}
   `;
+  if (typeof mpkDaftarRenderList === 'function') mpkDaftarRenderList();
 }
 
 // Shop building plan register (Pelan Bangunan Kedai): every record, approved or not, on the map or not
@@ -1071,8 +1075,10 @@ function mpkSubTab(sub) {
     b.classList.toggle('active', b.dataset.sub === sub);
     b.setAttribute('aria-selected', String(b.dataset.sub === sub));
   });
-  document.getElementById('mpk-sub-overview').hidden = sub !== 'overview';
-  document.getElementById('mpk-sub-analysis').hidden = sub !== 'analysis';
+  for (const k of ['overview', 'analysis', 'daftar']) {
+    const el = document.getElementById('mpk-sub-' + k);
+    if (el) el.hidden = sub !== k;
+  }
 }
 
 function mpkSelectArea(area) {
@@ -1278,6 +1284,7 @@ function mpkShowPopup(p, lngLat) {
       ${row('Footprint source', mpkSourceLabel(p))}
       ${jenis ? row('Est. processing fee', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
       ${jenis ? row('Est. assessment tax', mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr') : ''}
+      ${typeof mpkDaftarPopupHTML === 'function' ? mpkDaftarPopupHTML(p) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   // focusAfterOpen off: otherwise the Enter that picked a search result also "presses" the

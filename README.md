@@ -46,6 +46,7 @@ building_footprint_demo/
 ├── mpk-gesture.js           # MPK Features: tool 11, gesture control (camera + voice)
 ├── mpk-features2.js         # MPK Features: tools 12–15
 ├── mpk-features3.js         # MPK Features: Site Check, Developer Portfolio, Notice Drafter, Approval Timeline, Revenue Map
+├── mpk-daftar.js            # MPK building plan registration form, Registrations tab, Tr. P.U. 9/2026 guideline
 ├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
 ├── tools/                   # data builders (Python) and logic tests (Node)
 ├── uzma-dashboard.css       # legacy standalone stylesheet
@@ -285,6 +286,22 @@ building, an approved record on it makes it legal and a TOLAK record makes it re
 decisions). In Teluk Kalong this moves two buildings to legal: 6PP57F57+9XQ (file 2990, status written *LUUS*, missing
 from the approved GeoJSON) and 6PP57F33+JG5 (TK/3020KLT34KMTT, approved 2 Mar 2025, before on the API suspect list).
 
+**Building plan registration** (`mpk-daftar.js`): click an *illegal* or *pending* building, then *Register building plan*.
+It opens MPK's *Borang Perkiraan Daftar Pelan Bangunan* (Jabatan Kawalan Bangunan, JKB:(KP)1-03, UUKBS 1984 First Schedule)
+laid out as the paper form, ready to fill in: Projek, file no., building type, units and title (pre-filled from the building:
+its footprint as the ground floor, lot, UPI and any plan on record), then every section of the form (new building para 1 and
+the row-of-buildings discount of para 9, temporary, addition, alteration, special plans incl. telecom structures and retaining
+walls, amendments 10-1 and 10-2) with each fee and the summary worked out as you type. KADAR = floor area ÷ 9 m², rounded up;
+JUMLAH = KADAR × rate, at least the floor's minimum (confirm this reading with MPK). *Submit for approval* gives it a number
+(DPB/2026/0001, …) and lists it under the panel's **Registrations** tab (pending / approved / rejected, with counts and
+filters); open one to edit it, approve or reject it with a note, reopen or delete it, or print the form. An approved
+registration makes its building legal on the map and in every count (its own class is kept in `daftar_asal` and comes back
+if the registration is reopened or deleted). Registrations live in this browser's localStorage (`mpk_daftar_v1`); Export
+CSV / JSON and Import JSON move them between computers. *Guideline · Tr. P.U. 9/2026* shows the Planning Control (General)
+(Terengganu) (Amendment) Rules 2026 (gazette of 10 Sep 2026): the main amendments and the Third Schedule fees (Parts A to D,
+incl. 5 to 20 times the Part B fee for development without permission) and the Sixth Schedule parking contribution.
+The MPK logo (`mpk/mpk_logo.png`) is taken from the form.
+
 **Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
 for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,
 recreation, agriculture, forest, water, under development) plus the district boundary. Click a
@@ -341,6 +358,7 @@ node tools/test_mpk_change.js && node tools/test_mpk_report.js         # change 
 node tools/test_mpk_features.js && node tools/test_mpk_gesture.js      # Features tools, gesture control
 node tools/test_mpk_features2.js                                       # Features tools 12–15
 node tools/test_mpk_features3.js                                       # Features tools 2, 3, 5, 8, 10
+node tools/test_mpk_daftar.js                                          # registration form fees
 ```
 
 The MPK source map image is client material and is not committed.
