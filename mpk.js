@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013l',
+  VERSION: '20261013m',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -371,7 +371,7 @@ const MPK = {
     roads: 'mpk/koridor_jalan.geojson',
   },
   // Optional imagery indexes: if one fails to load, only its imagery mode is hidden
-  OPTIONAL_FILES: { others: 'mpk/mpk_buildings_luar.geojson', landuse: 'mpk/landuse.geojson', pelan: 'mpk/pelan_lulus.geojson', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
+  OPTIONAL_FILES: { others: 'mpk/mpk_buildings_luar.geojson', landuse: 'mpk/landuse.geojson', pelan: 'mpk/pelan_lulus.geojson', daftar: 'mpk/pelan_kedai_daftar.json', wayback: 'mpk/wayback.json', sentinel: 'mpk/sentinel.json', landsat: 'mpk/landsat.json' },
   RATES_KEY: 'mpk_rates',
   DEFAULT_RATES: { fee: 2.0, cukai: 6.0 },
   LIST_SIZE: 50,
@@ -861,7 +861,7 @@ function mpkBuildPanel() {
 
       <div class="mpk-kpis">
         <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings<br><span id="mpk-k-m2">—</span></div></div>
-        <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Legal</div></div>
+        <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Approved buildings</div></div>
         <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Illegal buildings</div></div>
       </div>
 
@@ -929,6 +929,8 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
         <div class="mpk-total"><span>First-year revenue potential</span><strong id="mpk-r-total">—</strong></div>
       </div>
 
+${MPK.data.daftar ? mpkRegisterCardHTML() : ''}
+
       <div class="mpk-note">Buildings shown: Teluk Kalong inside the planning boundary, and along the Binjai – Bandar Chukai corridor.
         Teluk Kalong suspected buildings: the list flagged in the Uzma/MPK building API
         (kemaman_buildings_industri_filled.geojson, <code>is_mockup</code>). Footprints: digitised by hand from Esri imagery
@@ -939,6 +941,49 @@ ${typeof mpkChangeCardHTML === 'function' ? mpkChangeCardHTML() : ''}
         Every case needs site verification.</div>
     </div>
   `;
+}
+
+// Shop building plan register (Pelan Bangunan Kedai): every approval file, on the map or not
+function mpkRegisterCardHTML() {
+  const reg = MPK.data.daftar;
+  const rec = reg.reduce((a, r) => a + r.rekod, 0), peta = reg.reduce((a, r) => a + r.peta, 0);
+  return `<div class="mpk-card mpk-reg">
+        <div class="mpk-card-title">Shop building plan register</div>
+        <div class="mpk-reg-sum">${mpkNum(reg.length)} files · ${mpkNum(rec)} approval records ·
+          ${mpkNum(peta)} drawn on the map</div>
+        <input type="search" id="mpk-reg-q" class="mpk-reg-q" placeholder="File no., lot, applicant or building type"
+          oninput="mpkRenderRegister()" aria-label="Search the register">
+        <div class="mpk-reg-list" id="mpk-reg-list">${mpkRegisterRows('')}</div>
+      </div>`;
+}
+function mpkRegisterRows(q) {
+  q = q.trim().toUpperCase();
+  const reg = MPK.data.daftar.map((r, i) => ({ ...r, i }))
+    .filter(r => !q || [r.fail, r.lot, r.pemohon, r.jenis, r.arkitek].some(t => (t || '').toUpperCase().includes(q)));
+  if (!reg.length) return '<div class="mpk-reg-empty">No file matches.</div>';
+  const cls = { 'Lulus': 'ok', 'Lulus Bersyarat': 'cond', 'Tolak': 'no', 'Tidak dinyatakan': 'na' };
+  return reg.map(r => {
+    const where = r.peta
+      ? `${r.peta} of ${r.rekod} on the map${r.bangunan ? ` · covers ${r.bangunan === 1 ? 'a building' : r.bangunan + ' buildings'}` : ''}`
+      : 'not on the map · ' + (r.tiada_geo ? 'no drawing in the register' : 'coordinates outside Kemaman');
+    const off = [r.tiada_geo && r.peta ? `${r.tiada_geo} without a drawing` : '', r.luar && r.peta ? `${r.luar} outside Kemaman` : '']
+      .filter(Boolean).join(' · ');
+    return `<button type="button" class="mpk-reg-row${r.c ? '' : ' nomap'}" ${r.c ? `onclick="mpkRegisterGo(${r.i})"` : 'disabled'}>
+        <div class="mpk-reg-top"><b>${mpkEscHtml(r.fail || 'No file no.')}</b>
+          <span class="mpk-reg-st ${cls[r.kumpulan]}">${mpkEscHtml(r.kumpulan)}</span></div>
+        <div class="mpk-reg-l">${mpkEscHtml(r.pemohon || '—')}${r.jenis ? ' · ' + mpkEscHtml(r.jenis) : ''}</div>
+        <div class="mpk-reg-m">${r.lot ? 'Lot ' + mpkEscHtml(r.lot) + ' · ' : ''}${r.tarikh ? mpkPlanDateLabel(r.tarikh) + ' · ' : ''}${where}${off ? ' · ' + off : ''}</div>
+      </button>`;
+  }).join('');
+}
+function mpkRenderRegister() {
+  document.getElementById('mpk-reg-list').innerHTML = mpkRegisterRows(document.getElementById('mpk-reg-q').value);
+}
+function mpkRegisterGo(i) {
+  const r = MPK.data.daftar[i];
+  if (!r || !r.c || !map) return;
+  if (!MPK.layerOn.pelan) mpkToggleLayer('pelan');
+  map.flyTo({ center: r.c, zoom: 18.5 });
 }
 
 // Overview / Analysis inside the panel

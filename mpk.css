@@ -560,3 +560,18 @@ body:not(.mpk-mode) .mpk-aerial-head, body:not(.mpk-mode) .mpk-aerial-opt { disp
 .mpk-rev-upper { margin-top:12px; padding:10px 12px; border-radius:9px; background:#FFF8E1; font-size:12px; color:var(--charcoal); line-height:1.5; }
 @media (max-width:1000px) { .mpk-rev-cards { grid-template-columns:repeat(2, 1fr); } }
 .mpk-layers .sw.pelan-tiada { background:rgba(120,144,156,0.15); border:1.5px dashed #78909C; }
+.mpk-reg-sum { font-size:11px; color:rgba(30,44,68,0.6); margin:2px 0 8px; }
+.mpk-reg-q { width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid rgba(30,44,68,0.15); border-radius:8px; font:inherit; font-size:12px; margin-bottom:8px; background:#fff; color:#1E2C44; }
+.mpk-reg-list { max-height:320px; overflow-y:auto; border:1px solid rgba(30,44,68,0.08); border-radius:10px; background:#fff; }
+.mpk-reg-row { display:block; width:100%; text-align:left; padding:8px 10px; border:0; border-bottom:1px solid rgba(30,44,68,0.06); background:none; font:inherit; color:#1E2C44; cursor:pointer; }
+.mpk-reg-row:hover:not(:disabled) { background:rgba(232,119,46,0.06); }
+.mpk-reg-row.nomap { cursor:default; opacity:0.75; }
+.mpk-reg-top { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
+.mpk-reg-l { font-size:11px; margin-top:2px; }
+.mpk-reg-m { font-size:10px; color:rgba(30,44,68,0.55); margin-top:2px; }
+.mpk-reg-st { font-size:10px; font-weight:600; padding:1px 7px; border-radius:10px; white-space:nowrap; }
+.mpk-reg-st.ok { background:rgba(0,105,92,0.12); color:#00695C; }
+.mpk-reg-st.cond { background:rgba(230,145,0,0.15); color:#9A5B00; }
+.mpk-reg-st.no { background:rgba(213,0,0,0.12); color:#B00000; }
+.mpk-reg-st.na { background:rgba(120,144,156,0.18); color:#455A64; }
+.mpk-reg-empty { padding:12px; font-size:12px; color:rgba(30,44,68,0.55); }

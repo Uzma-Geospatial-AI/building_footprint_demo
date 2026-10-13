@@ -47,8 +47,9 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk')
 BUILDINGS = os.path.join(ROOT, 'mpk_buildings.geojson')
 OTHERS = os.path.join(ROOT, 'mpk_buildings_luar.geojson')
 OUT_PLANS = os.path.join(ROOT, 'pelan_lulus.geojson')
+OUT_REGISTER = os.path.join(ROOT, 'pelan_kedai_daftar.json')   # every shop approval file, mapped or not
 KEMAMAN = (103.13, 4.0, 103.65, 4.6)                 # district box: shop records outside it are mis-placed
-EXPECTED = {'records': 966, 'kedai_records': 4547}
+EXPECTED = {'records': 966, 'kedai_records': 4547, 'kedai_approvals': 414}   # 414 as in MPK's register summary
 EXPECTED_CLASSES = {('tk', 'lulus'): 345, ('tk', 'mockup'): 26, ('tk', 'tiada_pelan'): 1183,
                     ('bbc', 'lulus'): 40, ('bbc', 'tolak'): 1, ('bbc', 'koridor'): 374}
 KX = 111320 * math.cos(math.radians(4.27))
@@ -144,6 +145,22 @@ def decision(status):
     if re.search(r'LULUS|LUUS|ULUS|DILULUSKAN', t):
         return 'lulus'
     return None
+
+
+def group_of(status):
+    """Status group as in MPK's register summary: Lulus, Lulus Bersyarat, Tolak or Tidak dinyatakan."""
+    t = (status or '').upper()
+    if 'TOLAK' in t:
+        return 'Tolak'
+    if re.search(r'SYARAT|SYRT|SYARA', t):
+        return 'Lulus Bersyarat'
+    return 'Lulus' if decision(status) == 'lulus' else 'Tidak dinyatakan'
+
+
+def is_approval(pr):
+    """An approval-related record: it states a decision or carries an approval date."""
+    tl = str(pr.get('Tarikh_Lulus') or '').strip()
+    return bool(decision(pr.get('Status_Kelulusan')) or (tl and tl not in ('-9999', 'None')))
 
 
 def centre_of(g):
@@ -318,6 +335,47 @@ def main():
     with open(OUT_PLANS, 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': out}, f, ensure_ascii=False, separators=(',', ':'))
     print('wrote', BUILDINGS, OTHERS, 'and', OUT_PLANS, f'({len(out)} plan shapes)')
+
+    # the shop approval register: one row per file no. (records without a file no. stand alone)
+    files = {}
+    for n, p in enumerate(kedai_src, 1):
+        pr, g = p['properties'], p['geometry']
+        if not is_approval(pr):
+            continue
+        fail = (pr.get('No_Fail') or '').strip()
+        r = files.setdefault(fail or 'K%d' % n, {
+            'fail': fail, 'pemohon': (pr.get('Nama_Pemohon') or '').strip(), 'arkitek': (pr.get('Arkitek') or '').strip(),
+            'jenis': (pr.get('Jenis_Bangunan') or '').strip(), 'status': (pr.get('Status_Kelulusan') or '').strip(),
+            'kumpulan': group_of(pr.get('Status_Kelulusan')), 'tarikh': (pr.get('Tarikh_Lulus') or '')[:10],
+            'lot': [], 'rekod': 0, 'peta': 0, 'bangunan': 0, 'tiada_geo': 0, 'luar': 0, 'c': None, '_c': []})
+        r['rekod'] += 1
+        lot = (pr.get('No_Lot') or '').strip()
+        if lot and lot not in r['lot']:
+            r['lot'].append(lot)
+        c = centre_of(g) if g else None
+        if c is None:
+            r['tiada_geo'] += 1
+        elif not (KEMAMAN[0] <= c[0] <= KEMAMAN[2] and KEMAMAN[1] <= c[1] <= KEMAMAN[3]):
+            r['luar'] += 1
+        else:
+            r['peta'] += 1
+            r['_c'].append(c)
+            r['bangunan'] += ('K%d' % n) in hit
+    reg = []
+    for r in files.values():
+        if r['_c']:
+            r['c'] = [round(sum(c[0] for c in r['_c']) / len(r['_c']), 6), round(sum(c[1] for c in r['_c']) / len(r['_c']), 6)]
+        del r['_c']
+        r['lot'] = ', '.join(r['lot'])
+        reg.append(r)
+    reg.sort(key=lambda r: r['tarikh'] or '0', reverse=True)
+    n_rec = sum(r['rekod'] for r in reg)
+    print('shop register:', len(reg), 'files,', n_rec, 'approval records,', sum(r['peta'] for r in reg), 'on the map',
+          dict(Counter(r['kumpulan'] for r in reg)))
+    if os.environ.get('MPK_NO_EXPECT') != '1':
+        assert n_rec == EXPECTED['kedai_approvals'], ('shop approval records', n_rec)
+    with open(OUT_REGISTER, 'w', encoding='utf-8') as f:
+        json.dump(reg, f, ensure_ascii=False, separators=(',', ':'))
 
 
 if __name__ == '__main__':
