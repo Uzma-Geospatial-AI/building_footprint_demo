@@ -356,14 +356,14 @@ const MPK_LAYER_GROUPS = {
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
-               legend: [['Cadastral lot', '.kadaster', 'kadaster'], ['Planning boundary', '.line', 'boundary'],
-                        ['Study corridor', '.band', 'corridor']] },
+               legend: [['Cadastral lot', '.kadaster', 'kadaster'], ['Study area · Teluk Kalong', '.line', 'boundary'],
+                        ['Study area · Binjai – Chukai', '.band', 'corridor']] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013e',
+  VERSION: '20261013f',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -547,14 +547,18 @@ const MPK_SUB_LAYERS = {
   'mpk-kadaster-line': 'reference:kadaster', 'mpk-boundary-fill': 'reference:boundary', 'mpk-boundary-line': 'reference:boundary',
   'mpk-koridor-band': 'reference:corridor', 'mpk-koridor-line': 'reference:corridor', 'mpk-district-line': 'landuse:district',
 };
-const mpkSubOn = (group, sub) => !MPK.subOff || !MPK.subOff[group + ':' + sub];
+const mpkSubOn = (group, sub) => !(MPK.subOff || MPK_SUB_DEFAULT_OFF)[group + ':' + sub];
+const MPK_SUB_DEFAULT_OFF = { 'reference:boundary': true, 'reference:corridor': true };
+// a study area outline belongs to its area chip
+const MPK_SUB_AREA = { 'reference:boundary': 'tk', 'reference:corridor': 'bbc' };
+const mpkSubVisible = sub => mpkSubOn(...sub.split(':')) && (!MPK_SUB_AREA[sub] || MPK.area === 'all' || MPK.area === MPK_SUB_AREA[sub]);
 
 function mpkApplyLayerVisibility() {
   for (const [key, g] of Object.entries(MPK_LAYER_GROUPS)) {
     g.layers.forEach(id => {
       if (id === 'mpk-suspect-extrude') return;
       const sub = MPK_SUB_LAYERS[id];
-      mpkSetVis(id, MPK.layerOn[key] && (!sub || mpkSubOn(...sub.split(':'))) ? 'visible' : 'none');
+      mpkSetVis(id, MPK.layerOn[key] && (!sub || mpkSubVisible(sub)) ? 'visible' : 'none');
     });
   }
   // land use: only the classes switched on
@@ -574,7 +578,7 @@ function mpkApplyLayerVisibility() {
 
 // One legend entry on / off; switching one on also switches its group on
 function mpkToggleSub(group, sub) {
-  MPK.subOff = { ...(MPK.subOff || {}), [group + ':' + sub]: mpkSubOn(group, sub) };
+  MPK.subOff = { ...(MPK.subOff || MPK_SUB_DEFAULT_OFF), [group + ':' + sub]: mpkSubOn(group, sub) };
   const on = mpkSubOn(group, sub);
   const btn = document.getElementById(`mpk-sub-${group}-${sub}`);
   if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-checked', String(on)); }
@@ -904,6 +908,7 @@ function mpkSelectArea(area) {
     bbc: 'Binjai – Bandar Chukai · buildings along the road corridor',
   }[area];
   if (MPK.bounds) map.fitBounds(MPK.bounds[area], { padding: 50, duration: 1200 });
+  if (map) mpkApplyLayerVisibility();            // study-area outlines follow the chip
   mpkRender();
   if (MPK.wayback.on) {
     MPK.wayback.index = {};                    // lists differ per area: start each on its default

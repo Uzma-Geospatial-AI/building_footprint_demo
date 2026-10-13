@@ -144,9 +144,13 @@ async function mpkReportMapImage(area) {
   if (MPK.popup) MPK.popup.remove();
   map.jumpTo({ pitch: 0, bearing: 0 });
   map.fitBounds(MPK.bounds[area], { padding: 30, duration: 0 });
+  // the report's map always outlines the study area(s) it covers, whatever the panel shows
+  const outline = { tk: ['mpk-boundary-fill', 'mpk-boundary-line'], bbc: ['mpk-koridor-band', 'mpk-koridor-line'] };
+  (area === 'all' ? [...outline.tk, ...outline.bbc] : outline[area] || []).forEach(id => mpkSetVis(id, 'visible'));
   await new Promise(resolve => { const t = setTimeout(resolve, 9000); map.once('idle', () => { clearTimeout(t); resolve(); }); });
   const url = await snapshotMapCanvas();
   const c = map.getCanvas();
+  mpkApplyLayerVisibility();
   map.jumpTo(prev);
   return url ? { url, aspect: c.height / c.width } : null;
 }
