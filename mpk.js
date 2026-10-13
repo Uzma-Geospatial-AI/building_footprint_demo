@@ -335,7 +335,7 @@ const MPK_ZONES = {
 const MPK_LAYER_GROUPS = {
   landuse:   { label: 'Land use · Kemaman (OSM)', swatchClass: 'landuse',
                layers: ['mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line'],
-               legend: [...Object.values(MPK_ZONES).map(z => [z.label, z.color]), ['District boundary', '.district']] },
+               legend: [...Object.entries(MPK_ZONES).map(([k, z]) => [z.label, z.color, k]), ['District boundary', '.district', 'district']] },
   suspect:   { label: MPK_STATUS.suspected.label, swatch: [MPK_STATUS.suspected.color],
                layers: ['mpk-suspect-fill', 'mpk-suspect-line', 'mpk-suspect-extrude', 'mpk-highlight-line'],
                legend: [] },
@@ -348,18 +348,18 @@ const MPK_LAYER_GROUPS = {
                layers: ['mpk-other-fill', 'mpk-other-line'], legend: [] },
   pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
-               legend: [['Plan covering a building', '.pelan'], ['No building found on the plan', '.pelan-none']] },
+               legend: [['Plan covering a building', '.pelan', 'covers'], ['No building found on the plan', '.pelan-none', 'none']] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
-               legend: [['Cadastral lot', '.kadaster'], ['Planning boundary', '.line'],
-                        ['Study corridor', '.band']] },
+               legend: [['Cadastral lot', '.kadaster', 'kadaster'], ['Planning boundary', '.line', 'boundary'],
+                        ['Study corridor', '.band', 'corridor']] },
 };
 
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013a',
+  VERSION: '20261013b',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -538,11 +538,41 @@ function mpkAddLayers() {
   return true;
 }
 
+// Map layers that belong to one legend entry of their group
+const MPK_SUB_LAYERS = {
+  'mpk-kadaster-line': 'reference:kadaster', 'mpk-boundary-fill': 'reference:boundary', 'mpk-boundary-line': 'reference:boundary',
+  'mpk-koridor-band': 'reference:corridor', 'mpk-koridor-line': 'reference:corridor', 'mpk-district-line': 'landuse:district',
+};
+const mpkSubOn = (group, sub) => !MPK.subOff || !MPK.subOff[group + ':' + sub];
+
 function mpkApplyLayerVisibility() {
   for (const [key, g] of Object.entries(MPK_LAYER_GROUPS)) {
-    g.layers.forEach(id => { if (id !== 'mpk-suspect-extrude') mpkSetVis(id, MPK.layerOn[key] ? 'visible' : 'none'); });
+    g.layers.forEach(id => {
+      if (id === 'mpk-suspect-extrude') return;
+      const sub = MPK_SUB_LAYERS[id];
+      mpkSetVis(id, MPK.layerOn[key] && (!sub || mpkSubOn(...sub.split(':'))) ? 'visible' : 'none');
+    });
   }
+  // land use: only the classes switched on
+  const zonesOff = Object.keys(MPK_ZONES).filter(z => !mpkSubOn('landuse', z));
+  const zoneFilter = ['all', ['!=', ['get', 'zone'], 'district'], ['!', ['in', ['get', 'zone'], ['literal', zonesOff]]]];
+  ['mpk-landuse-fill', 'mpk-landuse-line'].forEach(id => { if (map.getLayer(id)) map.setFilter(id, zoneFilter); });
+  // approved plans: covering a building and / or with none found
+  const showCovers = mpkSubOn('pelan', 'covers'), showNone = mpkSubOn('pelan', 'none');
+  const which = showCovers && showNone ? true : showCovers ? ['get', 'bangunan'] : showNone ? ['!', ['get', 'bangunan']] : false;
+  if (map.getLayer('mpk-pelan-fill')) map.setFilter('mpk-pelan-fill', ['all', ['==', ['geometry-type'], 'Polygon'], which]);
+  if (map.getLayer('mpk-pelan-line')) map.setFilter('mpk-pelan-line', ['all', ['!=', ['geometry-type'], 'Point'], which]);
   mpkRefresh3D();
+}
+
+// One legend entry on / off; switching one on also switches its group on
+function mpkToggleSub(group, sub) {
+  MPK.subOff = { ...(MPK.subOff || {}), [group + ':' + sub]: mpkSubOn(group, sub) };
+  const on = mpkSubOn(group, sub);
+  const btn = document.getElementById(`mpk-sub-${group}-${sub}`);
+  if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-checked', String(on)); }
+  if (on && !MPK.layerOn[group]) { mpkToggleLayer(group); return; }
+  if (map) mpkApplyLayerVisibility();
 }
 
 function mpkToggleLayer(key) {
@@ -749,8 +779,12 @@ function mpkBuildPanel() {
   const analysisGroups = ['landuse', 'pelan', 'reference'].filter(k => k !== 'pelan' || MPK.data.pelan).map(k => {
     const g = MPK_LAYER_GROUPS[k];
     const sw = g.swatchClass ? `<i class="sw ${g.swatchClass}"></i>` : g.swatch.map(c => `<i class="sw" style="background:${c}"></i>`).join('');
-    const legend = g.legend.map(([label, v]) =>
-      `<span>${v[0] === '.' ? `<i class="sw ${v.slice(1)}"></i>` : `<i class="sw" style="background:${v}"></i>`}${label}</span>`).join('');
+    // every legend entry is its own switch (the group switch still turns them all on / off)
+    const legend = g.legend.map(([label, v, sub]) => {
+      const on = mpkSubOn(k, sub);
+      return `<button type="button" class="mpk-sub${on ? ' on' : ''}" id="mpk-sub-${k}-${sub}" role="switch" aria-checked="${on}"
+        onclick="mpkToggleSub('${k}', '${sub}')"><span class="mpk-sub-box" aria-hidden="true"></span>${v[0] === '.' ? `<i class="sw ${v.slice(1)}"></i>` : `<i class="sw" style="background:${v}"></i>`}${label}</button>`;
+    }).join('');
     return `<div class="mpk-layer-group${MPK.layerOn[k] ? '' : ' is-off'}" id="mpk-group-${k}">
       <div class="mpk-layer-row"><span class="mpk-sw-group">${sw}</span><div class="mpk-layer-main">${g.label}</div>${toggle(k, g.label)}</div>
       ${legend ? `<div class="mpk-layer-legend">${legend}</div>` : ''}
