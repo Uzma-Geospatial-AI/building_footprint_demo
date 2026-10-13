@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013q',
+  VERSION: '20261013r',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1357,6 +1357,10 @@ function mpkShowPage(page) {
   else if (map) map.resize();
 }
 
+// A status share to one decimal, and the count behind it: '19.6%' · '385 of 1,969 buildings'
+const mpkStatPct = (v, total) => (total ? (100 * v.n / total).toFixed(1) : '0.0') + '%';
+const mpkStatCount = (v, total) => `<b>${mpkNum(v.n)}</b> of ${mpkNum(total)} buildings`;
+
 function mpkRenderStats() {
   const el = document.getElementById('mpk-stats-page');
   const area = MPK.area, s = MPK.settings;
@@ -1415,9 +1419,12 @@ function mpkRenderStats() {
       <div class="mpk-stats-cards">
         <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings</div></div>
         <div class="mpk-stat"><div class="v">${mpkNum(b.m2)}</div><div class="l">Total footprint (m²)</div></div>
-        <div class="mpk-stat legal"><div class="v">${mpkPct(b.byStatus.legal.pct)}</div><div class="l">Approved buildings</div></div>
-        <div class="mpk-stat danger"><div class="v">${mpkPct(b.byStatus.suspected.pct)}</div><div class="l">Illegal buildings</div></div>
-        <div class="mpk-stat"><div class="v">${mpkPct(b.byStatus.unverified.pct)}</div><div class="l">Pending buildings</div></div>
+        <div class="mpk-stat legal"><div class="v">${mpkStatPct(b.byStatus.legal, b.total)}</div><div class="l">Approved buildings</div>
+          <div class="n">${mpkStatCount(b.byStatus.legal, b.total)}</div></div>
+        <div class="mpk-stat danger"><div class="v">${mpkStatPct(b.byStatus.suspected, b.total)}</div><div class="l">Illegal buildings</div>
+          <div class="n">${mpkStatCount(b.byStatus.suspected, b.total)}</div></div>
+        <div class="mpk-stat"><div class="v">${mpkStatPct(b.byStatus.unverified, b.total)}</div><div class="l">Pending buildings</div>
+          <div class="n">${mpkStatCount(b.byStatus.unverified, b.total)}</div></div>
       </div>
 
       <section class="mpk-stats-card mpk-rev">

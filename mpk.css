@@ -241,6 +241,8 @@ body:not(.mpk-mode) .mpk-nav, body:not(.mpk-mode) .mpk-stats-page { display:none
 .mpk-stat { background:#fff; border:1px solid rgba(30,44,68,0.08); border-radius:12px; padding:14px 14px 12px; }
 .mpk-stat .v { font-size:24px; font-weight:800; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; line-height:1.1; }
 .mpk-stat .l { font-size:11px; color:var(--charcoal-light); margin-top:4px; }
+.mpk-stat .n { font-size:11px; color:var(--charcoal-light); margin-top:6px; padding-top:6px; border-top:1px solid rgba(30,44,68,0.07); font-variant-numeric:tabular-nums; }
+.mpk-stat .n b { color:var(--charcoal-dark); font-weight:700; }
 .mpk-stat.legal .v { color:#00796B; }
 .mpk-stat.danger .v { color:#c62828; }
 .mpk-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
