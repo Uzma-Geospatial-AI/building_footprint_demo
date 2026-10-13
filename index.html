@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261013m" rel="stylesheet">
+<link href="mpk.css?v=20261013n" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -575,6 +575,19 @@
      elemen tak overflow/"lari". Element absolute guna --panel-w (calc),
      jadi cukup tukar variable di sini — semuanya ikut auto.
      ============================================================ */
+  /* The navigation sidebar and the analysis panel fold away; a tab on the map edge opens them again */
+  .sidebar, .right-panel { transition: width .22s ease, min-width .22s ease; }
+  body.sb-closed .sidebar { width:0; min-width:0; overflow:hidden; box-shadow:none; }
+  body.rp-closed .right-panel { width:0; min-width:0; border-left:0; }
+  .edge-tab { position:absolute; top:50%; transform:translateY(-50%); z-index:6; width:18px; height:56px; border:0;
+    background:var(--charcoal-dark); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 10px rgba(30,44,68,0.25); opacity:.85; padding:0; }
+  .edge-tab:hover { opacity:1; }
+  .edge-tab svg { width:12px; height:12px; transition:transform .22s ease; }
+  .edge-tab.left { left:0; border-radius:0 8px 8px 0; }
+  .edge-tab.right { right:0; border-radius:8px 0 0 8px; }
+  body.sb-closed .edge-tab.left svg, body.rp-closed .edge-tab.right svg { transform:rotate(180deg); }
+
   @media (max-width: 1200px) {
     :root { --sidebar-w: 188px; --panel-w: 296px; }
     .topbar-search { width: 190px; }
@@ -860,6 +873,10 @@
 
     <!-- MAP WRAPPER -->
     <div class="map-wrapper" id="mapWrapper">
+      <button type="button" class="edge-tab left" id="edge-tab-sb" onclick="toggleSide('sb')" aria-label="Hide navigation" title="Hide navigation">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2 4 6l4 4"/></svg></button>
+      <button type="button" class="edge-tab right" id="edge-tab-rp" onclick="toggleSide('rp')" aria-label="Hide analysis panel" title="Hide analysis panel">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2l4 4-4 4"/></svg></button>
       <div id="map"></div>
 
       <div class="mode-indicator" id="mode-indicator">
@@ -4279,12 +4296,34 @@ function showLoading(text, sub) {
   document.getElementById('loading-overlay').classList.add('show');
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+
+// Fold the navigation sidebar ('sb') or the analysis panel ('rp'); remembered per browser
+function toggleSide(which, closed) {
+  const cls = which + '-closed';
+  closed = closed === undefined ? !document.body.classList.contains(cls) : closed;
+  document.body.classList.toggle(cls, closed);
+  const btn = document.getElementById('edge-tab-' + which);
+  const label = (closed ? 'Show ' : 'Hide ') + (which === 'sb' ? 'navigation' : 'analysis panel');
+  if (btn) { btn.title = label; btn.setAttribute('aria-label', label); }
+  try { localStorage.setItem('ui_' + cls, closed ? '1' : '0'); } catch (e) {}
+  // keep the map filling the space while the panel slides, and once it has
+  const t0 = performance.now();
+  (function step() {
+    if (typeof map !== 'undefined' && map && map.resize) map.resize();
+    if (performance.now() - t0 < 300) requestAnimationFrame(step);
+  })();
+}
+['sb', 'rp'].forEach(w => {
+  let v = null;
+  try { v = localStorage.getItem('ui_' + w + '-closed'); } catch (e) {}
+  if (v === '1') toggleSide(w, true);
+});
 </script>
-<script src="mpk.js?v=20261013m"></script>
-<script src="mpk-change.js?v=20261013m"></script>
-<script src="mpk-report.js?v=20261013m"></script>
-<script src="mpk-features.js?v=20261013m"></script>
-<script src="mpk-gesture.js?v=20261013m"></script>
-<script src="mpk-features2.js?v=20261013m"></script>
+<script src="mpk.js?v=20261013n"></script>
+<script src="mpk-change.js?v=20261013n"></script>
+<script src="mpk-report.js?v=20261013n"></script>
+<script src="mpk-features.js?v=20261013n"></script>
+<script src="mpk-gesture.js?v=20261013n"></script>
+<script src="mpk-features2.js?v=20261013n"></script>
 </body>
 </html>
