@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013k',
+  VERSION: '20261013l',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -386,7 +386,7 @@ const MPK = {
   settings: { rizab: 10 },
   area: 'all',
   // land use starts off so the map shows the buildings first (switch it on in Analysis)
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, k !== 'landuse' && k !== 'pelan'])),
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'others'].includes(k)])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -563,7 +563,7 @@ const MPK_SUB_LAYERS = {
   'mpk-koridor-band': 'reference:corridor', 'mpk-koridor-line': 'reference:corridor', 'mpk-district-line': 'landuse:district',
 };
 const mpkSubOn = (group, sub) => !(MPK.subOff || MPK_SUB_DEFAULT_OFF)[group + ':' + sub];
-const MPK_SUB_DEFAULT_OFF = { 'reference:boundary': true, 'reference:corridor': true };
+const MPK_SUB_DEFAULT_OFF = { 'reference:kadaster': true, 'reference:boundary': true, 'reference:corridor': true };
 // a study area outline belongs to its area chip
 const MPK_SUB_AREA = { 'reference:boundary': 'tk', 'reference:corridor': 'bbc' };
 const mpkSubVisible = sub => mpkSubOn(...sub.split(':')) && (!MPK_SUB_AREA[sub] || MPK.area === 'all' || MPK.area === MPK_SUB_AREA[sub]);
