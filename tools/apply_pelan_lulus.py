@@ -329,6 +329,7 @@ def main():
                  'fail': pr.get('No_Fail') or '', 'lot': pr.get('No_Lot') or '',
                  'tarikh': pr.get('Tarikh_Lulus') or '', 'status': pr.get('Status_Kelulusan') or '',
                  'jenis': pr.get('Jenis_Bangunan') or '', 'luas': round(pr.get('Luas_Bangunan_mp') or 0),
+                 'pemohon': (pr.get('Nama_Pemohon') or '').strip(),
                  'bangunan': p['key'] in hit}
         for kind, geom in plan_shapes(g):
             if geom:

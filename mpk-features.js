@@ -1,8 +1,9 @@
 // ============================================================
 // MPK KEMAMAN — FEATURES
-// Ten showcase tools on the MPK data, launched from the Features page (sidebar, under
-// Statistics). Each runs on the map with a floating HUD and cleans up after itself:
-//   tour · radar · hotspots · priority · route · ask · passport · coverage · timemachine · simulator
+// Showcase tools on the MPK data, launched from the Features page (sidebar, under
+// Statistics). Each runs on the map with a floating HUD and cleans up after itself. This file runs
+//   tour · priority · ask · passport · timemachine
+// and lists sitecheck · portfolio · notice · timeline · money, which mpk-features3.js runs.
 // Pure logic (geometry, clustering, scoring, routing, the question parser) is exported for
 // tools/test_mpk_features.js. Loaded after mpk.js.
 // ============================================================
@@ -168,38 +169,6 @@ function mpkGmapsDir(pts) {
   return 'https://www.google.com/maps/dir/' + pts.map(p => p[1].toFixed(6) + ',' + p[0].toFixed(6)).join('/');
 }
 
-// ---------- Pure: lot coverage ----------
-// Building footprint ÷ lot area, per cadastral lot that has buildings (joined on UPI)
-function mpkLotCoverage(lots, buildings) {
-  const built = new Map();
-  buildings.forEach(f => {
-    const p = f.properties;
-    if (!p.upi) return;
-    const b = built.get(p.upi) || { m2: 0, n: 0 };
-    b.m2 += p.area_m2; b.n += 1;
-    built.set(p.upi, b);
-  });
-  const seen = new Set();
-  return lots.filter(l => built.has(l.properties.upi) && !seen.has(l.properties.upi) && seen.add(l.properties.upi))
-    .map(l => {
-      const lotM2 = mpkPolyArea(l.geometry), b = built.get(l.properties.upi);
-      return { lot: l.properties.lot, upi: l.properties.upi, lotM2, builtM2: b.m2, n: b.n,
-               pct: lotM2 > 0 ? 100 * b.m2 / lotM2 : 0, geometry: l.geometry };
-    }).sort((a, b) => b.pct - a.pct);
-}
-
-// ---------- Pure: policy simulator ----------
-// Suspected buildings and footprint for each road-reserve width rMin..rMax (m)
-function mpkPolicyCurve(features, rMin = 3, rMax = 20) {
-  const out = [];
-  for (let r = rMin; r <= rMax; r++) {
-    let n = 0, m2 = 0;
-    features.forEach(f => { if (mpkJenis(f.properties, { rizab: r })) { n++; m2 += f.properties.area_m2; } });
-    out.push({ r, n, m2 });
-  }
-  return out;
-}
-
 // ---------- Pure: time machine frames ----------
 // One frame per distinct capture date for the area, oldest first. maxzoom: the deepest tile level
 // the release serves here (Wayback answers 404 below it, so MapLibre must stretch that level):
@@ -213,6 +182,8 @@ function mpkTimeFrames(history, area) {
 }
 
 // ---------- Pure: "Ask the map" (English and Malay) ----------
+// Questions that open a tool rather than count buildings
+const MPK_ASK_TOOLS = ['reset', 'tour', 'sitecheck', 'notice', 'portfolio', 'timeline', 'money', 'hex', 'planner', 'timemachine', 'priority', 'passport'];
 // Words the question parser understands; anything else left in a question is taken as a place name
 const MPK_ASK_VOCAB = new Set(('a an the and or of for to from with without me my i we you your us our can could would will '
   + 'please pls tell know show find give list display see get let what whats which who where how many much is are was were be '
@@ -305,13 +276,15 @@ function mpkAsk(text) {
   const has = re => re.test(t);
   if (has(/\b(reset|clear|semula|padam)\b/)) q.intent = 'reset';
   else if (has(/\b(tour|drone|fly|terbang|lawat maya)\b/)) q.intent = 'tour';
-  else if (has(/\b(radar|scan|imbas)\b/)) q.intent = 'radar';
-  else if (has(/hotspot|cluster|kelompok|tumpuan/)) q.intent = 'hotspots';
-  else if (has(/route|inspection|inspect|laluan|lawatan tapak|pemeriksaan/)) q.intent = 'route';
+  else if (has(/can i build|boleh bina|site check|semak tapak|check this site/)) q.intent = 'sitecheck';
+  else if (has(/notice|notis|surat amaran/)) q.intent = 'notice';
+  else if (has(/developer|pemaju|applicant|pemohon|portfolio/)) q.intent = 'portfolio';
+  else if (has(/timeline|garis masa|approvals? (?:by|per|each) year|kelulusan (?:setiap|ikut) tahun/)) q.intent = 'timeline';
+  else if (has(/revenue|hasil|kutipan|money|duit|wang/)) q.intent = 'money';
+  else if (has(/hotspot|cluster|kelompok|tumpuan|density|padat/)) q.intent = 'hex';
+  else if (has(/route|inspection|inspect|laluan|lawatan tapak|pemeriksaan|schedule|jadual/)) q.intent = 'planner';
   else if (has(/time ?machine|history|historical|sejarah|wayback|dulu/)) q.intent = 'timemachine';
   else if (has(/priority|urgent|keutamaan|segera/)) q.intent = 'priority';
-  else if (has(/coverage|over-?built|density|padat|liputan/)) q.intent = 'coverage';
-  else if (has(/simulat|what if|policy|dasar|reserve|rizab/)) q.intent = 'simulator';
   else if (has(/passport|pasport|profile|profil/)) q.intent = 'passport';
   else if (q.lot) q.intent = 'lot';
   else if (has(/largest|biggest|terbesar|paling besar|besar sekali/)) q.intent = 'largest';
@@ -319,7 +292,7 @@ function mpkAsk(text) {
   else if (q.status || q.area || q.min != null || q.max != null || has(/\b(show|tunjuk|papar|cari|find)\b/)) q.intent = 'show';
   else q.intent = 'help';
   // a place the parser does not know: answered only if it can be found and holds our data
-  if (!q.area && !['reset', 'tour', 'radar', 'hotspots', 'route', 'timemachine', 'priority', 'coverage', 'simulator', 'passport'].includes(q.intent)) {
+  if (!q.area && !MPK_ASK_TOOLS.includes(q.intent)) {
     q.place = mpkAskPlace(text);
     // just a place name ("Kerteh"): count there; a long sentence we do not follow: say so, do not guess
     if (q.place && q.intent === 'help') {
@@ -377,34 +350,34 @@ function mpkAskAnswer(q, features, s, where) {
 
 if (typeof module !== 'undefined') {
   module.exports = { mpkMetres, mpkRingArea, mpkPolyArea, mpkBearing, mpkOffset, mpkConvexHull, mpkDbscan, mpkHotspots,
-    mpkPriority, mpkPriorityList, mpkRouteOrder, mpkPathLength, mpkGmapsDir, mpkLotCoverage, mpkPolicyCurve, mpkTimeFrames,
+    mpkPriority, mpkPriorityList, mpkRouteOrder, mpkPathLength, mpkGmapsDir, mpkTimeFrames,
     mpkAsk, mpkAskMatch, mpkAskAnswer, mpkAskPlace, mpkInPlace, mpkAskLocalPlace, mpkAskNamedIn, MPK_ASK_COVERAGE, MPK_PRIORITY_WEIGHTS };
 }
 
 // ============================================================
-// Browser: Features page, HUD and the ten tools
+// Browser: Features page, HUD and the tools
 // ============================================================
 const MPK_FEATURES = [
   { key: 'tour', icon: '🚁', title: 'Drone Tour', tag: 'Cinematic 3D flight',
     text: 'The map rises into 3D and flies itself from one high-priority case to the next, orbiting each building with its facts on screen. Loops as a booth showcase.' },
-  { key: 'radar', icon: '📡', title: 'Radar Sweep', tag: 'Live detection scan',
-    text: 'A radar beam sweeps the study area and every suspected building lights up the moment the beam passes, with a live counter.' },
-  { key: 'hotspots', icon: '🔥', title: 'Hotspot Finder', tag: 'Spatial clustering (DBSCAN)',
-    text: 'Finds clusters of suspected buildings automatically and draws a zone around each one, ranked by size: where enforcement teams get the most out of one visit.' },
+  { key: 'sitecheck', icon: '📍', title: 'Site Check', tag: '"Can I build here?" in one click',
+    text: 'Click any spot in Kemaman: the cadastral lot and its size, land use, distance to the road reserve, the buildings and approved plans on that lot, and what approvals a new building needs.' },
+  { key: 'portfolio', icon: '🏢', title: 'Developer Portfolio', tag: 'Every plan an applicant holds',
+    text: 'Pick a developer or applicant from MPK\'s plan registers: all their plans light up on the map, with files, approval years, rejections and which plans have a building on them.' },
   { key: 'priority', icon: '🎯', title: 'Priority Score', tag: 'Explainable 0–100 ranking',
     text: 'Scores every suspected building on size, evidence, footprint confidence and clustering. The map recolours by urgency and each score shows its breakdown.' },
-  { key: 'route', icon: '🧭', title: 'Smart Inspection Route', tag: 'Optimised field visit',
-    text: 'Plans the shortest driving route through the top cases on real roads, with distance and drive time, and sends it to Google Maps in one tap.' },
+  { key: 'notice', icon: '📄', title: 'Notice Drafter', tag: 'Enforcement notice in one click',
+    text: 'Choose an illegal building and get a ready-to-review draft notice under Act 133, in English or Malay, with the location, lot, footprint, finding and a map snapshot. Download one, or the whole area in one PDF.' },
   { key: 'ask', icon: '🎙️', title: 'Ask the Map', tag: 'Voice or text, English & Malay',
     text: 'Ask “how many illegal buildings in Binjai?” or “tunjuk bangunan haram lebih 1000 m²”. The map answers, highlights the buildings and can speak back.' },
   { key: 'passport', icon: '🪪', title: 'Building Passport', tag: 'One-click case file + QR',
     text: 'Click any building for its case file: satellite close-up, status, lot, UPI, score and a QR code that opens the site on a phone.' },
-  { key: 'coverage', icon: '🧱', title: 'Lot Coverage X-ray', tag: 'Over-built lots',
-    text: 'Measures how much of each cadastral lot is covered by buildings and shades every lot, flagging the most densely built ones.' },
+  { key: 'timeline', icon: '📅', title: 'Approval Timeline', tag: 'Twenty years of approvals, played back',
+    text: 'Watch MPK\'s building plan approvals appear on the map year by year, with a bar chart of approvals per year. Pause on any year or drag through time.' },
   { key: 'timemachine', icon: '⏳', title: 'Time Machine', tag: 'Up to 20 years of imagery',
     text: 'Plays every historical satellite capture of the site as a smooth time-lapse, so you can watch the land being cleared and built on.' },
-  { key: 'simulator', icon: '🎚️', title: 'Policy Simulator', tag: 'What-if, live',
-    text: 'Drag the road-reserve width and watch buildings switch to suspected on the map in real time, with counts, footprint and fees updating as you drag.' },
+  { key: 'money', icon: '💰', title: 'Revenue Map', tag: 'Recoverable revenue per building, in 3D',
+    text: 'Every illegal and pending building rises as a gold column sized by what the council could recover: processing fee plus years of assessment tax. Lists the top buildings and the total.' },
 ];
 
 const MPK_FEAT = { key: null, token: 0, layers: [], sources: [], cleanup: [], raf: null, capture: false, booth: false };
@@ -517,6 +490,7 @@ function mpkFeatLaunch(key, opts = {}) {
   if (MPK.page !== 'dashboard') mpkShowPage('dashboard');
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   MPK_FEAT.key = key;
+  document.body.classList.add('mpk-feat-on');            // the floating status card steps aside
   MPK_FEAT.booth = !!opts.booth;
   const token = ++MPK_FEAT.token;
   const f = MPK_FEATURES.find(x => x.key === key);
@@ -535,6 +509,7 @@ function mpkFeatStop() {
   if (MPK_FEAT.key && map) try { map.getSource('mpk-highlight').setData(mpkFC([])); } catch (e) {}
   MPK_FEAT.capture = false;
   MPK_FEAT.key = null;
+  document.body.classList.remove('mpk-feat-on');
   MPK_FEAT.booth = false;
   if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {}
   const hud = document.getElementById('mpk-hud');
@@ -571,7 +546,7 @@ const mpkFmtM2 = n => mpkNum(n) + ' m²';
 const mpkFeatReason = (p, s) => mpkJenis(p, s) === 'tolak' ? 'Building plan rejected by MPK (TOLAK)' : mpkJenis(p, s) === 'mockup' ? 'On MPK suspect list'
   : `${p.jarak_jalan_m} m from road centreline (reserve ${s.rizab} m)`;
 
-// ---------- The ten tools ----------
+// ---------- The tools run here ----------
 const MPK_FEAT_RUN = {
   // 1. Drone tour: 3D rise, then fly and orbit through the top cases (loops in booth mode)
   async tour(token, opts) {
@@ -608,94 +583,6 @@ const MPK_FEAT_RUN = {
       <button class="mpk-wb-btn" onclick="mpkFeatLaunch('tour', { booth: true })">Loop for booth</button></div>`);
   },
 
-  // 2. Radar sweep around the area centre; buildings light up as the beam passes
-  radar(token) {
-    const { feats, s, ranked } = mpkFeatData();
-    const b = MPK.bounds[MPK.area], c = [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2];
-    const pts = ranked.map(({ p }) => mpkPt([p.lng, p.lat], { ang: mpkBearing(c, [p.lng, p.lat]), m2: p.area_m2 }));
-    const radius = Math.max(300, ...feats.map(f => mpkMetres(c, [f.properties.lng, f.properties.lat]))) * 1.05;
-    const ring = (r, from = 0, to = 360) => {
-      const out = [];
-      for (let a = from; a <= to; a += 3) out.push(mpkOffset(c, a, r));
-      return out;
-    };
-    mpkFeatFit([mpkOffset(c, 225, radius * 1.42), mpkOffset(c, 45, radius * 1.42)], { padding: 30, duration: 1200 });
-    const world = [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]];
-    mpkFeatSrc('mpk-feat-dim', { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: world } });
-    mpkFeatLayer({ id: 'mpk-feat-dim', type: 'fill', source: 'mpk-feat-dim', paint: { 'fill-color': '#04121c', 'fill-opacity': 0.55 } });
-    mpkFeatSrc('mpk-feat-rings', mpkFC([0.25, 0.5, 0.75, 1].map(k => ({ type: 'Feature', properties: {},
-      geometry: { type: 'LineString', coordinates: ring(radius * k) } })).concat([0, 90, 180, 270].map(a => ({ type: 'Feature',
-      properties: {}, geometry: { type: 'LineString', coordinates: [c, mpkOffset(c, a, radius)] } })))));
-    mpkFeatLayer({ id: 'mpk-feat-rings', type: 'line', source: 'mpk-feat-rings',
-      paint: { 'line-color': '#4DD0E1', 'line-opacity': 0.45, 'line-width': 1 } });
-    mpkFeatSrc('mpk-feat-beam', mpkFC([]));
-    mpkFeatLayer({ id: 'mpk-feat-beam', type: 'fill', source: 'mpk-feat-beam',
-      paint: { 'fill-color': '#4DD0E1', 'fill-opacity': ['get', 'o'] } });
-    mpkFeatSrc('mpk-feat-blips', mpkFC(pts));
-    mpkFeatLayer({ id: 'mpk-feat-blips', type: 'circle', source: 'mpk-feat-blips', filter: ['<=', ['get', 'ang'], -1],
-      paint: { 'circle-color': '#FF5252', 'circle-stroke-color': '#fff', 'circle-stroke-width': 1,
-               'circle-radius': 4, 'circle-blur': 0.15 } });
-    const total = pts.length, totalM2 = ranked.reduce((a, x) => a + x.p.area_m2, 0);
-    mpkHud('Radar Sweep', '', { icon: '📡' });
-    const render = (n, m2, done) => mpkHudBody(`<div class="mpk-hud-big mono">${mpkNum(n)}<small> / ${mpkNum(total)}</small></div>
-      <div class="mpk-hud-sub">suspected buildings detected · ${mpkFmtM2(m2)}</div>
-      ${done ? '<div class="mpk-hud-actions"><button class="mpk-btn" onclick="mpkFeatLaunch(\'radar\')">Scan again</button></div>' : ''}`);
-    render(0, 0);
-    const sorted = pts.map(p => p.properties).sort((a, b2) => a.ang - b2.ang);
-    const SWEEP = 9000;
-    let t0 = null;
-    const frame = now => {
-      if (!mpkFeatAlive(token) || !map.getLayer('mpk-feat-beam')) return;
-      if (t0 === null) t0 = now + 1300;                        // after the zoom-out settles
-      const a = Math.max(0, Math.min(360, (now - t0) / SWEEP * 360));
-      // trailing beam: 8 slices fading out behind the leading edge
-      const slices = [];
-      for (let k = 0; k < 8; k++) {
-        const to = a - k * 4, from = to - 4;
-        if (to <= 0) break;
-        slices.push({ type: 'Feature', properties: { o: 0.42 * (1 - k / 8) },
-          geometry: { type: 'Polygon', coordinates: [[c, ...ring(radius, Math.max(0, from), to), mpkOffset(c, to, radius), c]] } });
-      }
-      map.getSource('mpk-feat-beam').setData(mpkFC(slices));
-      map.setFilter('mpk-feat-blips', ['<=', ['get', 'ang'], a]);
-      map.setPaintProperty('mpk-feat-blips', 'circle-radius', ['interpolate', ['linear'], ['-', a, ['get', 'ang']], 0, 13, 25, 4.5]);
-      let n = 0, m2 = 0;
-      for (const p of sorted) { if (p.ang > a) break; n++; m2 += p.m2; }
-      if (n !== frame.n) { frame.n = n; render(n, m2); }
-      if (a < 360) MPK_FEAT.raf = requestAnimationFrame(frame);
-      else { map.getSource('mpk-feat-beam').setData(mpkFC([])); render(total, totalM2, true); }
-    };
-    frame.n = -1;
-    MPK_FEAT.raf = requestAnimationFrame(frame);
-  },
-
-  // 3. Hotspots: DBSCAN zones, ranked
-  hotspots() {
-    const { hotspots, s } = mpkFeatData();
-    mpkFeatSrc('mpk-feat-hot', mpkFC(hotspots.map(h => ({ type: 'Feature', properties: { id: h.id, n: h.n },
-      geometry: { type: 'Polygon', coordinates: [[...h.hull, h.hull[0]]] } }))));
-    mpkFeatSrc('mpk-feat-hot-lbl', mpkFC(hotspots.map(h => mpkPt(h.center, { label: `${h.id} · ${h.n}` }))));
-    mpkFeatLayer({ id: 'mpk-feat-hot-fill', type: 'fill', source: 'mpk-feat-hot',
-      paint: { 'fill-color': '#FF6F00', 'fill-opacity': ['interpolate', ['linear'], ['get', 'n'], 4, 0.12, 40, 0.3] } });
-    mpkFeatLayer({ id: 'mpk-feat-hot-line', type: 'line', source: 'mpk-feat-hot',
-      paint: { 'line-color': '#E65100', 'line-width': 2.2, 'line-dasharray': [2, 1.5] } });
-    mpkFeatLayer({ id: 'mpk-feat-hot-lbl', type: 'symbol', source: 'mpk-feat-hot-lbl',
-      layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Regular'], 'text-size': 13, 'text-allow-overlap': true },
-      paint: { 'text-color': '#fff', 'text-halo-color': '#BF360C', 'text-halo-width': 2.2 } });
-    const sus = mpkFeatData().ranked.length, inHot = hotspots.reduce((a, h) => a + h.n, 0);
-    mpkHud('Hotspot Finder', `
-      <div class="mpk-hud-big">${hotspots.length} hotspots</div>
-      <div class="mpk-hud-sub">${mpkNum(inHot)} of ${mpkNum(sus)} suspected buildings (${sus ? Math.round(inHot / sus * 100) : 0}%) sit in clusters:
-        at least 4 suspected buildings within 150 m of each other.</div>
-      <div class="mpk-hud-list">${hotspots.slice(0, 8).map((h, i) => `
-        <button class="mpk-hud-item" onclick="mpkFeatHotFly(${i})"><b>${h.id}</b><span>${MPK_AREAS[h.kawasan].short}</span>
-          <span class="num">${h.n} bldg · ${mpkFmtM2(h.m2)}</span></button>`).join('') || '<div class="mpk-hud-sub">No clusters found.</div>'}</div>`,
-      { icon: '🔥', side: true });
-    MPK_FEAT.hot = hotspots;
-    if (hotspots.length) mpkFeatFit(mpkBoundsOf(hotspots.map(h => ({ geometry: { coordinates: h.hull } }))), { padding: { top: 80, bottom: 80, left: 80, right: 400 }, duration: 1200 });
-    void s;
-  },
-
   // 4. Priority score, explainable
   priority() {
     const { ranked, s } = mpkFeatData();
@@ -723,68 +610,6 @@ const MPK_FEAT_RUN = {
       { icon: '🎯', side: true });
     mpkFeatFit(MPK.bounds[MPK.area], { padding: { top: 50, bottom: 50, left: 50, right: 400 } });
     void s;
-  },
-
-  // 5. Inspection route on real roads (OSRM), with a straight-line fallback
-  async route(token) {
-    const { ranked } = mpkFeatData();
-    const stops = ranked.slice(0, 8).map(x => x.p);
-    mpkHud('Smart Inspection Route', '<div class="mpk-hud-sub">Planning the route on the road network…</div>', { icon: '🧭', side: true });
-    if (stops.length < 2) { mpkHudBody('Need at least two suspected buildings in this area.'); return; }
-    const pts = stops.map(p => [p.lng, p.lat]);
-    let order, line, km, mins, source;
-    try {
-      const url = 'https://router.project-osrm.org/trip/v1/driving/' + pts.map(p => p[0].toFixed(6) + ',' + p[1].toFixed(6)).join(';')
-        + '?roundtrip=false&source=first&destination=any&geometries=geojson&overview=full';
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 9000);
-      const res = await fetch(url, { signal: ctl.signal });
-      clearTimeout(t);
-      const j = await res.json();
-      if (j.code !== 'Ok') throw new Error(j.code);
-      order = j.waypoints.map((w, i) => [w.waypoint_index, i]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
-      line = j.trips[0].geometry.coordinates;
-      km = j.trips[0].distance / 1000; mins = j.trips[0].duration / 60;
-      source = 'Driving route on OpenStreetMap roads (OSRM)';
-    } catch (e) {
-      order = mpkRouteOrder(pts);
-      line = order.map(i => pts[i]);
-      km = mpkPathLength(line) * 1.3 / 1000; mins = km / 30 * 60;
-      source = 'Road router offline: straight-line order, distance × 1.3, 30 km/h';
-    }
-    if (!mpkFeatAlive(token)) return;
-    const ordered = order.map(i => stops[i]);
-    mpkFeatSrc('mpk-feat-route', { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } });
-    mpkFeatLayer({ id: 'mpk-feat-route-casing', type: 'line', source: 'mpk-feat-route',
-      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0D47A1', 'line-width': 9, 'line-opacity': 0.35 } });
-    mpkFeatLayer({ id: 'mpk-feat-route', type: 'line', source: 'mpk-feat-route',
-      layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#2979FF', 'line-width': 4.5, 'line-dasharray': [0, 2, 2] } });
-    mpkFeatSrc('mpk-feat-stops', mpkFC(ordered.map((p, i) => mpkPt([p.lng, p.lat], { n: String(i + 1) }))));
-    mpkFeatLayer({ id: 'mpk-feat-stops', type: 'circle', source: 'mpk-feat-stops',
-      paint: { 'circle-color': '#2979FF', 'circle-radius': 11, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } });
-    mpkFeatLayer({ id: 'mpk-feat-stops-n', type: 'symbol', source: 'mpk-feat-stops',
-      layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-allow-overlap': true },
-      paint: { 'text-color': '#fff' } });
-    // marching-ants animation along the route
-    const dashes = [[0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1], [2.5, 4, 0.5], [3, 4, 0], [0, 0.5, 3, 3.5],
-                    [0, 1, 3, 3], [0, 1.5, 3, 2.5], [0, 2, 3, 2], [0, 2.5, 3, 1.5], [0, 3, 3, 1], [0, 3.5, 3, 0.5]];
-    let k = 0;
-    const tick = () => {
-      if (!mpkFeatAlive(token) || !map.getLayer('mpk-feat-route')) return;
-      map.setPaintProperty('mpk-feat-route', 'line-dasharray', dashes[k = (k + 1) % dashes.length]);
-      timer = setTimeout(tick, 70);
-    };
-    let timer = null;
-    tick();
-    MPK_FEAT.cleanup.push(() => clearTimeout(timer));
-    mpkFeatFit(mpkBoundsOf([{ geometry: { coordinates: line } }]), { padding: { top: 60, bottom: 60, left: 60, right: 400 }, duration: 1200 });
-    mpkHudBody(`
-      <div class="mpk-hud-stats"><div><b>${ordered.length}</b><small>stops</small></div><div><b>${km.toFixed(1)}</b><small>km</small></div>
-        <div><b>${Math.round(mins)}</b><small>min drive</small></div></div>
-      <div class="mpk-hud-list">${ordered.map((p, i) => `
-        <button class="mpk-hud-item" onclick="mpkZoomTo(${p.id})"><span class="mpk-hud-stop">${i + 1}</span>
-          <span><b>${p.plus_code}</b><small>${MPK_AREAS[p.kawasan].short} · ${mpkFmtM2(p.area_m2)}</small></span></button>`).join('')}</div>
-      <div class="mpk-hud-actions"><a class="mpk-btn" href="${mpkGmapsDir(ordered.map(p => [p.lng, p.lat]))}" target="_blank" rel="noopener">Open in Google Maps</a></div>
-      <div class="mpk-hud-note">${source}. Stops: the ${ordered.length} highest priority scores.</div>`);
   },
 
   // 6. Ask the map (text or voice)
@@ -827,33 +652,6 @@ const MPK_FEAT_RUN = {
     MPK_FEAT.cleanup.push(() => map.off('click', onClick));
     const { ranked } = mpkFeatData();
     if (ranked.length) mpkPassportShow(ranked[0].p.id);
-  },
-
-  // 8. Lot coverage: footprint ÷ lot area per cadastral lot
-  coverage() {
-    const lots = mpkLotCoverage(MPK.data.kadaster.features, mpkAreaFeatures());
-    mpkFeatSrc('mpk-feat-cov', mpkFC(lots.map(l => ({ type: 'Feature', properties: { lot: l.lot, pct: Math.min(l.pct, 100) }, geometry: l.geometry }))));
-    const ramp = ['interpolate', ['linear'], ['get', 'pct'], 0, '#E3F2FD', 25, '#90CAF9', 50, '#42A5F5', 75, '#1565C0', 100, '#0D1B4C'];
-    mpkFeatLayer({ id: 'mpk-feat-cov-fill', type: 'fill', source: 'mpk-feat-cov', paint: { 'fill-color': ramp, 'fill-opacity': 0.75 } },
-      map.getLayer('mpk-unverified-fill') ? 'mpk-unverified-fill' : undefined);
-    mpkFeatLayer({ id: 'mpk-feat-cov-line', type: 'line', source: 'mpk-feat-cov', paint: { 'line-color': '#0D47A1', 'line-width': 0.8 } },
-      map.getLayer('mpk-unverified-fill') ? 'mpk-unverified-fill' : undefined);
-    const med = lots.length ? lots.map(l => l.pct).sort((a, b) => a - b)[Math.floor(lots.length / 2)] : 0;
-    const dense = lots.filter(l => l.pct >= 60).length;
-    const real = lots.filter(l => l.pct <= 100);
-    MPK_FEAT.cov = real;
-    mpkHud('Lot Coverage X-ray', `
-      <div class="mpk-hud-stats"><div><b>${mpkNum(lots.length)}</b><small>lots with buildings</small></div>
-        <div><b>${Math.round(med)}%</b><small>median coverage</small></div><div><b>${mpkNum(dense)}</b><small>lots ≥ 60% built</small></div></div>
-      <div class="mpk-hud-ramp cov"><span>0%</span><i></i><span>100%</span></div>
-      <div class="mpk-hud-sub"><b>Most densely built lots</b></div>
-      <div class="mpk-hud-list">${real.slice(0, 8).map((l, i) => `
-        <button class="mpk-hud-item" onclick="mpkFeatCovFly(${i})"><b>Lot ${l.lot}</b>
-          <span class="num">${Math.round(l.pct)}% · ${mpkNum(l.builtM2)} / ${mpkNum(l.lotM2)} m²</span></button>`).join('')}</div>
-      <div class="mpk-hud-note">Building footprints ÷ cadastral lot area; each building counts on the lot under its centre.
-        ${lots.length - real.length ? `${lots.length - real.length} lots hold a building that spans several lots (over 100%) and are left out of the list. ` : ''}A screening aid, not an official plot-ratio check.</div>`,
-      { icon: '🧱', side: true });
-    mpkFeatFit(MPK.bounds[MPK.area], { padding: { top: 50, bottom: 50, left: 50, right: 400 } });
   },
 
   // 9. Time machine: every historical Esri capture of the top case, cross-faded
@@ -900,63 +698,11 @@ const MPK_FEAT_RUN = {
       <div class="mpk-hud-actions"><button class="mpk-btn" onclick="mpkFeatLaunch('timemachine')">Replay</button></div>`);
   },
 
-  // 10. Policy simulator: live road-reserve what-if
-  simulator() {
-    if (MPK.area === 'tk') mpkSelectArea('all');           // the reserve only applies to the corridors
-    const feats = mpkAreaFeatures(), curve = mpkPolicyCurve(feats, 3, 20), orig = MPK.settings.rizab;
-    MPK_FEAT.simOrig = orig;
-    MPK_FEAT.simCurve = curve;
-    MPK_FEAT.cleanup.push(() => { if (MPK_FEAT.simOrig != null && MPK.settings.rizab !== MPK_FEAT.simOrig) mpkFeatSimSet(MPK_FEAT.simOrig, true); MPK_FEAT.simOrig = null; });
-    mpkHud('Policy Simulator', `
-      <div class="mpk-sim-top"><label for="mpk-sim-r">Road reserve from centreline</label><b class="mono" id="mpk-sim-rv"></b></div>
-      <input type="range" id="mpk-sim-r" class="mpk-range" min="3" max="20" step="1" value="${orig}" oninput="mpkFeatSimSet(+this.value)">
-      <div class="mpk-hud-stats" id="mpk-sim-stats"></div>
-      <svg class="mpk-sim-chart" id="mpk-sim-chart" viewBox="0 0 300 90" role="img" aria-label="Suspected buildings by road reserve width"></svg>
-      <div class="mpk-hud-actions"><button class="mpk-btn" onclick="MPK_FEAT.simOrig=null;mpkFeatStop();showToast('Road reserve set to ' + MPK.settings.rizab + ' m')">Keep this setting</button>
-        <button class="mpk-wb-btn" onclick="mpkFeatStop()">Reset</button></div>
-      <div class="mpk-hud-note">Corridor buildings count as suspected when they lie within the reserve. Teluk Kalong's MPK list does not change.</div>`,
-      { icon: '🎚️', side: true });
-    mpkFeatFit(MPK.bounds[MPK.area === 'all' ? 'bbc' : MPK.area], { padding: { top: 40, bottom: 40, left: 40, right: 400 } });
-    mpkFeatSimSet(orig, true);
-  },
 };
 
 // ---------- Tool helpers (called from HUD markup) ----------
 function mpkScoreColor(v) {
   return v >= 85 ? '#6A1B1A' : v >= 65 ? '#E53935' : v >= 45 ? '#FF8F00' : '#F9A825';
-}
-
-function mpkFeatHotFly(i) {
-  const h = (MPK_FEAT.hot || [])[i];
-  if (h) map.fitBounds(mpkBoundsOf([{ geometry: { coordinates: h.hull } }]), { padding: { top: 60, bottom: 60, left: 60, right: 380 }, maxZoom: 18, duration: 1000 });
-}
-
-function mpkFeatCovFly(i) {
-  const l = (MPK_FEAT.cov || [])[i];
-  if (l) map.fitBounds(mpkBoundsOf([{ geometry: l.geometry }]), { padding: { top: 80, bottom: 80, left: 80, right: 420 }, maxZoom: 19, duration: 1000 });
-}
-
-function mpkFeatSimSet(r, quiet) {
-  mpkOnSetting('rizab', r);
-  const slider = document.getElementById('mpk-rizab');
-  if (slider) slider.value = r;
-  const curve = MPK_FEAT.simCurve, el = document.getElementById('mpk-sim-chart');
-  if (!curve || !el) return;
-  const cur = curve.find(c => c.r === r) || curve[0], base = curve.find(c => c.r === MPK_FEAT.simOrig) || cur;
-  document.getElementById('mpk-sim-rv').textContent = r + ' m';
-  const d = cur.n - base.n;
-  document.getElementById('mpk-sim-stats').innerHTML = `
-    <div><b>${mpkNum(cur.n)}</b><small>suspected${d ? ` (${d > 0 ? '+' : ''}${d})` : ''}</small></div>
-    <div><b>${mpkNum(cur.m2)}</b><small>m² footprint</small></div>
-    <div><b>${mpkRM(cur.m2 * MPK.rates.fee)}</b><small>est. processing fee</small></div>`;
-  const maxN = Math.max(...curve.map(c => c.n), 1), X = r2 => 8 + (r2 - 3) / 17 * 284, Y = n => 80 - n / maxN * 70;
-  const path = curve.map((c, i) => (i ? 'L' : 'M') + X(c.r).toFixed(1) + ' ' + Y(c.n).toFixed(1)).join(' ');
-  el.innerHTML = `<path d="${path} L ${X(20)} 80 L ${X(3)} 80 Z" fill="rgba(198,40,40,0.12)"/>
-    <path d="${path}" fill="none" stroke="#c62828" stroke-width="2"/>
-    <line x1="${X(r)}" x2="${X(r)}" y1="6" y2="80" stroke="#1E2C44" stroke-width="1" stroke-dasharray="3 2"/>
-    <circle cx="${X(r)}" cy="${Y(cur.n)}" r="4.5" fill="#c62828" stroke="#fff" stroke-width="2"/>
-    <text x="8" y="89" font-size="8" fill="#6b7685">3 m</text><text x="292" y="89" font-size="8" fill="#6b7685" text-anchor="end">20 m</text>`;
-  void quiet;
 }
 
 // Search box for place names: the whole Kemaman district (from the land-use file), else the search box
@@ -1023,7 +769,7 @@ async function mpkAskRun(text) {
   const seq = (mpkAskRun.seq = (mpkAskRun.seq || 0) + 1);
   const q = mpkAsk(text), out = document.getElementById('mpk-ask-answer');
   const named = MPK.data.landuse && mpkAskNamedIn(text, MPK.data.landuse.features);
-  if (named && !['reset', 'tour', 'radar', 'hotspots', 'route', 'timemachine', 'priority', 'coverage', 'simulator', 'passport'].includes(q.intent)) {
+  if (named && !MPK_ASK_TOOLS.includes(q.intent)) {
     q.place = named; q.area = null;
     if (q.intent === 'help') q.intent = 'count';
   }
@@ -1039,8 +785,7 @@ async function mpkAskRun(text) {
     map.getSource('mpk-feat-ask').setData(mpkFC(feats));
     if (map.getSource('mpk-feat-ask-place')) map.getSource('mpk-feat-ask-place').setData(mpkFC(place ? [mpkAskPlaceShape(place)] : []));
   };
-  const launch = ['tour', 'radar', 'hotspots', 'route', 'timemachine', 'priority', 'coverage', 'simulator', 'passport'];
-  if (launch.includes(q.intent)) {
+  if (MPK_ASK_TOOLS.includes(q.intent) && q.intent !== 'reset') {
     const f = MPK_FEATURES.find(x => x.key === q.intent);
     say('Opening ' + f.title + '.');
     setTimeout(() => mpkFeatLaunch(q.intent), 700);

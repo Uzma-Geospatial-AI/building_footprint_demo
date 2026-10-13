@@ -56,17 +56,6 @@ const line = [0, 3, 1, 4, 2].map(k => [103.4 + k * 0.01, 4.2]);
 assert.deepStrictEqual(F.mpkRouteOrder(line).map(i => line[i][0]), [0, 1, 2, 3, 4].map(k => 103.4 + k * 0.01));
 assert.strictEqual(F.mpkGmapsDir([[103.4, 4.2], [103.5, 4.3]]), 'https://www.google.com/maps/dir/4.200000,103.400000/4.300000,103.500000');
 
-// Lot coverage: a 1,500 m² building on a 10,000 m² lot = 15%
-const cov = F.mpkLotCoverage([{ properties: { lot: '3020', upi: 'U1' }, geometry: { type: 'Polygon', coordinates: [ring] } },
-                              { properties: { lot: '9', upi: 'U9' }, geometry: { type: 'Polygon', coordinates: [ring] } }], feats);
-assert.strictEqual(cov.length, 1);
-near(cov[0].pct, 15, 0.05);
-
-// Policy curve: the 25 m building joins at 25 m only, so 3–20 m adds just the reserve buildings
-const curve = F.mpkPolicyCurve(feats, 3, 20);
-assert.strictEqual(curve.length, 18);
-assert.deepStrictEqual([curve[0].n, curve.find(c => c.r === 10).n, curve[17].n], [6, 7, 7]);
-
 // Time machine: one frame per distinct capture date, oldest first
 assert.deepStrictEqual(F.mpkTimeFrames([
   { release: 3, date: '2020-01-01', capture: { tk: '2019-05-03' } },
@@ -86,7 +75,13 @@ assert.strictEqual(ask('show legal buildings').status, 'legal');
 assert.strictEqual(ask('Largest legal building in Teluk Kalong').intent, 'largest');
 assert.strictEqual(ask('zoom to lot 3020').lot, '3020');
 assert.strictEqual(ask('Start the drone tour').intent, 'tour');
-assert.strictEqual(ask('Tunjuk hotspot').intent, 'hotspots');
+assert.strictEqual(ask('Tunjuk hotspot').intent, 'hex');
+assert.strictEqual(ask('Can I build here?').intent, 'sitecheck');
+assert.strictEqual(ask('Draf notis untuk bangunan haram').intent, 'notice');
+assert.strictEqual(ask('Show the developer portfolio').intent, 'portfolio');
+assert.strictEqual(ask('Approval timeline').intent, 'timeline');
+assert.strictEqual(ask('Berapa hasil kutipan?').intent, 'money');
+assert.strictEqual(ask('Plan an inspection route').intent, 'planner');
 assert.strictEqual(ask('buildings under 50').max, 50);
 assert.strictEqual(ask('hello').intent, 'help');
 
