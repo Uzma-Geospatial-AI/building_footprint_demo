@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013g',
+  VERSION: '20261013h',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -525,7 +525,7 @@ function mpkAddLayers() {
       paint: { 'line-color': '#FDD835', 'line-width': 3 } });
     // footprint size (m²) on every building once zoomed in
     map.addSource('mpk-size-pts', { type: 'geojson', data: { type: 'FeatureCollection',
-      features: MPK.data.buildings.features.map(f => ({ type: 'Feature', properties: { m2: f.properties.area_m2 },
+      features: MPK.data.buildings.features.map(f => ({ type: 'Feature', properties: { m2: f.properties.area_m2, kawasan: f.properties.kawasan },
         geometry: { type: 'Point', coordinates: [f.properties.lng, f.properties.lat] } })) } });
     map.addLayer({ id: 'mpk-size-label', type: 'symbol', source: 'mpk-size-pts', minzoom: 16.5,
       layout: { 'text-field': ['concat', ['to-string', ['round', ['get', 'm2']]], ' m²'], 'text-font': ['Noto Sans Regular'],
@@ -540,6 +540,20 @@ function mpkAddLayers() {
   if (MPK.wayback.on) mpkShowWaybackImagery();
   if (typeof mpkChangeRestore === 'function') mpkChangeRestore();
   return true;
+}
+
+// Building layers show the selected area only (All = both): status filter AND area
+function mpkInArea(filter) {
+  return MPK.area === 'all' ? filter : ['all', filter, ['==', ['get', 'kawasan'], MPK.area]];
+}
+function mpkApplyBuildingFilters() {
+  if (!map || !map.getLayer('mpk-suspect-fill')) return;
+  const suspect = mpkInArea(mpkSuspectFilter(MPK.settings));
+  MPK.SUSPECT_LAYERS.forEach(id => { if (map.getLayer(id)) map.setFilter(id, suspect); });
+  for (const st of ['legal', 'unverified']) {
+    for (const id of MPK_LAYER_GROUPS[st].layers) if (map.getLayer(id)) map.setFilter(id, mpkInArea(mpkStatusFilter(st)));
+  }
+  if (map.getLayer('mpk-size-label')) map.setFilter('mpk-size-label', MPK.area === 'all' ? null : ['==', ['get', 'kawasan'], MPK.area]);
 }
 
 // Map layers that belong to one legend entry of their group
@@ -573,6 +587,7 @@ function mpkApplyLayerVisibility() {
     ...(mpkSubOn('pelan', 'tolak') ? [['==', ['get', 'keputusan'], 'tolak']] : [])];
   if (map.getLayer('mpk-pelan-fill')) map.setFilter('mpk-pelan-fill', ['all', ['==', ['geometry-type'], 'Polygon'], which]);
   if (map.getLayer('mpk-pelan-line')) map.setFilter('mpk-pelan-line', ['all', ['!=', ['geometry-type'], 'Point'], which]);
+  mpkApplyBuildingFilters();
   mpkSyncStudyArea();
   mpkRefresh3D();
 }
@@ -1032,11 +1047,7 @@ function mpkRenderRevenue() {
 
 function mpkOnSetting(key, v) {
   MPK.settings = { ...MPK.settings, [key]: parseInt(v, 10) };
-  const suspect = mpkSuspectFilter(MPK.settings);
-  MPK.SUSPECT_LAYERS.forEach(id => { if (map.getLayer(id)) map.setFilter(id, suspect); });
-  for (const st of ['legal', 'unverified']) {
-    for (const id of MPK_LAYER_GROUPS[st].layers) if (map.getLayer(id)) map.setFilter(id, mpkStatusFilter(st));
-  }
+  mpkApplyBuildingFilters();
   mpkRender();
 }
 
