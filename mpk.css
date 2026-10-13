@@ -581,3 +581,30 @@ body:not(.mpk-mode) .mpk-aerial-head, body:not(.mpk-mode) .mpk-aerial-opt { disp
 .mpk-reg-filters select { width:100%; min-width:0; padding:6px 8px; border:1px solid rgba(30,44,68,0.15); border-radius:8px; font:inherit; font-size:11px; background:#fff; color:#1E2C44; }
 .mpk-reg-count { font-size:10px; color:rgba(30,44,68,0.55); margin:0 0 6px 2px; min-height:12px; }
 .mpk-reg-more { display:block; width:100%; padding:9px; border:0; background:rgba(232,119,46,0.08); color:#C25E1C; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+
+/* Floating building-status card on the dashboard map */
+.mpk-float { display:none; position:absolute; top:14px; left:14px; z-index:5; font-family:inherit; }
+body.mpk-mode .mpk-float { display:block; }
+.mpk-float[hidden] { display:none !important; }
+.mpk-float-card { background:rgba(255,255,255,0.94); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  border:1px solid rgba(30,44,68,0.08); border-radius:14px; box-shadow:0 6px 24px rgba(30,44,68,0.16); padding:10px 12px 12px; }
+.mpk-float-head { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:11px; font-weight:600;
+  color:var(--charcoal-light); margin-bottom:8px; }
+.mpk-float-x { border:0; background:none; font-size:18px; line-height:1; color:var(--charcoal-light); cursor:pointer; padding:0 2px; }
+.mpk-float-x:hover { color:var(--charcoal-dark); }
+.mpk-float-tiles { display:grid; grid-template-columns:repeat(3, minmax(118px, 1fr)); gap:8px; }
+.mpk-float-tile { background:#fff; border:1px solid rgba(30,44,68,0.07); border-radius:10px; padding:8px 10px; }
+.mpk-float-tile .v { font-size:22px; font-weight:800; line-height:1.1; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
+.mpk-float-tile.legal .v { color:#00796B; }
+.mpk-float-tile.suspected .v { color:#c62828; }
+.mpk-float-tile .l { font-size:11px; color:var(--charcoal-light); margin-top:2px; }
+.mpk-float-tile .n { font-size:10.5px; color:var(--charcoal-light); margin-top:5px; padding-top:5px; border-top:1px solid rgba(30,44,68,0.07); font-variant-numeric:tabular-nums; }
+.mpk-float-tile .n b { color:var(--charcoal-dark); }
+.mpk-float-pill { display:none; align-items:center; gap:5px; border:1px solid rgba(30,44,68,0.08); background:rgba(255,255,255,0.94);
+  border-radius:20px; padding:7px 13px; font:inherit; font-size:12px; font-weight:600; color:var(--charcoal-dark); cursor:pointer;
+  box-shadow:0 4px 16px rgba(30,44,68,0.14); }
+.mpk-float-pill i { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.mpk-float-pill i:last-of-type { margin-right:4px; }
+.mpk-float.closed .mpk-float-card { display:none; }
+.mpk-float.closed .mpk-float-pill { display:inline-flex; }
+@media (max-width: 960px) { .mpk-float-tiles { grid-template-columns:repeat(3, minmax(84px, 1fr)); } .mpk-float-tile .v { font-size:17px; } }

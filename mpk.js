@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013r',
+  VERSION: '20261013s',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -772,6 +772,7 @@ async function mpkEnter() {
   tab.style.display = '';
   mpkBuildPanel();
   mpkBuildStatsPage();
+  mpkBuildFloatCard();
   if (typeof mpkBuildFeaturesPage === 'function') mpkBuildFeaturesPage();
   MPK.page = 'dashboard';
   mpkBuildHistoricBasemaps();
@@ -1066,6 +1067,7 @@ function mpkRender() {
   document.getElementById('mpk-k-m2').textContent = mpkM2(b.m2);
   document.getElementById('mpk-k-legal').textContent = mpkPct(b.byStatus.legal.pct);
   document.getElementById('mpk-k-illegal').textContent = mpkPct(b.byStatus.suspected.pct);
+  mpkRenderFloatCard(b);
   document.getElementById('mpk-status-bar').innerHTML = Object.entries(MPK_STATUS)
     .map(([k, st]) => `<i style="width:${b.byStatus[k].pct}%;background:${st.color}" title="${st.label}: ${mpkNum(b.byStatus[k].n)}"></i>`).join('');
   Object.keys(MPK_STATUS).forEach(k => {
@@ -1344,8 +1346,48 @@ function mpkBuildStatsPage() {
   }
 }
 
+// Floating status card on the dashboard map: exact shares and counts for the selected area; folds to a pill
+function mpkBuildFloatCard() {
+  if (document.getElementById('mpk-float')) return;
+  let closed = false;
+  try { closed = localStorage.getItem('mpk_float_closed') === '1'; } catch (e) {}
+  const box = document.createElement('div');
+  box.id = 'mpk-float';
+  box.className = 'mpk-float' + (closed ? ' closed' : '');
+  box.innerHTML = `
+    <div class="mpk-float-card" role="region" aria-label="Building status">
+      <div class="mpk-float-head"><span id="mpk-float-area">All study areas</span>
+        <button type="button" class="mpk-float-x" onclick="mpkToggleFloatCard(true)" aria-label="Close status card" title="Close">×</button></div>
+      <div class="mpk-float-tiles">
+        ${[['legal', 'Approved buildings'], ['suspected', 'Illegal buildings'], ['unverified', 'Pending buildings']].map(([k, l]) =>
+          `<div class="mpk-float-tile ${k}"><div class="v" id="mpk-float-v-${k}">—</div><div class="l">${l}</div>
+            <div class="n" id="mpk-float-n-${k}">—</div></div>`).join('')}
+      </div>
+    </div>
+    <button type="button" class="mpk-float-pill" onclick="mpkToggleFloatCard(false)" aria-label="Open status card">
+      <i style="background:#00C853"></i><i style="background:#FF1744"></i><i style="background:#2962FF"></i>Building status</button>`;
+  document.getElementById('mapWrapper').appendChild(box);
+}
+function mpkToggleFloatCard(close) {
+  const box = document.getElementById('mpk-float');
+  if (!box) return;
+  box.classList.toggle('closed', close);
+  try { localStorage.setItem('mpk_float_closed', close ? '1' : '0'); } catch (e) {}
+}
+function mpkRenderFloatCard(b) {
+  if (!document.getElementById('mpk-float')) return;
+  document.getElementById('mpk-float-area').textContent =
+    (MPK_AREAS[MPK.area] ? MPK_AREAS[MPK.area].short : 'All study areas') + ' · ' + mpkNum(b.total) + ' buildings';
+  for (const k of ['legal', 'suspected', 'unverified']) {
+    document.getElementById('mpk-float-v-' + k).textContent = mpkStatPct(b.byStatus[k], b.total);
+    document.getElementById('mpk-float-n-' + k).innerHTML = mpkStatCount(b.byStatus[k], b.total);
+  }
+}
+
 function mpkShowPage(page) {
   MPK.page = page;
+  const fl = document.getElementById('mpk-float');
+  if (fl) fl.hidden = page !== 'dashboard';
   const feat = document.getElementById('mpk-feat-page'), featNav = document.getElementById('mpk-nav-feat');
   document.getElementById('mpk-nav-stats').classList.toggle('active', page === 'stats');
   if (featNav) featNav.classList.toggle('active', page === 'features');
