@@ -102,7 +102,7 @@ assert.deepStrictEqual(F.mpkPlanItems(ranked, feats, store, 'tk').map(x => x.key
 assert.deepStrictEqual(F.mpkPlanItems(ranked, feats, { added: [], edits: {} }, 'all').map(x => [x.key, x.source]), [['b4', 'auto'], ['b1', 'auto']]);
 // reasons in plain words, with the note
 assert.strictEqual(F.mpkPlanReason(mitems[0], s), 'Complaint 114 · added by officer · Note: new shed');
-assert.strictEqual(F.mpkPlanReason(mitems[1], s), 'Added by officer (legal · approved building plan)');
+assert.strictEqual(F.mpkPlanReason(mitems[1], s), 'Added by officer (approved buildings)');
 assert.strictEqual(F.mpkPlanReason(mitems[2], s), 'On MPK suspect list · Note: check permit');
 // the plan and its CSV carry them
 const mplan = F.mpkPlanSchedule(mitems, { teams: 1, perDay: 10, start: new Date(2026, 9, 15) });

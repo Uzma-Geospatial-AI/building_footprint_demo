@@ -25,9 +25,9 @@ assert.deepStrictEqual(mpkReportSuspectRows(feats, s), [
 
 // Summary table: one row per status plus a total
 assert.deepStrictEqual(mpkReportSummaryRows(feats, s), [
-  ['Suspected illegal', '2', '50.0%', '1,837'],
-  ['Legal · approved building plan', '1', '25.0%', '400'],
-  ['Not verified', '1', '25.0%', '30'],
+  ['Illegal buildings', '2', '50.0%', '1,837'],
+  ['Approved buildings', '1', '25.0%', '400'],
+  ['Pending buildings', '1', '25.0%', '30'],
   ['Total', '4', '100%', '2,267'],
 ]);
 
@@ -37,7 +37,7 @@ assert.strictEqual(mpkReportDate(new Date(2026, 7, 3), 'en'), '3 August 2026');
 assert.deepStrictEqual(mpkReportSuspectRows(feats, s, 'ms').map(r => r[5]),
   ['Dalam 6.3 m dari garis tengah jalan (rizab 10 m)', 'Dalam senarai syak MPK']);
 assert.deepStrictEqual(mpkReportSummaryRows(feats, s, 'ms').map(r => r[0]),
-  ['Disyaki haram', 'Sah · pelan bangunan lulus', 'Belum disahkan', 'Jumlah']);
+  ['Bangunan haram', 'Bangunan diluluskan', 'Bangunan dalam semakan', 'Jumlah']);
 
 // Both languages carry every key, and the size labels line up with the size classes
 const keys = l => Object.keys(MPK_REPORT_TEXT[l]).sort();

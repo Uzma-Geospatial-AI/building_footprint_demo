@@ -36,9 +36,9 @@ const MPK_REPORT_TEXT = {
       + `${b.byStatus.suspected.pct.toFixed(1)}% (${f(b.byStatus.suspected.n)} buildings, ${f(b.byStatus.suspected.m2)} m²) `
       + `are suspected of lacking planning permission, and ${b.byStatus.unverified.pct.toFixed(1)}% could not be verified `
       + 'against an approval record.',
-    statusLabel: { suspected: 'Suspected illegal', legal: 'Legal · approved building plan', unverified: 'Not verified' },
+    statusLabel: { suspected: 'Illegal buildings', legal: 'Approved buildings', unverified: 'Pending buildings' },
     total: 'Total', buildings: 'Buildings', share: 'Share', footprint: 'Footprint (m²)', area: 'Area',
-    suspected: 'Suspected', legal: 'Legal', unverified: 'Not verified', sizeCol: 'Footprint size',
+    suspected: 'Illegal', legal: 'Approved', unverified: 'Pending', sizeCol: 'Footprint size',
     sizes: ['Under 100 m²', '100 – 500 m²', '500 – 1,000 m²', '1,000 – 5,000 m²', '5,000 m² and over'],
     mapKey: 'Red: suspected illegal · Green: legal (approved building plan) · Blue: not verified · Orange: outside the study areas · Dashed orange: planning boundary',
     listNote: 'Listed largest first. Locations can be found with the Plus Code (e.g. in Google Maps) or the cadastral lot / UPI.',
@@ -75,9 +75,9 @@ const MPK_REPORT_TEXT = {
       + `${b.byStatus.suspected.pct.toFixed(1)}% (${f(b.byStatus.suspected.n)} bangunan, ${f(b.byStatus.suspected.m2)} m²) `
       + `disyaki tiada kebenaran merancang, dan ${b.byStatus.unverified.pct.toFixed(1)}% tidak dapat disahkan `
       + 'dengan rekod kelulusan.',
-    statusLabel: { suspected: 'Disyaki haram', legal: 'Sah · pelan bangunan lulus', unverified: 'Belum disahkan' },
+    statusLabel: { suspected: 'Bangunan haram', legal: 'Bangunan diluluskan', unverified: 'Bangunan dalam semakan' },
     total: 'Jumlah', buildings: 'Bangunan', share: 'Peratus', footprint: 'Keluasan tapak (m²)', area: 'Kawasan',
-    suspected: 'Disyaki', legal: 'Sah', unverified: 'Belum disahkan', sizeCol: 'Saiz keluasan tapak',
+    suspected: 'Haram', legal: 'Lulus', unverified: 'Dalam semakan', sizeCol: 'Saiz keluasan tapak',
     sizes: ['Bawah 100 m²', '100 – 500 m²', '500 – 1,000 m²', '1,000 – 5,000 m²', '5,000 m² dan ke atas'],
     mapKey: 'Merah: disyaki haram · Hijau: sah (pelan bangunan lulus) · Biru: belum disahkan · Oren: luar kawasan kajian · Oren putus-putus: sempadan perancangan',
     listNote: 'Disenaraikan mengikut saiz terbesar. Lokasi boleh dicari menggunakan Plus Code (cth. dalam Google Maps) atau lot kadaster / UPI.',

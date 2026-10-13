@@ -247,9 +247,9 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 
 **Building status** — every building is shown in one of three statuses, each with its own
 map layer, switch and count (with a share bar) in the panel:
-*Suspected illegal* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
-encroachment in the corridors), *Legal · approved building plan* (green: covered by a plan in MPK's
-register of approved building plans) and *Not verified* (blue: no approved plan found, which may be a
+*Illegal buildings* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
+encroachment in the corridors), *Approved buildings* (green: covered by a plan in MPK's
+register of approved building plans) and *Pending buildings* (blue: no approved plan found, which may be a
 gap in the register rather than an offence). Teluk Kalong inside the boundary: 345 legal, 26 suspected,
 1,183 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.

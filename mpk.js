@@ -308,11 +308,11 @@ const MPK_SUSPECT_COLOR = '#FF1744';   // bright red; outline #B2102F
 // Bright fills with a darker outline of the same hue, readable on the road map and on imagery
 const MPK_OUTLINE = { suspected: '#B2102F', legal: '#00873A', unverified: '#0039CB', others: '#C56200' };
 const MPK_STATUS = {
-  suspected:  { label: 'Suspected illegal', color: MPK_SUSPECT_COLOR,
+  suspected:  { label: 'Illegal buildings', color: MPK_SUSPECT_COLOR,
                 hint: 'On the MPK suspect list (Teluk Kalong) or encroaching the road reserve (corridors)' },
-  legal:      { label: 'Legal · approved building plan', color: '#00C853',
+  legal:      { label: 'Approved buildings', color: '#00C853',
                 hint: 'Covered by a building plan approved by MPK (Teluk Kalong, Pelan Bangunan Lulus)' },
-  unverified: { label: 'Not verified', color: '#2962FF',
+  unverified: { label: 'Pending buildings', color: '#2962FF',
                 hint: 'No approval record to confirm either way' },
 };
 const MPK_JENIS = {
@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013i',
+  VERSION: '20261013j',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -862,7 +862,7 @@ function mpkBuildPanel() {
       <div class="mpk-kpis">
         <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings<br><span id="mpk-k-m2">—</span></div></div>
         <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Legal</div></div>
-        <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Suspected illegal</div></div>
+        <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Illegal buildings</div></div>
       </div>
 
       <div class="mpk-card mpk-status">
@@ -1101,12 +1101,12 @@ function mpkRenderStatsRevenue() {
 
 // ---------- Map interaction ----------
 function mpkStatusText(p, jenis) {
-  if (jenis) return 'Suspected illegal · ' + MPK_JENIS[jenis].label;
+  if (jenis) return 'Illegal building · ' + MPK_JENIS[jenis].label;
   if (p.kategori === 'lulus') return 'Legal · MPK-approved building plan';
-  if (p.kategori === 'tiada_pelan') return 'Not verified · no approved building plan on record';
-  if (p.kategori === 'luar') return 'Not verified · outside the planning boundary';
-  if (p.kawasan === 'tk') return 'Not verified · inside the boundary, no approved building plan on record';
-  return 'Not verified · in corridor, no approval record';
+  if (p.kategori === 'tiada_pelan') return 'Pending · no approved building plan on record';
+  if (p.kategori === 'luar') return 'Pending · outside the planning boundary';
+  if (p.kawasan === 'tk') return 'Pending · inside the boundary, no approved building plan on record';
+  return 'Pending · in corridor, no approval record';
 }
 
 function mpkZoneLabel(zone) {
@@ -1341,9 +1341,9 @@ function mpkRenderStats() {
       <div class="mpk-stats-cards">
         <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings</div></div>
         <div class="mpk-stat"><div class="v">${mpkNum(b.m2)}</div><div class="l">Total footprint (m²)</div></div>
-        <div class="mpk-stat legal"><div class="v">${mpkPct(b.byStatus.legal.pct)}</div><div class="l">Legal · approved plan</div></div>
-        <div class="mpk-stat danger"><div class="v">${mpkPct(b.byStatus.suspected.pct)}</div><div class="l">Suspected illegal</div></div>
-        <div class="mpk-stat"><div class="v">${mpkPct(b.byStatus.unverified.pct)}</div><div class="l">Not verified</div></div>
+        <div class="mpk-stat legal"><div class="v">${mpkPct(b.byStatus.legal.pct)}</div><div class="l">Approved buildings</div></div>
+        <div class="mpk-stat danger"><div class="v">${mpkPct(b.byStatus.suspected.pct)}</div><div class="l">Illegal buildings</div></div>
+        <div class="mpk-stat"><div class="v">${mpkPct(b.byStatus.unverified.pct)}</div><div class="l">Pending buildings</div></div>
       </div>
 
       <section class="mpk-stats-card mpk-rev">
