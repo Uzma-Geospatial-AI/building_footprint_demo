@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261013p" rel="stylesheet">
+<link href="mpk.css?v=20261013q" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -71,8 +71,8 @@
 
   /* SIDEBAR */
   .sidebar { width:var(--sidebar-w); background:var(--charcoal-dark); height:100vh; display:flex; flex-direction:column; flex-shrink:0; z-index:10; box-shadow:2px 0 16px rgba(30,44,68,0.10); }
-  .sidebar-brand { padding:10px 14px; background:#fff; border-bottom:1px solid rgba(30,44,68,0.08); height:72px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
-  .brand-logo-img { max-width:170px; max-height:56px; object-fit:contain; display:block; }
+  .sidebar-brand { padding:6px 14px; background:#fff; border-bottom:1px solid rgba(30,44,68,0.06); height:var(--topbar-h); box-sizing:border-box; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+  .brand-logo-img { max-width:170px; max-height:calc(var(--topbar-h) - 12px); object-fit:contain; display:block; }
   .brand-fallback { display:flex; align-items:center; gap:10px; padding:0 16px; }
   .brand-icon-sm { width:36px; height:36px; border-radius:8px; background:var(--orange); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .brand-icon-sm svg { width:18px; height:18px; color:white; }
@@ -4324,11 +4324,11 @@ function toggleSide(which, closed) {
   if (v === '1') toggleSide(w, true);
 });
 </script>
-<script src="mpk.js?v=20261013p"></script>
-<script src="mpk-change.js?v=20261013p"></script>
-<script src="mpk-report.js?v=20261013p"></script>
-<script src="mpk-features.js?v=20261013p"></script>
-<script src="mpk-gesture.js?v=20261013p"></script>
-<script src="mpk-features2.js?v=20261013p"></script>
+<script src="mpk.js?v=20261013q"></script>
+<script src="mpk-change.js?v=20261013q"></script>
+<script src="mpk-report.js?v=20261013q"></script>
+<script src="mpk-features.js?v=20261013q"></script>
+<script src="mpk-gesture.js?v=20261013q"></script>
+<script src="mpk-features2.js?v=20261013q"></script>
 </body>
 </html>
