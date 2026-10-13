@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013v',
+  VERSION: '20261013w',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1366,13 +1366,29 @@ function mpkShowOtherPopup(p, lngLat) {
 
 // Popup rows for the building plan on record (approved or rejected), if any
 function mpkPlanRows(p, row) {
+  return mpkPlanOnRecord(p, row) + mpkRekodRows(p, row);
+}
+const MPK_PLAN_REGISTER = { Kedai: 'Shops (Pelan Bangunan Kedai)', Rekod: 'Teluk Kalong · register record' };
+function mpkPlanOnRecord(p, row) {
   if (!p.pelan_fail && !p.pelan_status) return '';
   const rejected = /TOLAK/i.test(p.pelan_status || '');
   return [
     row(rejected ? 'Rejected plan' : 'Approved plan', mpkEscHtml(p.pelan_fail || '—') + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '')),
     p.pelan_tarikh ? row(rejected ? 'Decided on' : 'Approved on', mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + mpkEscHtml(p.pelan_status) : '')) : '',
     p.pelan_jenis ? row('Plan building type', mpkEscHtml(p.pelan_jenis)) : '',
-    p.pelan_sumber ? row('Register', mpkEscHtml(p.pelan_sumber === 'Kedai' ? 'Shops (Pelan Bangunan Kedai)' : 'Teluk Kalong')) : '',
+    p.pelan_sumber ? row('Register', mpkEscHtml(MPK_PLAN_REGISTER[p.pelan_sumber] || 'Teluk Kalong')) : '',
+  ].join('');
+}
+// The Teluk Kalong register's records whose centre lies on this building (tools/apply_pelan_lulus.py)
+function mpkRekodRows(p, row) {
+  if (!p.rekod_n) return '';
+  const who = [p.rekod_fail, p.rekod_pemohon].filter(Boolean).map(mpkEscHtml).join(' · ');
+  return [
+    row('Register records here', mpkNum(p.rekod_n) + (p.rekod_sah ? ` · ${mpkNum(p.rekod_sah)} with a status` : ' · none with a status')),
+    p.rekod_id && !p.pelan_fail ? row('Record #' + mpkEscHtml(p.rekod_id), who || '—') : '',
+    p.rekod_id && !p.pelan_fail && p.rekod_jenis ? row('Building (register)', mpkEscHtml(p.rekod_jenis)) : '',
+    p.rekod_id && !p.pelan_fail && p.rekod_status ? row('Status (register)', mpkEscHtml(p.rekod_status)
+      + (p.rekod_tarikh ? ' · ' + mpkPlanDateLabel(p.rekod_tarikh) : '')) : '',
   ].join('');
 }
 

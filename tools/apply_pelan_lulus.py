@@ -11,6 +11,12 @@ digitised from the CAD plans):
          only. Records without geometry, or whose coordinates fall outside Kemaman, cannot be placed.
          https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson
 
+  rekod  every record of the Teluk Kalong register (mpk/rekod_semua.geojson, 23,214 records, from
+         tools/build_rekod_semua.py): only each record's centre is known. A record belongs to the
+         building whose footprint holds its centre. Where no plan drawing above covers a building, an
+         approved record on it (LULUS / LUUS / DILULUSKAN / LULUS BERSYARAT) makes it legal and a TOLAK
+         record makes it rejected; SOKONG and SEDIA ADA are not decisions.
+
 Run after tools/build_mpk_manual.py. A plan covers a building when a plan polygon holds the
 building's centre, the building holds a plan polygon's centre, or at least two vertices of the
 plan's CAD outline lie on / within 2 m of the footprint. In mpk/mpk_buildings.geojson:
@@ -25,7 +31,9 @@ plan's CAD outline lie on / within 2 m of the footprint. In mpk/mpk_buildings.ge
     koridor      no plan: the road-reserve rule decides in the browser
 Buildings outside the study areas (mpk/mpk_buildings_luar.geojson) only get the plan's details.
 Every covered building gets pelan_fail, pelan_tarikh, pelan_status, pelan_jenis, pelan_n and
-pelan_sumber. The first run keeps each study building's previous class in `asal`, so the script
+pelan_sumber (`Rekod` when it comes from a register record). Every building with register records
+gets rekod_n (records on it), rekod_sah (with a valid status) and, from its most telling record,
+rekod_id, rekod_fail, rekod_pemohon, rekod_jenis, rekod_status and rekod_tarikh. The first run keeps each study building's previous class in `asal`, so the script
 can be re-run on its own output.
 
 Also writes mpk/pelan_lulus.geojson: the approved and rejected plans for the map (applicant and
@@ -42,6 +50,7 @@ import urllib.request
 from collections import Counter, defaultdict
 
 URL = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson'
+REKOD = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk', 'rekod_semua.geojson')
 URL_KEDAI = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson'
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk')
 BUILDINGS = os.path.join(ROOT, 'mpk_buildings.geojson')
@@ -51,7 +60,7 @@ OUT_REGISTER = os.path.join(ROOT, 'pelan_kedai_daftar.json')   # every shop reco
 NO_VALUE = {'0', '-9', '-99', '-999', '-9999', '-999999', 'None'}   # placeholders the register uses for blank
 KEMAMAN = (103.13, 4.0, 103.65, 4.6)                 # district box: shop records outside it are mis-placed
 EXPECTED = {'records': 966, 'kedai_records': 4547, 'kedai_approvals': 414}   # 414 as in MPK's register summary
-EXPECTED_CLASSES = {('tk', 'lulus'): 345, ('tk', 'mockup'): 26, ('tk', 'tiada_pelan'): 1183,
+EXPECTED_CLASSES = {('tk', 'lulus'): 347, ('tk', 'mockup'): 25, ('tk', 'tiada_pelan'): 1182,
                     ('bbc', 'lulus'): 40, ('bbc', 'tolak'): 1, ('bbc', 'koridor'): 374}
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 111320
@@ -218,6 +227,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--tk', default=URL)
     ap.add_argument('--kedai', default=URL_KEDAI)
+    ap.add_argument('--rekod', default=REKOD)
     args = ap.parse_args()
 
     plans, skipped = [], Counter()
@@ -276,6 +286,48 @@ def main():
                 covered[i][p['keputusan']].append(p)
                 hit.add(p['key'])
 
+    # the register's records, by the footprint that holds their centre
+    on_bldg = defaultdict(list)
+    rekod_src = load(args.rekod)['features']
+    for r in rekod_src:
+        pt = r['geometry']['coordinates']
+        for i in grid.get((int(pt[0] / GRID), int(pt[1] / GRID)), ()):
+            if inside(pt, ring_of(allb[i])):
+                on_bldg[i].append(r['properties'])
+                break
+    rekod_used = Counter()
+    for i, recs in on_bldg.items():
+        if covered.get(i) and (covered[i]['lulus'] or covered[i]['tolak']):
+            continue                                 # a plan drawing already decides it
+        for q in recs:
+            k = 'lulus' if q['k'] in ('lulus', 'syarat') else 'tolak' if q.get('c') == 'Tolak' else None
+            if k:
+                covered[i][k].append({'key': 'R%d' % q['i'], 'sumber': 'Rekod', 'keputusan': k,
+                                      'pr': {'No_Fail': q.get('f'), 'Tarikh_Lulus': q.get('t'), 'Jenis_Bangunan': q.get('j'),
+                                             'Status_Kelulusan': q.get('s') or q['c'].upper()}})
+                rekod_used[k] += 1
+
+    def telling(q):                                  # valid status first, then the most filled-in, then the latest
+        return (q['k'] != 'tiada', sum(1 for x in 'flpjt' if q.get(x)), q.get('t') or '')
+
+    for i, f in enumerate(allb):
+        pr = f['properties']
+        for k in [k for k in pr if k.startswith('rekod_')]:
+            del pr[k]
+        recs = on_bldg.get(i)
+        if recs:
+            pr['rekod_n'] = len(recs)
+            pr['rekod_sah'] = sum(1 for q in recs if q['k'] != 'tiada')
+            q = max(recs, key=telling)
+            if telling(q)[0] or telling(q)[1]:
+                pr['rekod_id'] = q['i']
+                for key, x in (('rekod_fail', 'f'), ('rekod_pemohon', 'p'), ('rekod_jenis', 'j'), ('rekod_tarikh', 't')):
+                    if q.get(x):
+                        pr[key] = q[x]
+                pr['rekod_status'] = q['c'] if q['k'] != 'tiada' else ''
+                if not pr['rekod_status']:
+                    del pr['rekod_status']
+
     for i, f in enumerate(allb):
         pr = f['properties']
         in_study = i < len(study)
@@ -310,6 +362,8 @@ def main():
     print('plans used:', dict(used), '| shop records left out:', dict(skipped))
     print('plans covering a building:', len(hit), 'of', len(plans))
     print('study-area buildings:', dict(sorted(counts.items())))
+    print('register records on a building:', sum(len(v) for v in on_bldg.values()), 'of', len(rekod_src),
+          '| buildings with records:', len(on_bldg), '| decided by a record alone:', dict(rekod_used))
     print('outside the study areas with a plan:', sum(1 for f in others['features'] if 'pelan_fail' in f['properties']))
     if os.environ.get('MPK_NO_EXPECT') != '1' and EXPECTED_CLASSES:   # 1 when the footprints themselves changed
         for k, n in EXPECTED_CLASSES.items():

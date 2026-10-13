@@ -251,8 +251,8 @@ map layer, switch and count (with a share bar) in the panel:
 *Illegal buildings* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
 encroachment in the corridors), *Approved buildings* (green: covered by a plan in MPK's
 register of approved building plans) and *Pending buildings* (blue: no approved plan found, which may be a
-gap in the register rather than an offence). Teluk Kalong inside the boundary: 345 legal, 26 suspected,
-1,183 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
+gap in the register rather than an offence). Teluk Kalong inside the boundary: 347 legal, 25 suspected,
+1,182 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.
 
 **Shop building plans** (all 4,547 records — Lulus 362, Lulus Bersyarat 46, Tolak 2, Tidak dinyatakan 4, no decision 4,133 — are listed in Analysis → *Shop building plan register*, with status and on-map filters and a click-to-zoom for the 1,206 drawn on the map; MPK's *Pelan Bangunan Kedai* register, Chukai and Binjai, 4,547 records,
@@ -275,7 +275,15 @@ plan's CAD outline lie on or within 2 m of the footprint (most records are open 
 are site boundaries, fences and lot lines, or buildings not in the footprint data. This replaces the earlier rule ("on an approved lot" digitised from MPK's map).
 Map layers → *Approved building plans · MPK* (off at start) draws the plans: dark teal where a building
 stands on the plan, purple where none was found; click one for its file no., lot, date, status and
-building type. Applicant and architect names are not copied into the app.
+building type. Applicant names are copied into the app (Developer Portfolio, register records); architect names are not.
+
+**Register records on the buildings** (all 23,214 records of the Teluk Kalong register, `mpk/rekod_semua.geojson`;
+only each record's centre is known): `tools/apply_pelan_lulus.py` gives each record to the building whose footprint holds
+its centre. 2,091 records fall on 402 buildings; each gets `rekod_n`, `rekod_sah` and its most telling record (file,
+applicant, building type, status, date), shown in the popup as *Register records here*. Where no plan drawing covers a
+building, an approved record on it makes it legal and a TOLAK record makes it rejected (SOKONG and SEDIA ADA are not
+decisions). In Teluk Kalong this moves two buildings to legal: 6PP57F57+9XQ (file 2990, status written *LUUS*, missing
+from the approved GeoJSON) and 6PP57F33+JG5 (TK/3020KLT34KMTT, approved 2 Mar 2025, before on the API suspect list).
 
 **Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
 for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,
