@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261013n" rel="stylesheet">
+<link href="mpk.css?v=20261013o" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -579,6 +579,11 @@
   .sidebar, .right-panel { transition: width .22s ease, min-width .22s ease; }
   body.sb-closed .sidebar { width:0; min-width:0; overflow:hidden; box-shadow:none; }
   body.rp-closed .right-panel { width:0; min-width:0; border-left:0; }
+  /* the logo stays: it moves into the top bar's left corner while the sidebar is folded */
+  body.sb-closed .sidebar-brand { position:fixed; top:0; left:0; width:var(--sidebar-w); height:var(--topbar-h); box-sizing:border-box;
+    padding:6px 14px; z-index:11; border-right:1px solid rgba(30,44,68,0.08); }
+  body.sb-closed .sidebar-brand .brand-logo-img { max-height:calc(var(--topbar-h) - 12px); }
+  body.sb-closed .topbar { padding-left:calc(var(--sidebar-w) + 20px); }
   .edge-tab { position:absolute; top:50%; transform:translateY(-50%); z-index:6; width:18px; height:56px; border:0;
     background:var(--charcoal-dark); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
     box-shadow:0 2px 10px rgba(30,44,68,0.25); opacity:.85; padding:0; }
@@ -4319,11 +4324,11 @@ function toggleSide(which, closed) {
   if (v === '1') toggleSide(w, true);
 });
 </script>
-<script src="mpk.js?v=20261013n"></script>
-<script src="mpk-change.js?v=20261013n"></script>
-<script src="mpk-report.js?v=20261013n"></script>
-<script src="mpk-features.js?v=20261013n"></script>
-<script src="mpk-gesture.js?v=20261013n"></script>
-<script src="mpk-features2.js?v=20261013n"></script>
+<script src="mpk.js?v=20261013o"></script>
+<script src="mpk-change.js?v=20261013o"></script>
+<script src="mpk-report.js?v=20261013o"></script>
+<script src="mpk-features.js?v=20261013o"></script>
+<script src="mpk-gesture.js?v=20261013o"></script>
+<script src="mpk-features2.js?v=20261013o"></script>
 </body>
 </html>
