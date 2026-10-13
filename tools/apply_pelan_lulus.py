@@ -47,7 +47,8 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk')
 BUILDINGS = os.path.join(ROOT, 'mpk_buildings.geojson')
 OTHERS = os.path.join(ROOT, 'mpk_buildings_luar.geojson')
 OUT_PLANS = os.path.join(ROOT, 'pelan_lulus.geojson')
-OUT_REGISTER = os.path.join(ROOT, 'pelan_kedai_daftar.json')   # every shop approval file, mapped or not
+OUT_REGISTER = os.path.join(ROOT, 'pelan_kedai_daftar.json')   # every shop record, mapped or not
+NO_VALUE = {'0', '-9', '-99', '-999', '-9999', '-999999', 'None'}   # placeholders the register uses for blank
 KEMAMAN = (103.13, 4.0, 103.65, 4.6)                 # district box: shop records outside it are mis-placed
 EXPECTED = {'records': 966, 'kedai_records': 4547, 'kedai_approvals': 414}   # 414 as in MPK's register summary
 EXPECTED_CLASSES = {('tk', 'lulus'): 345, ('tk', 'mockup'): 26, ('tk', 'tiada_pelan'): 1183,
@@ -336,47 +337,36 @@ def main():
         json.dump({'type': 'FeatureCollection', 'features': out}, f, ensure_ascii=False, separators=(',', ':'))
     print('wrote', BUILDINGS, OTHERS, 'and', OUT_PLANS, f'({len(out)} plan shapes)')
 
-    # the shop approval register: one row per file no. (records without a file no. stand alone)
-    files = {}
+    # the shop register: every record of Pelan Bangunan Kedai, approved or not, on the map or not
+    def clean(v):
+        v = str(v if v is not None else '').strip()
+        return '' if v in NO_VALUE else v
+
+    reg = []
     for n, p in enumerate(kedai_src, 1):
         pr, g = p['properties'], p['geometry']
-        if not is_approval(pr):
-            continue
-        fail = (pr.get('No_Fail') or '').strip()
-        r = files.setdefault(fail or 'K%d' % n, {
-            'fail': fail, 'pemohon': (pr.get('Nama_Pemohon') or '').strip(), 'arkitek': (pr.get('Arkitek') or '').strip(),
-            'jenis': (pr.get('Jenis_Bangunan') or '').strip(), 'status': (pr.get('Status_Kelulusan') or '').strip(),
-            'kumpulan': group_of(pr.get('Status_Kelulusan')), 'tarikh': (pr.get('Tarikh_Lulus') or '')[:10],
-            'lot': [], 'rekod': 0, 'peta': 0, 'bangunan': 0, 'tiada_geo': 0, 'luar': 0, 'c': None, '_c': []})
-        r['rekod'] += 1
-        lot = (pr.get('No_Lot') or '').strip()
-        if lot and lot not in r['lot']:
-            r['lot'].append(lot)
         c = centre_of(g) if g else None
+        r = {'n': n, 'fail': clean(pr.get('No_Fail')), 'lot': clean(pr.get('No_Lot')), 'pemohon': clean(pr.get('Nama_Pemohon')),
+             'arkitek': clean(pr.get('Arkitek')), 'jenis': clean(pr.get('Jenis_Bangunan')), 'status': clean(pr.get('Status_Kelulusan')),
+             'kumpulan': group_of(pr.get('Status_Kelulusan')) if is_approval(pr) else 'Tiada keputusan',
+             'tarikh': clean(pr.get('Tarikh_Lulus'))[:10]}
         if c is None:
-            r['tiada_geo'] += 1
+            r['peta'] = 'tiada_geo'
         elif not (KEMAMAN[0] <= c[0] <= KEMAMAN[2] and KEMAMAN[1] <= c[1] <= KEMAMAN[3]):
-            r['luar'] += 1
+            r['peta'] = 'luar'
         else:
-            r['peta'] += 1
-            r['_c'].append(c)
-            r['bangunan'] += ('K%d' % n) in hit
-    reg = []
-    for r in files.values():
-        if r['_c']:
-            r['c'] = [round(sum(c[0] for c in r['_c']) / len(r['_c']), 6), round(sum(c[1] for c in r['_c']) / len(r['_c']), 6)]
-        del r['_c']
-        r['lot'] = ', '.join(r['lot'])
-        reg.append(r)
-    reg.sort(key=lambda r: r['tarikh'] or '0', reverse=True)
-    n_rec = sum(r['rekod'] for r in reg)
-    print('shop register:', len(reg), 'files,', n_rec, 'approval records,', sum(r['peta'] for r in reg), 'on the map',
-          dict(Counter(r['kumpulan'] for r in reg)))
+            r['peta'] = 'ya'
+            r['c'] = [round(c[0], 6), round(c[1], 6)]
+            if ('K%d' % n) in hit:
+                r['bangunan'] = 1
+        reg.append({k: v for k, v in r.items() if v != ''})
+    reg.sort(key=lambda r: (r.get('tarikh', '0'), -r['n']), reverse=True)
+    print('shop register:', len(reg), 'records', dict(Counter(r['kumpulan'] for r in reg)), dict(Counter(r['peta'] for r in reg)))
     if os.environ.get('MPK_NO_EXPECT') != '1':
-        assert n_rec == EXPECTED['kedai_approvals'], ('shop approval records', n_rec)
+        assert len(reg) == EXPECTED['kedai_records'], ('shop records', len(reg))
+        assert sum(r['kumpulan'] != 'Tiada keputusan' for r in reg) == EXPECTED['kedai_approvals']
     with open(OUT_REGISTER, 'w', encoding='utf-8') as f:
         json.dump(reg, f, ensure_ascii=False, separators=(',', ':'))
-
 
 if __name__ == '__main__':
     main()

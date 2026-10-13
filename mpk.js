@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013o',
+  VERSION: '20261013p',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -943,46 +943,73 @@ ${MPK.data.daftar ? mpkRegisterCardHTML() : ''}
   `;
 }
 
-// Shop building plan register (Pelan Bangunan Kedai): every approval file, on the map or not
+// Shop building plan register (Pelan Bangunan Kedai): every record, approved or not, on the map or not
+const MPK_REG_GROUPS = ['Lulus', 'Lulus Bersyarat', 'Tolak', 'Tidak dinyatakan', 'Tiada keputusan'];
+const MPK_REG_PAGE = 150;
 function mpkRegisterCardHTML() {
   const reg = MPK.data.daftar;
-  const rec = reg.reduce((a, r) => a + r.rekod, 0), peta = reg.reduce((a, r) => a + r.peta, 0);
+  const n = k => reg.filter(r => r.kumpulan === k).length;
+  const onMap = reg.filter(r => r.peta === 'ya').length;
   return `<div class="mpk-card mpk-reg">
         <div class="mpk-card-title">Shop building plan register</div>
-        <div class="mpk-reg-sum">${mpkNum(reg.length)} files · ${mpkNum(rec)} approval records ·
-          ${mpkNum(peta)} drawn on the map</div>
+        <div class="mpk-reg-sum">${mpkNum(reg.length)} records · ${mpkNum(onMap)} drawn on the map ·
+          ${mpkNum(reg.length - onMap)} cannot be placed</div>
         <input type="search" id="mpk-reg-q" class="mpk-reg-q" placeholder="File no., lot, applicant or building type"
           oninput="mpkRenderRegister()" aria-label="Search the register">
-        <div class="mpk-reg-list" id="mpk-reg-list">${mpkRegisterRows('')}</div>
+        <div class="mpk-reg-filters">
+          <select id="mpk-reg-st" onchange="mpkRenderRegister()" aria-label="Approval status">
+            <option value="">All statuses (${mpkNum(reg.length)})</option>
+            ${MPK_REG_GROUPS.map(k => `<option value="${k}">${k} (${mpkNum(n(k))})</option>`).join('')}
+          </select>
+          <select id="mpk-reg-map" onchange="mpkRenderRegister()" aria-label="On the map">
+            <option value="">On the map or not</option>
+            <option value="ya">On the map (${mpkNum(onMap)})</option>
+            <option value="no">Not on the map (${mpkNum(reg.length - onMap)})</option>
+          </select>
+        </div>
+        <div class="mpk-reg-count" id="mpk-reg-count"></div>
+        <div class="mpk-reg-list" id="mpk-reg-list"></div>
       </div>`;
 }
-function mpkRegisterRows(q) {
-  q = q.trim().toUpperCase();
-  const reg = MPK.data.daftar.map((r, i) => ({ ...r, i }))
-    .filter(r => !q || [r.fail, r.lot, r.pemohon, r.jenis, r.arkitek].some(t => (t || '').toUpperCase().includes(q)));
-  if (!reg.length) return '<div class="mpk-reg-empty">No file matches.</div>';
-  const cls = { 'Lulus': 'ok', 'Lulus Bersyarat': 'cond', 'Tolak': 'no', 'Tidak dinyatakan': 'na' };
-  return reg.map(r => {
-    const where = r.peta
-      ? `${r.peta} of ${r.rekod} on the map${r.bangunan ? ` · covers ${r.bangunan === 1 ? 'a building' : r.bangunan + ' buildings'}` : ''}`
-      : 'not on the map · ' + (r.tiada_geo ? 'no drawing in the register' : 'coordinates outside Kemaman');
-    const off = [r.tiada_geo && r.peta ? `${r.tiada_geo} without a drawing` : '', r.luar && r.peta ? `${r.luar} outside Kemaman` : '']
-      .filter(Boolean).join(' · ');
-    return `<button type="button" class="mpk-reg-row${r.c ? '' : ' nomap'}" ${r.c ? `onclick="mpkRegisterGo(${r.i})"` : 'disabled'}>
-        <div class="mpk-reg-top"><b>${mpkEscHtml(r.fail || 'No file no.')}</b>
-          <span class="mpk-reg-st ${cls[r.kumpulan]}">${mpkEscHtml(r.kumpulan)}</span></div>
-        <div class="mpk-reg-l">${mpkEscHtml(r.pemohon || '—')}${r.jenis ? ' · ' + mpkEscHtml(r.jenis) : ''}</div>
-        <div class="mpk-reg-m">${r.lot ? 'Lot ' + mpkEscHtml(r.lot) + ' · ' : ''}${r.tarikh ? mpkPlanDateLabel(r.tarikh) + ' · ' : ''}${where}${off ? ' · ' + off : ''}</div>
-      </button>`;
-  }).join('');
+function mpkRegisterMatches() {
+  const q = (document.getElementById('mpk-reg-q').value || '').trim().toUpperCase();
+  const st = document.getElementById('mpk-reg-st').value, mp = document.getElementById('mpk-reg-map').value;
+  return MPK.data.daftar.map((r, i) => ({ ...r, i })).filter(r =>
+    (!st || r.kumpulan === st) && (!mp || (mp === 'ya') === (r.peta === 'ya'))
+    && (!q || [r.fail, r.lot, r.pemohon, r.jenis, r.arkitek, r.status, String(r.n)].some(t => (t || '').toUpperCase().includes(q))));
 }
-function mpkRenderRegister() {
-  document.getElementById('mpk-reg-list').innerHTML = mpkRegisterRows(document.getElementById('mpk-reg-q').value);
+function mpkRegisterRow(r) {
+  const cls = { 'Lulus': 'ok', 'Lulus Bersyarat': 'cond', 'Tolak': 'no', 'Tidak dinyatakan': 'na', 'Tiada keputusan': 'na' };
+  const where = r.peta === 'ya' ? 'on the map' + (r.bangunan ? ' · covers a building' : '')
+    : r.peta === 'luar' ? 'not on the map · coordinates outside Kemaman' : 'not on the map · no drawing in the register';
+  const title = r.fail ? 'File ' + mpkEscHtml(r.fail) : 'Record ' + r.n;
+  const meta = [r.lot ? 'Lot ' + mpkEscHtml(r.lot) : '', r.tarikh ? mpkPlanDateLabel(r.tarikh) : '',
+    r.status && !MPK_REG_GROUPS.includes(r.status) ? 'status: ' + mpkEscHtml(r.status) : '', where].filter(Boolean).join(' · ');
+  return `<button type="button" class="mpk-reg-row${r.c ? '' : ' nomap'}" ${r.c ? `onclick="mpkRegisterGo(${r.i})"` : 'disabled'}>
+      <div class="mpk-reg-top"><b>${title}</b><span class="mpk-reg-st ${cls[r.kumpulan]}">${mpkEscHtml(r.kumpulan)}</span></div>
+      ${r.pemohon || r.jenis ? `<div class="mpk-reg-l">${[mpkEscHtml(r.pemohon), mpkEscHtml(r.jenis)].filter(Boolean).join(' · ')}</div>` : ''}
+      <div class="mpk-reg-m">${meta}</div>
+    </button>`;
+}
+function mpkRenderRegister(more) {
+  if (!document.getElementById('mpk-reg-list')) return;
+  MPK.regShown = more ? MPK.regShown + MPK_REG_PAGE : MPK_REG_PAGE;
+  const rows = mpkRegisterMatches(), shown = rows.slice(0, MPK.regShown);
+  document.getElementById('mpk-reg-count').textContent = rows.length
+    ? `${mpkNum(rows.length)} record${rows.length === 1 ? '' : 's'}${rows.length > shown.length ? ` · showing ${mpkNum(shown.length)}` : ''}` : '';
+  document.getElementById('mpk-reg-list').innerHTML = rows.length
+    ? shown.map(mpkRegisterRow).join('') + (rows.length > shown.length
+      ? `<button type="button" class="mpk-reg-more" onclick="mpkRenderRegister(true)">Show ${mpkNum(Math.min(MPK_REG_PAGE, rows.length - shown.length))} more</button>` : '')
+    : '<div class="mpk-reg-empty">No record matches.</div>';
 }
 function mpkRegisterGo(i) {
   const r = MPK.data.daftar[i];
   if (!r || !r.c || !map) return;
   if (!MPK.layerOn.pelan) mpkToggleLayer('pelan');
+  if (r.kumpulan === 'Tiada keputusan' || r.kumpulan === 'Tidak dinyatakan') {     // their drawings sit under 'no decision'
+    const btn = document.getElementById('mpk-sub-pelan-tiada');
+    if (btn && !btn.classList.contains('on')) mpkToggleSub('pelan', 'tiada');
+  }
   map.flyTo({ center: r.c, zoom: 18.5 });
 }
 
@@ -1028,6 +1055,8 @@ const mpkM2 = v => (v >= 10000 ? (v / 10000).toLocaleString('en-MY', { maximumFr
 
 function mpkRender() {
   if (!MPK.data) return;
+  const regList = document.getElementById('mpk-reg-list');
+  if (regList && !regList.childElementCount) mpkRenderRegister();
   const s = mpkStats(MPK.data.buildings.features, MPK.settings, MPK.rates, MPK.area);
   const b = mpkBreakdown(mpkAreaFeatures(), MPK.settings).all;
   MPK.lastStats = s;

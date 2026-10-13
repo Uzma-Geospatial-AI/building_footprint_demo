@@ -254,7 +254,7 @@ gap in the register rather than an offence). Teluk Kalong inside the boundary: 3
 1,183 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.
 
-**Shop building plans** (every approval file of the register — 414 records, 239 files — is listed in Analysis → *Shop building plan register*, with a click-to-zoom for the 346 drawn on the map; MPK's *Pelan Bangunan Kedai* register, Chukai and Binjai, 4,547 records,
+**Shop building plans** (all 4,547 records — Lulus 362, Lulus Bersyarat 46, Tolak 2, Tidak dinyatakan 4, no decision 4,133 — are listed in Analysis → *Shop building plan register*, with status and on-map filters and a click-to-zoom for the 1,206 drawn on the map; MPK's *Pelan Bangunan Kedai* register, Chukai and Binjai, 4,547 records,
 [source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson)): the register is
 uneven. Every record with a geometry inside Kemaman is drawn (1,206): 340 approved (LULUS, LULUS BERSYARAT / DGN SYARAT,
 and the misspellings LUUS / ULUS), 2 rejected (TOLAK) and 864 with no decision (blank, -9999, TAMBAHAN, place names, dates),

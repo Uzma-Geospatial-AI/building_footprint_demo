@@ -575,3 +575,7 @@ body:not(.mpk-mode) .mpk-aerial-head, body:not(.mpk-mode) .mpk-aerial-opt { disp
 .mpk-reg-st.no { background:rgba(213,0,0,0.12); color:#B00000; }
 .mpk-reg-st.na { background:rgba(120,144,156,0.18); color:#455A64; }
 .mpk-reg-empty { padding:12px; font-size:12px; color:rgba(30,44,68,0.55); }
+.mpk-reg-filters { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+.mpk-reg-filters select { width:100%; min-width:0; padding:6px 8px; border:1px solid rgba(30,44,68,0.15); border-radius:8px; font:inherit; font-size:11px; background:#fff; color:#1E2C44; }
+.mpk-reg-count { font-size:10px; color:rgba(30,44,68,0.55); margin:0 0 6px 2px; min-height:12px; }
+.mpk-reg-more { display:block; width:100%; padding:9px; border:0; background:rgba(232,119,46,0.08); color:#C25E1C; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
