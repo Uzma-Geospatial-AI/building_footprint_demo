@@ -185,7 +185,7 @@ function mpkPlanReason(x, s) {
   let r;
   if (x.source === 'added') r = (p.title ? p.title + ' · ' : '') + 'added by officer';
   else if (x.source === 'included') r = 'Added by officer (' + MPK_STATUS[mpkStatus(p, s)].label.toLowerCase() + ')';
-  else r = mpkJenis(p, s) === 'mockup' ? 'On MPK suspect list' : `Within ${p.jarak_jalan_m} m of road centreline (reserve ${s.rizab} m)`;
+  else r = mpkJenis(p, s) === 'tolak' ? 'Building plan rejected by MPK (TOLAK)' : mpkJenis(p, s) === 'mockup' ? 'On MPK suspect list' : `Within ${p.jarak_jalan_m} m of road centreline (reserve ${s.rizab} m)`;
   return x.note ? r + ' · Note: ' + x.note : r;
 }
 

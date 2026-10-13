@@ -120,7 +120,7 @@ function mpkPriority(p, s, inHotspot) {
   if (!j) return null;
   const parts = {
     size: clamp((Math.log10(Math.max(p.area_m2, 1)) - 1) / (Math.log10(5000) - 1)),
-    evidence: j === 'mockup' ? 1 : clamp(0.4 + 0.6 * (1 - p.jarak_jalan_m / s.rizab)),
+    evidence: j === 'rizab' ? clamp(0.4 + 0.6 * (1 - p.jarak_jalan_m / s.rizab)) : 1,   // MPK's list or a rejected plan
     confidence: clamp(p.confidence || 0),
     cluster: inHotspot ? 1 : 0,
   };
@@ -568,7 +568,7 @@ function mpkFeat3D(feats, s, ms = 1800) {
 }
 
 const mpkFmtM2 = n => mpkNum(n) + ' m²';
-const mpkFeatReason = (p, s) => mpkJenis(p, s) === 'mockup' ? 'On MPK suspect list'
+const mpkFeatReason = (p, s) => mpkJenis(p, s) === 'tolak' ? 'Building plan rejected by MPK (TOLAK)' : mpkJenis(p, s) === 'mockup' ? 'On MPK suspect list'
   : `${p.jarak_jalan_m} m from road centreline (reserve ${s.rizab} m)`;
 
 // ---------- The ten tools ----------

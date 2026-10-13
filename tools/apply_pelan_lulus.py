@@ -1,37 +1,55 @@
-"""Apply MPK's approved building plans (Pelan Bangunan Lulus) to the Teluk Kalong buildings.
+"""Apply MPK's registers of building plans to the buildings.
 
-Source: MPK's register of approved building plans for Teluk Kalong (966 records: file and lot
-number, approval date and status, building type, plan geometry digitised from the CAD plans):
-  https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson
+Sources (MPK registers: file and lot number, decision and date, building type, plan geometry
+digitised from the CAD plans):
+  tk     Pelan Bangunan Teluk Kalong Lulus, 966 records, all approved
+         https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson
+  kedai  Pelan Bangunan Kedai (shops, Chukai and Binjai), 4,547 records; only those with a geometry
+         inside Kemaman and a decision are used: approved (LULUS, LULUS BERSYARAT / DGN SYARAT,
+         DILULUSKAN and the misspellings LUUS / ULUS) or rejected (TOLAK). Blank, -9999 and other
+         values (place names, dates, numbers) are not a decision and are left out.
+         https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson
 
-Run after tools/build_mpk_illegal.py. For every Teluk Kalong building inside the planning
-boundary (mpk/mpk_buildings.geojson), the class is decided from the approved plans; it replaces
-the older "on an approved lot" rule digitised from MPK's map:
-  lulus        an approved building plan covers the building (legal)
-  mockup       on the API's suspect list and no approved plan covers it (suspected)
-  tiada_pelan  no approved building plan on record (not verified)
-A plan covers a building when a plan polygon holds the building's centre, the building holds a
-plan polygon's centre, or at least two vertices of the plan's CAD outline lie on / within 2 m of
-the footprint. The first run keeps each building's previous class in `asal`, so the script can
-be re-run on its own output.
+Run after tools/build_mpk_manual.py. A plan covers a building when a plan polygon holds the
+building's centre, the building holds a plan polygon's centre, or at least two vertices of the
+plan's CAD outline lie on / within 2 m of the footprint. In mpk/mpk_buildings.geojson:
+  Teluk Kalong (inside the boundary)
+    lulus        an approved plan covers it (legal)
+    tolak        only a rejected plan covers it (suspected)
+    mockup       on the API's suspect list, no plan (suspected)
+    tiada_pelan  no plan on record (not verified)
+  Binjai - Chukai corridor
+    lulus        an approved plan covers it (legal)
+    tolak        only a rejected plan covers it (suspected)
+    koridor      no plan: the road-reserve rule decides in the browser
+Buildings outside the study areas (mpk/mpk_buildings_luar.geojson) only get the plan's details.
+Every covered building gets pelan_fail, pelan_tarikh, pelan_status, pelan_jenis, pelan_n and
+pelan_sumber. The first run keeps each study building's previous class in `asal`, so the script
+can be re-run on its own output.
 
-Also writes mpk/pelan_lulus.geojson: the plans for the map (geometry collections split, applicant
-and architect names left out).
+Also writes mpk/pelan_lulus.geojson: the approved and rejected plans for the map (applicant and
+architect names left out).
 
-  python tools/apply_pelan_lulus.py [path-or-url-of-the-geojson]
+  python tools/apply_pelan_lulus.py [--tk FILE_OR_URL] [--kedai FILE_OR_URL]
 """
+import argparse
 import json
 import math
 import os
-import sys
+import re
 import urllib.request
 from collections import Counter, defaultdict
 
 URL = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson'
+URL_KEDAI = 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson'
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mpk')
 BUILDINGS = os.path.join(ROOT, 'mpk_buildings.geojson')
+OTHERS = os.path.join(ROOT, 'mpk_buildings_luar.geojson')
 OUT_PLANS = os.path.join(ROOT, 'pelan_lulus.geojson')
-EXPECTED = {'records': 966, 'lulus': 345, 'mockup': 26, 'tiada_pelan': 1183}   # 2026 manual footprints
+KEMAMAN = (103.13, 4.0, 103.65, 4.6)                 # district box: shop records outside it are mis-placed
+EXPECTED = {'records': 966, 'kedai_records': 4547}
+EXPECTED_CLASSES = {('tk', 'lulus'): 345, ('tk', 'mockup'): 26, ('tk', 'tiada_pelan'): 1183,
+                    ('bbc', 'lulus'): 40, ('bbc', 'tolak'): 1, ('bbc', 'koridor'): 374}
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 111320
 GRID = 0.001                                         # ~110 m index cells
@@ -117,33 +135,115 @@ def r6(c):
     return [round(c[0], 6), round(c[1], 6)]                # ~10 cm
 
 
-def round_geom(g):
-    t, c = g['type'], g['coordinates']
-    if t == 'Point':
-        return {'type': t, 'coordinates': r6(c)}
-    if t in ('LineString', 'MultiPoint'):
-        return {'type': t, 'coordinates': [r6(x) for x in c]}
-    if t in ('Polygon', 'MultiLineString'):
-        return {'type': t, 'coordinates': [[r6(x) for x in ring] for ring in c]}
-    return {'type': t, 'coordinates': [[[r6(x) for x in ring] for ring in poly] for poly in c]}
+def decision(status):
+    """'lulus' (approved), 'tolak' (rejected) or None (blank / not a decision)."""
+    t = (status or '').upper()
+    if 'TOLAK' in t:
+        return 'tolak'
+    if re.search(r'LULUS|LUUS|ULUS|DILULUSKAN', t):
+        return 'lulus'
+    return None
+
+
+def centre_of(g):
+    rings, pts = parts(g)
+    allc = [c for r in rings for c in r] + pts
+    if not allc:
+        return None
+    return sum(c[0] for c in allc) / len(allc), sum(c[1] for c in allc) / len(allc)
+
+
+def plan_shapes(g):
+    """Polygons, lines and points of a plan, coordinates to ~10 cm, repeats dropped."""
+    polys, lines, points, seen = [], [], [], set()
+
+    def add(bucket, item):
+        key = json.dumps(item)
+        if key not in seen:
+            seen.add(key)
+            bucket.append(item)
+
+    def clean(line):
+        o = []
+        for c in line:
+            c = r6(c)
+            if not o or o[-1] != c:
+                o.append(c)
+        return o
+
+    for sub in (g['geometries'] if g['type'] == 'GeometryCollection' else [g]):
+        if not sub or not sub.get('coordinates'):
+            continue
+        t, c = sub['type'], sub['coordinates']
+        if t == 'Polygon':
+            add(polys, [clean(r) for r in c])
+        elif t == 'MultiPolygon':
+            for poly in c:
+                add(polys, [clean(r) for r in poly])
+        elif t == 'LineString':
+            if len(clean(c)) > 1:
+                add(lines, clean(c))
+        elif t == 'MultiLineString':
+            for line in c:
+                if len(clean(line)) > 1:
+                    add(lines, clean(line))
+        elif t == 'Point':
+            add(points, r6(c))
+        elif t == 'MultiPoint':
+            for q in c:
+                add(points, r6(q))
+    return (('MultiPolygon', polys), ('MultiLineString', lines), ('MultiPoint', points))
 
 
 def main():
-    plans = load(sys.argv[1] if len(sys.argv) > 1 else URL)['features']
-    assert len(plans) == EXPECTED['records'], ('plan records', len(plans))
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--tk', default=URL)
+    ap.add_argument('--kedai', default=URL_KEDAI)
+    args = ap.parse_args()
+
+    plans, skipped = [], Counter()
+    tk_src = load(args.tk)['features']
+    assert len(tk_src) == EXPECTED['records'], ('Teluk Kalong plan records', len(tk_src))
+    for p in tk_src:
+        pr = p['properties']
+        plans.append({'key': 'T%d' % pr['ID_Rekod'], 'sumber': 'Teluk Kalong', 'pr': pr, 'geometry': p['geometry'],
+                      'keputusan': decision(pr.get('Status_Kelulusan')) or 'lulus'})   # the register lists approvals
+    kedai_src = load(args.kedai)['features']
+    assert len(kedai_src) == EXPECTED['kedai_records'], ('shop plan records', len(kedai_src))
+    for n, p in enumerate(kedai_src, 1):
+        pr, g = p['properties'], p['geometry']
+        c = centre_of(g) if g else None
+        if c is None:
+            skipped['no geometry'] += 1
+            continue
+        if not (KEMAMAN[0] <= c[0] <= KEMAMAN[2] and KEMAMAN[1] <= c[1] <= KEMAMAN[3]):
+            skipped['outside Kemaman (mis-placed)'] += 1
+            continue
+        k = decision(pr.get('Status_Kelulusan'))
+        if not k:
+            skipped['no decision in the record'] += 1
+            continue
+        plans.append({'key': 'K%d' % n, 'sumber': 'Kedai', 'pr': pr, 'geometry': g, 'keputusan': k})
+
     data = load(BUILDINGS)
-    feats = data['features']
-    tk = [f for f in feats if f['properties']['kawasan'] == 'tk' and f['properties'].get('dalam')]
+    others = load(OTHERS)
+    study = [f for f in data['features'] if (f['properties']['kawasan'] == 'tk' and f['properties'].get('dalam'))
+             or f['properties']['kawasan'] == 'bbc']
+    allb = study + others['features']
+
+    def ring_of(f):
+        g = f['geometry']
+        return g['coordinates'][0] if g['type'] == 'Polygon' else max((q[0] for q in g['coordinates']), key=len)
 
     grid = defaultdict(list)
-    for i, f in enumerate(tk):
-        ring = f['geometry']['coordinates'][0]
+    for i, f in enumerate(allb):
+        ring = ring_of(f)
         xs, ys = [c[0] for c in ring], [c[1] for c in ring]
         for gx in range(int(min(xs) / GRID), int(max(xs) / GRID) + 1):
             for gy in range(int(min(ys) / GRID), int(max(ys) / GRID) + 1):
                 grid[(gx, gy)].append(i)
 
-    covered = defaultdict(list)                       # building index -> plans covering it
+    covered = defaultdict(lambda: {'lulus': [], 'tolak': []})
     hit = set()
     for p in plans:
         rings, pts = parts(p['geometry'])
@@ -156,85 +256,70 @@ def main():
             for gy in range(int(min(ys) / GRID) - 1, int(max(ys) / GRID) + 2):
                 cand.update(grid.get((gx, gy), ()))
         for i in cand:
-            if covers(rings, pts, tk[i]['geometry']['coordinates'][0]):
-                covered[i].append(p['properties'])
-                hit.add(p['properties']['ID_Rekod'])
+            if covers(rings, pts, ring_of(allb[i])):
+                covered[i][p['keputusan']].append(p)
+                hit.add(p['key'])
 
-    for i, f in enumerate(tk):
+    for i, f in enumerate(allb):
         pr = f['properties']
-        pr.setdefault('asal', pr['kategori'])
+        in_study = i < len(study)
+        if in_study:
+            pr.setdefault('asal', pr['kategori'])
         for k in [k for k in pr if k.startswith('pelan_')]:
             del pr[k]
-        if i in covered:
-            latest = max(covered[i], key=lambda q: q.get('Tarikh_Lulus') or '')
+        c = covered.get(i)
+        use = c and (c['lulus'] or c['tolak'])
+        if use:
+            latest = max(use, key=lambda q: q['pr'].get('Tarikh_Lulus') or '')
+            q = latest['pr']
+            pr['pelan_fail'] = q.get('No_Fail') or ''
+            pr['pelan_tarikh'] = q.get('Tarikh_Lulus') or ''
+            pr['pelan_status'] = q.get('Status_Kelulusan') or ''
+            pr['pelan_jenis'] = q.get('Jenis_Bangunan') or ''
+            pr['pelan_n'] = len(use)
+            pr['pelan_sumber'] = latest['sumber']
+        if not in_study:
+            continue
+        if c and c['lulus']:
             pr['kategori'] = 'lulus'
-            pr['pelan_fail'] = latest.get('No_Fail') or ''
-            pr['pelan_tarikh'] = latest.get('Tarikh_Lulus') or ''
-            pr['pelan_status'] = latest.get('Status_Kelulusan') or ''
-            pr['pelan_jenis'] = latest.get('Jenis_Bangunan') or ''
-            pr['pelan_n'] = len(covered[i])
-        else:
+        elif c and c['tolak']:
+            pr['kategori'] = 'tolak'
+        elif pr['kawasan'] == 'tk':
             pr['kategori'] = 'mockup' if pr['asal'] == 'mockup' else 'tiada_pelan'
+        else:
+            pr['kategori'] = 'koridor'
 
-    counts = Counter(f['properties']['kategori'] for f in tk)
-    print('Teluk Kalong buildings:', dict(counts), '· plans covering a building:', len(hit), 'of', len(plans))
-    if os.environ.get('MPK_NO_EXPECT') != '1':          # set it to 1 when the footprints themselves changed
-        for k in ('lulus', 'mockup', 'tiada_pelan'):
-            assert counts[k] == EXPECTED[k], (k, counts[k], EXPECTED[k])
+    counts = Counter((f['properties']['kawasan'], f['properties']['kategori']) for f in study)
+    used = Counter((p['sumber'], p['keputusan']) for p in plans)
+    print('plans used:', dict(used), '| shop records left out:', dict(skipped))
+    print('plans covering a building:', len(hit), 'of', len(plans))
+    print('study-area buildings:', dict(sorted(counts.items())))
+    print('outside the study areas with a plan:', sum(1 for f in others['features'] if 'pelan_fail' in f['properties']))
+    if os.environ.get('MPK_NO_EXPECT') != '1' and EXPECTED_CLASSES:   # 1 when the footprints themselves changed
+        for k, n in EXPECTED_CLASSES.items():
+            assert counts[k] == n, (k, counts[k], n)
     with open(BUILDINGS, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+    with open(OTHERS, 'w', encoding='utf-8') as f:
+        json.dump(others, f, ensure_ascii=False, separators=(',', ':'))
 
-    # the plans for the map: one feature per record and kind (outlines, filled shapes, points),
-    # coordinates to ~10 cm, repeated vertices and duplicate pieces dropped
+    # the plans for the map: one feature per record and kind (outlines, filled shapes, points)
     out = []
     for p in plans:
-        pr, g = p['properties'], p['geometry']
+        pr, g = p['pr'], p['geometry']
         if not g:
             continue
-        props = {'rekod': pr['ID_Rekod'], 'fail': pr.get('No_Fail') or '', 'lot': pr.get('No_Lot') or '',
+        props = {'rekod': p['key'], 'sumber': p['sumber'], 'keputusan': p['keputusan'],
+                 'fail': pr.get('No_Fail') or '', 'lot': pr.get('No_Lot') or '',
                  'tarikh': pr.get('Tarikh_Lulus') or '', 'status': pr.get('Status_Kelulusan') or '',
                  'jenis': pr.get('Jenis_Bangunan') or '', 'luas': round(pr.get('Luas_Bangunan_mp') or 0),
-                 'bangunan': pr['ID_Rekod'] in hit}
-        polys, lines, points, seen = [], [], [], set()
-        def add(bucket, item):
-            key = json.dumps(item)
-            if key not in seen:
-                seen.add(key)
-                bucket.append(item)
-        def clean(line):
-            o = []
-            for c in line:
-                c = r6(c)
-                if not o or o[-1] != c:
-                    o.append(c)
-            return o
-        for sub in (g['geometries'] if g['type'] == 'GeometryCollection' else [g]):
-            if not sub or not sub.get('coordinates'):
-                continue
-            t, c = sub['type'], sub['coordinates']
-            if t == 'Polygon':
-                add(polys, [clean(r) for r in c])
-            elif t == 'MultiPolygon':
-                for poly in c:
-                    add(polys, [clean(r) for r in poly])
-            elif t == 'LineString':
-                if len(clean(c)) > 1:
-                    add(lines, clean(c))
-            elif t == 'MultiLineString':
-                for l in c:
-                    if len(clean(l)) > 1:
-                        add(lines, clean(l))
-            elif t == 'Point':
-                add(points, r6(c))
-            elif t == 'MultiPoint':
-                for q in c:
-                    add(points, r6(q))
-        for kind, geom in (('MultiPolygon', polys), ('MultiLineString', lines), ('MultiPoint', points)):
+                 'bangunan': p['key'] in hit}
+        for kind, geom in plan_shapes(g):
             if geom:
                 out.append({'type': 'Feature', 'properties': props, 'geometry': {'type': kind, 'coordinates': geom}})
     with open(OUT_PLANS, 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': out}, f, ensure_ascii=False, separators=(',', ':'))
-    print('wrote', BUILDINGS, 'and', OUT_PLANS, f'({len(out)} plan shapes)')
+    print('wrote', BUILDINGS, OTHERS, 'and', OUT_PLANS, f'({len(out)} plan shapes)')
 
 
 if __name__ == '__main__':

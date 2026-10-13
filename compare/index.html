@@ -51,6 +51,11 @@
   .label { position: absolute; top: 14px; z-index: 3; padding: 7px 12px; border-radius: 9px; background: rgba(30, 44, 68, 0.88);
            color: #fff; font-size: 12px; line-height: 1.35; pointer-events: none; max-width: 42%; }
   .label b { display: block; font-size: 10px; letter-spacing: 0.08em; color: #F4A368; }
+  .label select { display: block; margin-top: 4px; max-width: 260px; padding: 5px 8px; border-radius: 7px;
+                  border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.95); color: var(--navy);
+                  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; pointer-events: auto; }
+  .label select:focus-visible { outline: 3px solid var(--orange); outline-offset: 1px; }
+  .label { pointer-events: auto; }
   #label-before { left: 14px; }
   #label-after { right: 14px; text-align: right; }
 
@@ -100,7 +105,6 @@
     <div class="spacer"></div>
     <div class="layers" id="change-layers"></div>
     <label class="toggle" id="ndvi-toggle"><input type="checkbox" id="tog-ndvi"> Vegetation index (NDVI)</label>
-    <label class="toggle"><input type="checkbox" id="tog-imagery" checked> Show historical images</label>
     <label class="toggle"><input type="checkbox" id="tog-overlay" checked> Boundary &amp; suspected buildings</label>
     <button class="btn" type="button" onclick="window.close()">Close</button>
   </header>
@@ -109,8 +113,10 @@
     <div class="map" id="map-before"></div>
     <div class="map" id="map-after"></div>
     <div class="legend" id="legend"></div>
-    <div class="label" id="label-before"><b>BEFORE</b><span></span></div>
-    <div class="label" id="label-after"><b>AFTER</b><span></span></div>
+    <div class="label" id="label-before"><b>BEFORE</b><span></span>
+      <select id="sel-before" aria-label="Before image"></select></div>
+    <div class="label" id="label-after"><b>AFTER</b><span></span>
+      <select id="sel-after" aria-label="After image"></select></div>
     <div class="swipe" id="swipe">
       <button class="handle" id="handle" type="button" role="slider" aria-label="Before / after divider"
               aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
@@ -120,8 +126,8 @@
     </div>
   </main>
 
-<script src="/mpk.js?v=20261013b"></script>
-<script src="/mpk-change.js?v=20261013b"></script>
+<script src="/mpk.js?v=20261013e"></script>
+<script src="/mpk-change.js?v=20261013e"></script>
 <script>
 (function () {
   const state = mpkCompareParse(location.search);
@@ -138,13 +144,41 @@
     + (e.cloud != null ? ` · ${Math.round(e.cloud)}% cloud` : '');
   const satName = e => (e.source === 'landsat' && e.platform ? e.platform.replace('landsat-', 'Landsat ')
     : { esri: 'Esri Wayback', s2: 'Sentinel-2' }[e.source]);
-  document.getElementById('label-before').querySelector('span').textContent = `${satName(state.before)} · ${dateText(state.before)}`;
-  document.getElementById('label-after').querySelector('span').textContent = `${satName(state.after)} · ${dateText(state.after)}`;
+  document.getElementById('label-before').querySelector('span').textContent = satName(state.before);
+  document.getElementById('label-after').querySelector('span').textContent = satName(state.after);
+
+  // Before / After dropdowns: every image this satellite has for the area; picking one reopens
+  // the page on the new pair (change layers are kept only if they were made for that pair)
+  const area = state.area === 'all' || !state.area ? 'tk' : state.area;
+  const same = (a, b) => a && b && a.date === b.date && (a.item || a.release) === (b.item || b.release);
+  const fileOf = { esri: 'wayback.json', s2: 'sentinel.json', landsat: 'landsat.json' }[state.after.source];
+  fetch(`/mpk/${fileOf}?v=${MPK.VERSION}`).then(r => r.json()).then(data => {
+    const src = state.after.source;
+    const list = src === 'esri' ? mpkEsriImages(data.history, area)
+      : Object.values((data.areas || {})[area] || {}).flat().filter(Boolean).map(e => ({ source: src, ...e }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+    [['before', 'sel-before'], ['after', 'sel-after']].forEach(([side, id]) => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = list.map((e, i) => `<option value="${i}"${same(e, state[side]) ? ' selected' : ''}>${dateText(e)}</option>`).join('');
+      if (!list.some(e => same(e, state[side]))) {           // the open image is not in the list: keep it on top
+        sel.insertAdjacentHTML('afterbegin', `<option value="-1" selected>${dateText(state[side])}</option>`);
+      }
+      sel.addEventListener('change', () => {
+        const e = list[+sel.value];
+        if (!e) return;
+        location.replace(mpkCompareUrl({ ...state, [side]: e }));
+      });
+    });
+  }).catch(() => {
+    ['sel-before', 'sel-after'].forEach((id, k) => {
+      document.getElementById(id).innerHTML = `<option>${dateText(k ? state.after : state.before)}</option>`;
+    });
+  });
   document.getElementById('sub').textContent =
     `${(MPK_AREAS[state.area] || {}).name || ''} · drag the divider to compare`;
   document.title = `Geospatial AI - Before / After · ${satName(state.after)}`;
 
-  // Google Satellite underneath, so switching the historical images off shows today's basemap
+  // Google Satellite underneath, where the historical image has no data
   const style = src => ({
     version: 8,
     sources: {
@@ -285,14 +319,6 @@
   if (!change) {
     box.innerHTML = '<span class="note">Press <b>Generate</b> in the dashboard’s Change detection card for these dates, then open Compare again to see the analysis layers.</span>';
   }
-  document.getElementById('tog-imagery').addEventListener('change', e => {
-    const on = e.target.checked;
-    [before, after].forEach(m => {
-      if (m.getLayer('img')) m.setLayoutProperty('img', 'visibility', on ? 'visible' : 'none');
-      m.setMaxZoom(on ? maxZoom : 20);            // Google stays sharp deeper than 10-30 m imagery
-    });
-    document.querySelectorAll('.label').forEach(l => { l.style.opacity = on ? 1 : 0.35; });
-  });
   document.getElementById('tog-overlay').addEventListener('change', e => {
     const vis = e.target.checked ? 'visible' : 'none';
     [before, after].forEach(m => ['suspect', 'boundary'].forEach(id => { if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', vis); }));

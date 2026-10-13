@@ -189,7 +189,10 @@ for vegetation up to forest) with its legend; it switches on by itself for veget
 and the Compare page has the same switch plus a legend over the map. Esri photos have no
 near-infrared band, so NDVI is not offered for them. A switch hides the result to
 show the regular basemap, and **Compare ↗** opens `/compare/` in a new tab: a swipe
-slider with Before on the left and After on the right (Google Satellite underneath). Index maps (NDVI, NDBI) for the area are
+slider with Before on the left and After on the right (Google Satellite underneath where an image has no data). The
+BEFORE and AFTER labels are dropdowns listing every image that satellite has for the area (Esri: each capture; Sentinel-2
+and Landsat: each month, with its cloud cover); picking one reopens the comparison on the new pair, and the change layers
+stay only if they were made for that pair. Index maps (NDVI, NDBI) for the area are
 fetched from Planetary Computer at native resolution, clouds masked (Sentinel-2 SCL +
 bright-blue test, Landsat bright-blue test), compared pixel by pixel in the browser and drawn
 on the map, with the changed area in hectares and the building footprints standing on
@@ -219,7 +222,11 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
 - *Statistics* (sidebar, under Dashboard): a full page with headline cards, a legal-vs-illegal
   donut with counts / shares / m², building-size classes split by status, a per-area table,
   the largest buildings (each with *View* on the map) and an *Export CSV* of every building
-  with its status and size.
+  with its status and size. **Revenue potential** (estimate): if the suspected buildings of the selected area are
+  regularised, the one-off processing fees (m² × fee rate), the assessment tax every year (Cukai Pintu, m² × tax rate),
+  the first-year total and the 5-year total, split by area and by reason, plus the upper bound if the not-verified
+  buildings also lacked approval. The two rates are editable there (and in the panel's revenue card; they stay in
+  sync and are remembered in the browser); they are assumptions to be set to MPK's schedule.
 - *Export PDF* (top bar in MPK mode, or *Export PDF report* on Statistics): asks for the language
   (**English** or **Bahasa Melayu**, last choice remembered), then builds an A4 council-style
   report for the selected area: particulars, summary, location map, breakdown by area and size,
@@ -242,6 +249,16 @@ register of approved building plans) and *Not verified* (blue: no approved plan 
 gap in the register rather than an offence). Teluk Kalong inside the boundary: 345 legal, 26 suspected,
 1,183 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.
+
+**Shop building plans** (MPK's *Pelan Bangunan Kedai* register, Chukai and Binjai, 4,547 records,
+[source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/Pelan_Bangunan_Kedai.geojson)): the register is
+uneven, so only records with a geometry inside Kemaman and a decision are used: 340 approved (LULUS, LULUS BERSYARAT / DGN
+SYARAT, and the misspellings LUUS / ULUS) and 2 rejected (TOLAK). Left out: 1,112 without geometry, 2,229 whose coordinates
+fall outside Kemaman (mis-placed), 864 with no decision (blank, -9999, place names, dates). In the Binjai – Chukai corridor
+an approved plan makes a building **legal** (40) and a building covered only by a rejected plan is **suspected · building
+plan rejected by MPK (TOLAK)** (1); 101 buildings outside the study areas show their plan in the popup. Map layers →
+*Approved building plans · MPK* has a third entry, *Rejected plan (TOLAK)* (red). Both registers are applied by
+`tools/apply_pelan_lulus.py`.
 
 **Approved building plans** (MPK's *Pelan Bangunan Lulus* register for Teluk Kalong, 966 records,
 [source](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/Pelan_Bangunan_Teluk_Kalong_Lulus.geojson)):
@@ -295,7 +312,7 @@ with each council.
 python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
 python tools/build_mpk_manual.py                                       # stdlib; 2026 hand-drawn footprints for Teluk Kalong + Binjai–Chukai
-python tools/apply_pelan_lulus.py                                      # stdlib; approved building plans (run after the lines above)
+python tools/apply_pelan_lulus.py                                      # stdlib; Teluk Kalong + shop building plans (run after the lines above)
 python tools/build_landuse.py                                          # stdlib; OSM land use for Kemaman (Overpass)
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
 python tools/build_sentinel.py                                         # stdlib; cloud check on ~2,300 scenes (~20 min)

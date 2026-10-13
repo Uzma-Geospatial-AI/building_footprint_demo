@@ -31,7 +31,7 @@ assert.strictEqual(all.total, 8);
 assert.strictEqual(all.lulus, 1);
 assert.strictEqual(all.count, 3);
 assert.strictEqual(all.area, 140);
-assert.deepStrictEqual(all.byJenis, { mockup: 2, rizab: 1 });
+assert.deepStrictEqual(all.byJenis, { mockup: 2, rizab: 1, tolak: 0 });
 assert.strictEqual(all.fee, 280);
 assert.strictEqual(all.cukai, 840);
 assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 8]);   // largest first
@@ -40,7 +40,7 @@ assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 8]);   // 
 const bbc = mpkStats(feats, s, rates, 'bbc');
 assert.strictEqual(bbc.total, 3);
 assert.strictEqual(bbc.count, 1);
-assert.deepStrictEqual(bbc.byJenis, { mockup: 0, rizab: 1 });
+assert.deepStrictEqual(bbc.byJenis, { mockup: 0, rizab: 1, tolak: 0 });
 
 // Three clear statuses: suspected (red), legal = an MPK-approved building plan covers it (green), not verified
 assert.deepStrictEqual(feats.map(x => mpkStatus(x.properties, s)),
@@ -51,6 +51,7 @@ assert.deepStrictEqual(bbc.byStatus, { suspected: 1, legal: 0, unverified: 2 });
 // map filter mirrors mpkJenis
 assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
   ['==', ['get', 'kategori'], 'mockup'],
+  ['==', ['get', 'kategori'], 'tolak'],
   ['all', ['==', ['get', 'kategori'], 'koridor'],
     ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], 10]],
 ]);
@@ -191,5 +192,20 @@ const all2 = mpkCSVAll(inScope, s).trim().split('\n');
 assert.strictEqual(all2[0], 'id,area,status,plus_code,lng,lat,area_m2,lot,upi');
 assert.strictEqual(all2.length, 4);
 assert.strictEqual(all2[1], '6,binjai_bandar_chukai,suspected_illegal,X6,103.4,4.2,600,,');   // largest first
+
+// A building covered only by a plan MPK rejected is suspected, in Teluk Kalong or the corridor;
+// a corridor building with an approved plan is legal and stays in scope
+const tolak = { kawasan: 'bbc', kategori: 'tolak', area_m2: 80 }, lulusBbc = { kawasan: 'bbc', kategori: 'lulus', jarak_jalan_m: 2 };
+assert.deepStrictEqual([mpkJenis(tolak, s), mpkStatus(tolak, s), mpkStatus(lulusBbc, s), mpkInScope(lulusBbc)], ['tolak', 'suspected', 'legal', true]);
+assert.ok(JSON.stringify(mpkSuspectFilter(s)).includes('"tolak"'));
+
+// Revenue potential: suspected buildings × rates, by area and reason, plus the not-verified upper bound
+const { mpkRevenue } = require('../mpk.js');
+const rev = mpkRevenue(feats, s, rates, 5);
+assert.deepStrictEqual([rev.suspected.n, rev.suspected.m2, rev.suspected.fee, rev.suspected.tax, rev.suspected.year1, rev.suspected.multi],
+  [3, 140, 280, 840, 1120, 280 + 840 * 5]);
+assert.deepStrictEqual([rev.byArea.tk.n, rev.byArea.tk.m2, rev.byArea.bbc.n, rev.byArea.bbc.fee], [2, 70, 1, 140]);
+assert.deepStrictEqual([rev.byType.mockup.n, rev.byType.rizab.n, rev.byType.tolak.n], [2, 1, 0]);
+assert.deepStrictEqual([rev.unverified.n, rev.unverified.m2, rev.unverified.year1], [4, 360, 360 * 8]);
 
 console.log('mpk logic: all tests passed');

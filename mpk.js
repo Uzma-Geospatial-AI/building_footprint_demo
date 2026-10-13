@@ -15,6 +15,7 @@
 // 'mockup'). Corridors: buildings within the road-reserve distance of the centreline.
 function mpkJenis(p, s) {
   if (p.kategori === 'mockup') return 'mockup';
+  if (p.kategori === 'tolak') return 'tolak';            // only a rejected building plan covers it
   if (p.kategori === 'koridor' && p.jarak_jalan_m != null && p.jarak_jalan_m <= s.rizab) return 'rizab';
   return null;
 }
@@ -31,7 +32,7 @@ function mpkStatus(p, s) {
 // The marked areas the dashboard reports on: Teluk Kalong buildings inside the planning
 // boundary, and buildings within the Binjai – Bandar Chukai road corridor
 function mpkInScope(p) {
-  return (p.kawasan === 'tk' && p.dalam === true) || p.kategori === 'koridor';
+  return (p.kawasan === 'tk' && p.dalam === true) || p.kawasan === 'bbc';
 }
 
 // Building size classes (footprint m²)
@@ -72,6 +73,7 @@ function mpkBreakdown(features, s) {
 function mpkSuspectFilter(s) {
   return ['any',
     ['==', ['get', 'kategori'], 'mockup'],
+    ['==', ['get', 'kategori'], 'tolak'],
     ['all', ['==', ['get', 'kategori'], 'koridor'],
       ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], s.rizab]],
   ];
@@ -79,7 +81,7 @@ function mpkSuspectFilter(s) {
 
 function mpkStats(features, s, rates, kawasan) {
   const feats = kawasan === 'all' ? features : features.filter(f => f.properties.kawasan === kawasan);
-  const byJenis = { mockup: 0, rizab: 0 };
+  const byJenis = { mockup: 0, rizab: 0, tolak: 0 };
   const byStatus = { suspected: 0, legal: 0, unverified: 0 };
   const suspects = [];
   let lulus = 0;
@@ -108,7 +110,7 @@ function mpkCSVAll(features, s) {
 
 // English codes written to the CSV export
 const MPK_CSV_AREA = { tk: 'teluk_kalong', bbc: 'binjai_bandar_chukai' };
-const MPK_CSV_TYPE = { mockup: 'suspected_list', rizab: 'road_reserve' };
+const MPK_CSV_TYPE = { mockup: 'suspected_list', rizab: 'road_reserve', tolak: 'plan_rejected' };
 
 function mpkCSV(suspects, rates, s) {
   const header = 'id,area,type,plus_code,lng,lat,distance_m,area_m2,confidence,lot,upi,est_processing_fee_rm,est_annual_assessment_tax_rm';
@@ -316,6 +318,7 @@ const MPK_STATUS = {
 const MPK_JENIS = {
   mockup:        { label: 'Suspected building (Teluk Kalong list)', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
   rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bbc'] },
+  tolak:         { label: 'Building plan rejected by MPK (TOLAK)', color: MPK_SUSPECT_COLOR, areas: ['tk', 'bbc'] },
 };
 
 // Land-use classes of mpk/landuse.geojson (OpenStreetMap, grouped by tools/build_landuse.py)
@@ -348,7 +351,8 @@ const MPK_LAYER_GROUPS = {
                layers: ['mpk-other-fill', 'mpk-other-line'], legend: [] },
   pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
-               legend: [['Plan covering a building', '.pelan', 'covers'], ['No building found on the plan', '.pelan-none', 'none']] },
+               legend: [['Approved plan covering a building', '.pelan', 'covers'], ['Approved, no building found', '.pelan-none', 'none'],
+                        ['Rejected plan (TOLAK)', '.pelan-tolak', 'tolak']] },
   reference: { label: 'Reference layers', swatchClass: 'line',
                layers: ['mpk-kadaster-line', 'mpk-boundary-fill',
                         'mpk-boundary-line', 'mpk-koridor-band', 'mpk-koridor-line'],
@@ -359,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013b',
+  VERSION: '20261013e',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -465,7 +469,7 @@ function mpkAddLayers() {
       // MPK's approved building plans (CAD outlines and shapes): dark teal where a building stands
       // on the plan, purple where no building was found on it
       map.addSource('mpk-pelan', { type: 'geojson', data: MPK.data.pelan });
-      const pelanColor = ['case', ['get', 'bangunan'], '#00695C', '#7E57C2'];
+      const pelanColor = ['case', ['==', ['get', 'keputusan'], 'tolak'], '#D50000', ['get', 'bangunan'], '#00695C', '#7E57C2'];
       map.addLayer({ id: 'mpk-pelan-fill', type: 'fill', source: 'mpk-pelan', filter: ['==', ['geometry-type'], 'Polygon'],
         paint: { 'fill-color': pelanColor, 'fill-opacity': 0.12 } });
       map.addLayer({ id: 'mpk-pelan-line', type: 'line', source: 'mpk-pelan', filter: ['!=', ['geometry-type'], 'Point'],
@@ -558,8 +562,11 @@ function mpkApplyLayerVisibility() {
   const zoneFilter = ['all', ['!=', ['get', 'zone'], 'district'], ['!', ['in', ['get', 'zone'], ['literal', zonesOff]]]];
   ['mpk-landuse-fill', 'mpk-landuse-line'].forEach(id => { if (map.getLayer(id)) map.setFilter(id, zoneFilter); });
   // approved plans: covering a building and / or with none found
-  const showCovers = mpkSubOn('pelan', 'covers'), showNone = mpkSubOn('pelan', 'none');
-  const which = showCovers && showNone ? true : showCovers ? ['get', 'bangunan'] : showNone ? ['!', ['get', 'bangunan']] : false;
+  const ok = ['==', ['get', 'keputusan'], 'lulus'];
+  const which = ['any', false,
+    ...(mpkSubOn('pelan', 'covers') ? [['all', ok, ['get', 'bangunan']]] : []),
+    ...(mpkSubOn('pelan', 'none') ? [['all', ok, ['!', ['get', 'bangunan']]]] : []),
+    ...(mpkSubOn('pelan', 'tolak') ? [['==', ['get', 'keputusan'], 'tolak']] : [])];
   if (map.getLayer('mpk-pelan-fill')) map.setFilter('mpk-pelan-fill', ['all', ['==', ['geometry-type'], 'Polygon'], which]);
   if (map.getLayer('mpk-pelan-line')) map.setFilter('mpk-pelan-line', ['all', ['!=', ['geometry-type'], 'Point'], which]);
   mpkRefresh3D();
@@ -954,6 +961,24 @@ function mpkRender() {
   if (MPK.page === 'stats') mpkRenderStats();
 }
 
+// Money the council could collect if the suspected buildings are regularised (estimate):
+// one-off processing fee = m² × fee rate; assessment tax (Cukai Pintu) = m² × tax rate a year.
+// `unverified` is the upper bound if every not-verified building also lacked approval.
+function mpkRevenue(features, s, rates, years = 5) {
+  const sum = list => {
+    const m2 = list.reduce((a, p) => a + p.area_m2, 0), fee = m2 * rates.fee, tax = m2 * rates.cukai;
+    return { n: list.length, m2, fee, tax, year1: fee + tax, multi: fee + tax * years };
+  };
+  const props = features.map(f => f.properties);
+  const sus = props.filter(p => mpkJenis(p, s));
+  return {
+    years, suspected: sum(sus),
+    byArea: Object.fromEntries(Object.keys(MPK_AREAS).map(k => [k, sum(sus.filter(p => p.kawasan === k))])),
+    byType: Object.fromEntries(Object.keys(MPK_JENIS).map(k => [k, sum(sus.filter(p => mpkJenis(p, s) === k))])),
+    unverified: sum(props.filter(p => mpkStatus(p, s) === 'unverified')),
+  };
+}
+
 function mpkRenderRevenue() {
   const s = MPK.lastStats;
   if (!s) return;
@@ -978,6 +1003,45 @@ function mpkOnRate() {
   MPK.rates = { fee: read('mpk-rate-fee'), cukai: read('mpk-rate-cukai') };
   mpkSaveRates();
   mpkRenderRevenue();
+  mpkRenderStatsRevenue();
+}
+
+// Statistics page: rates edited there update the panel too, and the other way round
+function mpkOnStatsRate() {
+  const read = id => { const v = parseFloat(document.getElementById(id).value); return isFinite(v) && v >= 0 ? v : 0; };
+  MPK.rates = { fee: read('mpk-srate-fee'), cukai: read('mpk-srate-cukai') };
+  mpkSaveRates();
+  const pf = document.getElementById('mpk-rate-fee'), pc = document.getElementById('mpk-rate-cukai');
+  if (pf) pf.value = MPK.rates.fee;
+  if (pc) pc.value = MPK.rates.cukai;
+  mpkRenderRevenue();
+  mpkRenderStatsRevenue();
+}
+
+function mpkRenderStatsRevenue() {
+  const el = document.getElementById('mpk-rev-body');
+  if (!el || MPK.page !== 'stats') return;
+  const r = mpkRevenue(mpkAreaFeatures(), MPK.settings, MPK.rates), sp = r.suspected;
+  const row = (label, x, cls = '') => `<tr class="${cls}"><td>${label}</td><td class="num">${mpkNum(x.n)}</td><td class="num">${mpkNum(x.m2)}</td>
+    <td class="num">${mpkRM(x.fee)}</td><td class="num">${mpkRM(x.tax)}</td><td class="num"><b>${mpkRM(x.year1)}</b></td></tr>`;
+  const head = first => `<thead><tr><th>${first}</th><th class="num">Buildings</th><th class="num">m²</th><th class="num">Processing fee</th>
+    <th class="num">Assessment tax / yr</th><th class="num">First year</th></tr></thead>`;
+  el.innerHTML = `
+    <div class="mpk-rev-cards">
+      <div class="mpk-rev-card"><small>One-off processing fees</small><b>${mpkRM(sp.fee)}</b><span>${mpkNum(sp.m2)} m² × RM ${MPK.rates.fee}/m²</span></div>
+      <div class="mpk-rev-card"><small>Assessment tax every year</small><b>${mpkRM(sp.tax)}</b><span>${mpkNum(sp.m2)} m² × RM ${MPK.rates.cukai}/m²</span></div>
+      <div class="mpk-rev-card main"><small>First-year total</small><b>${mpkRM(sp.year1)}</b><span>fees + one year of tax</span></div>
+      <div class="mpk-rev-card"><small>Over ${r.years} years</small><b>${mpkRM(sp.multi)}</b><span>fees + ${r.years} years of tax</span></div>
+    </div>
+    <p class="mpk-rev-sub">From the <b>${mpkNum(sp.n)} suspected buildings</b> if they are regularised (approved and put on the assessment roll).</p>
+    <table class="mpk-table">${head('Area')}<tbody>
+      ${Object.entries(r.byArea).filter(([, x]) => x.n).map(([k, x]) => row(MPK_AREAS[k].name, x)).join('')}
+      ${row('All suspected buildings', sp, 'total')}</tbody></table>
+    <table class="mpk-table">${head('Why suspected')}<tbody>
+      ${Object.entries(r.byType).filter(([, x]) => x.n).map(([k, x]) => row(MPK_JENIS[k].label, x)).join('')}</tbody></table>
+    <div class="mpk-rev-upper"><b>Upper bound:</b> if the ${mpkNum(r.unverified.n)} not-verified buildings (${mpkNum(r.unverified.m2)} m²) also lacked
+      approval, they would add up to <b>${mpkRM(r.unverified.year1)}</b> in the first year (${mpkRM(r.unverified.fee)} fees +
+      ${mpkRM(r.unverified.tax)} tax a year).</div>`;
 }
 
 // ---------- Map interaction ----------
@@ -1025,9 +1089,7 @@ function mpkShowPopup(p, lngLat) {
       ${p.kategori === 'luar' ? row('Distance from boundary', p.jarak_m + ' m') : ''}
       ${p.kategori === 'koridor' ? row('Distance from road centreline',
         p.jarak_jalan_m == null ? 'no road data' : p.jarak_jalan_m + ' m') : ''}
-      ${p.pelan_fail ? row('Approved plan', mpkEscHtml(p.pelan_fail) + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '')) : ''}
-      ${p.pelan_tarikh ? row('Approved on', mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + mpkEscHtml(p.pelan_status) : '')) : ''}
-      ${p.pelan_jenis ? row('Approved building', mpkEscHtml(p.pelan_jenis)) : ''}
+      ${mpkPlanRows(p, row)}
       ${row('Lot no.', p.lot || 'no cadastral lot')}
       ${p.upi ? row('UPI', p.upi) : ''}
       ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
@@ -1055,13 +1117,14 @@ function mpkPlanDateLabel(d) {
 function mpkShowPlanPopup(p, lngLat) {
   const row = (k, v) => v ? `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>` : '';
   const html = `
-    <div class="popup-header" style="background:${p.bangunan ? '#00695C' : '#7E57C2'}">
-      <div class="popup-fc">Approved building plan · MPK${p.bangunan ? '' : ' · no building found on it'}</div>
+    <div class="popup-header" style="background:${p.keputusan === 'tolak' ? '#D50000' : p.bangunan ? '#00695C' : '#7E57C2'}">
+      <div class="popup-fc">${p.keputusan === 'tolak' ? 'Rejected building plan (TOLAK) · MPK' : 'Approved building plan · MPK' + (p.bangunan ? '' : ' · no building found on it')}</div>
       <div class="popup-name">${mpkEscHtml(p.fail || 'No file number')}</div>
     </div>
     <div class="popup-body">
       ${row('Lot', mpkEscHtml(p.lot))}
-      ${row('Approved on', mpkPlanDateLabel(p.tarikh))}
+      ${row('Register', mpkEscHtml(p.sumber === 'Kedai' ? 'Shops (Pelan Bangunan Kedai)' : 'Teluk Kalong'))}
+      ${row(p.keputusan === 'tolak' ? 'Decided on' : 'Approved on', mpkPlanDateLabel(p.tarikh))}
       ${row('Status', mpkEscHtml(p.status))}
       ${row('Building', mpkEscHtml(p.jenis))}
       ${p.luas ? row('Floor area (plan)', mpkNum(p.luas) + ' m²') : ''}
@@ -1085,9 +1148,22 @@ function mpkShowOtherPopup(p, lngLat) {
       ${p.upi ? row('UPI', mpkEscHtml(p.upi)) : ''}
       ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
       ${row('Footprint source', mpkSourceLabel(p))}
+      ${mpkPlanRows(p, row)}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+}
+
+// Popup rows for the building plan on record (approved or rejected), if any
+function mpkPlanRows(p, row) {
+  if (!p.pelan_fail && !p.pelan_status) return '';
+  const rejected = /TOLAK/i.test(p.pelan_status || '');
+  return [
+    row(rejected ? 'Rejected plan' : 'Approved plan', mpkEscHtml(p.pelan_fail || '—') + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '')),
+    p.pelan_tarikh ? row(rejected ? 'Decided on' : 'Approved on', mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + mpkEscHtml(p.pelan_status) : '')) : '',
+    p.pelan_jenis ? row('Plan building type', mpkEscHtml(p.pelan_jenis)) : '',
+    p.pelan_sumber ? row('Register', mpkEscHtml(p.pelan_sumber === 'Kedai' ? 'Shops (Pelan Bangunan Kedai)' : 'Teluk Kalong')) : '',
+  ].join('');
 }
 
 function mpkZoomTo(id) {
@@ -1215,6 +1291,18 @@ function mpkRenderStats() {
         <div class="mpk-stat"><div class="v">${mpkPct(b.byStatus.unverified.pct)}</div><div class="l">Not verified</div></div>
       </div>
 
+      <section class="mpk-stats-card mpk-rev">
+        <div class="mpk-rev-head">
+          <div><h3>Revenue potential <span class="mpk-tag">estimate</span></h3>
+            <p>What the council could collect from the suspected buildings in ${area === 'all' ? 'all areas' : MPK_AREAS[area].short}. The rates are assumptions: set them to MPK's schedule.</p></div>
+          <div class="mpk-rev-rates">
+            <label>Processing fee<small>RM / m², one-off</small><input type="number" id="mpk-srate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnStatsRate()"></label>
+            <label>Assessment tax<small>RM / m² / year</small><input type="number" id="mpk-srate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnStatsRate()"></label>
+          </div>
+        </div>
+        <div id="mpk-rev-body"></div>
+      </section>
+
       <div class="mpk-stats-grid">
         <section class="mpk-stats-card">
           <h3>Legal vs illegal</h3>
@@ -1245,6 +1333,7 @@ function mpkRenderStats() {
           <th class="num">m²</th><th></th></tr></thead><tbody>${largest}</tbody></table>
       </section>
     </div>`;
+  mpkRenderStatsRevenue();
 }
 
 function mpkExportAllCSV() {
@@ -1622,4 +1711,4 @@ function mpkSearchMarker(lng, lat) {
 }
 
 // labels the report module (mpk-report.js) also uses under Node tests
-if (typeof module !== 'undefined') Object.assign(module.exports, { MPK_AREAS, MPK_STATUS, MPK_JENIS, MPK_SIZE_CLASSES });
+if (typeof module !== 'undefined') Object.assign(module.exports, { MPK_AREAS, MPK_STATUS, MPK_JENIS, MPK_SIZE_CLASSES, mpkRevenue });
