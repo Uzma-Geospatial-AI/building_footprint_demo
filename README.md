@@ -220,7 +220,8 @@ either order (`4.2681, 103.452`) or degrees-minutes(-seconds) with N/S/E/W
   boundary, study corridor); the group switch still turns a whole group on or off, and ticking an entry turns its
   group on. The two study-area outlines (*Study area · Teluk Kalong*, the planning boundary, and *Study area ·
   Binjai – Chukai*, the corridor band and road) start off and follow the area chips: each lights up only when it is ticked
-  and its own chip (or *All*) is selected. The PDF report's map always outlines the area it reports on.
+  and its own chip (or *All*) is selected. The Overview panel has the same switch (*Study area · …*, named after the selected chip), kept in step with the
+  tick boxes. The PDF report's map always outlines the area it reports on.
 - *Statistics* (sidebar, under Dashboard): a full page with headline cards, a legal-vs-illegal
   donut with counts / shares / m², building-size classes split by status, a per-area table,
   the largest buildings (each with *View* on the map) and an *Export CSV* of every building

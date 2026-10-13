@@ -363,7 +363,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013f',
+  VERSION: '20261013g',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -573,10 +573,40 @@ function mpkApplyLayerVisibility() {
     ...(mpkSubOn('pelan', 'tolak') ? [['==', ['get', 'keputusan'], 'tolak']] : [])];
   if (map.getLayer('mpk-pelan-fill')) map.setFilter('mpk-pelan-fill', ['all', ['==', ['geometry-type'], 'Polygon'], which]);
   if (map.getLayer('mpk-pelan-line')) map.setFilter('mpk-pelan-line', ['all', ['!=', ['geometry-type'], 'Point'], which]);
+  mpkSyncStudyArea();
   mpkRefresh3D();
 }
 
 // One legend entry on / off; switching one on also switches its group on
+// Study-area switch in Overview: the outline(s) of the selected chip (both for All)
+const mpkStudySubs = () => MPK.area === 'tk' ? ['boundary'] : MPK.area === 'bbc' ? ['corridor'] : ['boundary', 'corridor'];
+function mpkStudyAreaOn() {
+  return MPK.layerOn.reference && mpkStudySubs().every(sub => mpkSubOn('reference', sub));
+}
+function mpkToggleStudyArea() {
+  const on = !mpkStudyAreaOn();
+  const off = { ...(MPK.subOff || MPK_SUB_DEFAULT_OFF) };
+  mpkStudySubs().forEach(sub => { off['reference:' + sub] = !on; });
+  MPK.subOff = off;
+  mpkStudySubs().forEach(sub => {
+    const btn = document.getElementById('mpk-sub-reference-' + sub);
+    if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-checked', String(on)); }
+  });
+  if (on && !MPK.layerOn.reference) { mpkToggleLayer('reference'); return; }
+  if (map) mpkApplyLayerVisibility();
+}
+function mpkSyncStudyArea() {
+  const btn = document.getElementById('mpk-tog-studyarea');
+  if (!btn) return;
+  const on = mpkStudyAreaOn();
+  btn.className = 'layer-toggle ' + (on ? 'on' : 'off');
+  btn.setAttribute('aria-checked', String(on));
+  document.getElementById('mpk-group-studyarea').classList.toggle('is-off', !on);
+  document.getElementById('mpk-sa-label').textContent = { tk: 'Study area · Teluk Kalong', bbc: 'Study area · Binjai – Chukai' }[MPK.area] || 'Study areas';
+  document.getElementById('mpk-sa-sub').textContent = { tk: 'planning boundary on the map', bbc: 'road corridor on the map' }[MPK.area]
+    || 'Teluk Kalong boundary and Binjai – Chukai corridor';
+}
+
 function mpkToggleSub(group, sub) {
   MPK.subOff = { ...(MPK.subOff || MPK_SUB_DEFAULT_OFF), [group + ':' + sub]: mpkSubOn(group, sub) };
   const on = mpkSubOn(group, sub);
@@ -821,6 +851,13 @@ function mpkBuildPanel() {
       <div class="mpk-card mpk-status">
         <div class="mpk-status-bar" id="mpk-status-bar"></div>
         ${statusRows}
+        <div class="mpk-st-row mpk-layer-group" id="mpk-group-studyarea" title="Outline of the study area of the selected chip">
+          <i class="sw" style="background:none;border:2px dashed #E8772E"></i>
+          <div class="mpk-st-main"><div class="mpk-st-label" id="mpk-sa-label">Study areas</div>
+            <div class="mpk-st-sub" id="mpk-sa-sub">outline on the map</div></div>
+          <button type="button" class="layer-toggle off" id="mpk-tog-studyarea" role="switch" aria-checked="false"
+            aria-label="Study area outline" onclick="mpkToggleStudyArea()"></button>
+        </div>
         ${MPK.data.others ? `<div class="mpk-st-row mpk-layer-group${MPK.layerOn.others ? '' : ' is-off'}" id="mpk-group-others"
             title="Hand-drawn footprints outside Teluk Kalong's boundary and the Binjai – Chukai corridor: shown on the map, no status">
           <i class="sw" style="background:#FF9100;border:1px solid #C56200"></i>
