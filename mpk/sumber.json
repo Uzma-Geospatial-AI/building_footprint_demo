@@ -1,15 +1,15 @@
 {
  "url": "https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/aoi_mpk_esri_2026-09-24_z18.geojson",
- "etag": "346bd73d2e0e11b7cc780f0143af69a3",
- "last_modified": "Wed, 14 Oct 2026 09:13:39 GMT",
- "bytes": 9084367,
- "built": "2026-10-14T09:14:40Z",
- "checked": "2026-10-14T09:14:40Z",
- "version": "346bd73d2e",
+ "etag": "8778a2fffff137c425484471d50d5a53",
+ "last_modified": "Wed, 14 Oct 2026 09:30:40 GMT",
+ "bytes": 9085123,
+ "built": "2026-10-14T14:31:50Z",
+ "checked": "2026-10-14T14:31:50Z",
+ "version": "8778a2ffff",
  "buildings": {
-  "tk": 1560,
+  "tk": 1564,
   "bbc": 410,
   "outside": 10574,
-  "total": 12544
+  "total": 12548
  }
 }
