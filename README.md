@@ -293,8 +293,8 @@ its footprint as the ground floor, lot, UPI and any plan on record), then every 
 the row-of-buildings discount of para 9, temporary, addition, alteration, special plans incl. telecom structures and retaining
 walls, amendments 10-1 and 10-2) with each fee and the summary worked out as you type. KADAR = floor area ÷ 9 m², rounded up;
 JUMLAH = KADAR × rate, at least the floor's minimum (confirm this reading with MPK). *Submit for approval* gives it a number
-(DPB/2026/0001, …) and lists it under the panel's **Registrations** tab (pending / approved / rejected, with counts and
-filters); open one to edit it, approve or reject it with a note, reopen or delete it, or print the form. An approved
+(DPB/2026/0001, …) and lists it on the **Registrations** page (sidebar, under Features, with a badge counting pending ones;
+pending / approved / rejected, with counts and filters); open one to edit it, approve or reject it with a note, reopen or delete it, or print the form. An approved
 registration makes its building legal on the map and in every count (its own class is kept in `daftar_asal` and comes back
 if the registration is reopened or deleted). Registrations live in this browser's localStorage (`mpk_daftar_v1`); Export
 CSV / JSON and Import JSON move them between computers. *Guideline · Tr. P.U. 9/2026* shows the Planning Control (General)

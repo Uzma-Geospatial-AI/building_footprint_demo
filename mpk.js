@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261013x',
+  VERSION: '20261014a',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -825,6 +825,7 @@ async function mpkEnter() {
   mpkBuildStatsPage();
   mpkBuildFloatCard();
   if (typeof mpkBuildFeaturesPage === 'function') mpkBuildFeaturesPage();
+  if (typeof mpkDaftarBuildPage === 'function') mpkDaftarBuildPage();
   MPK.page = 'dashboard';
   mpkBuildHistoricBasemaps();
   mpkBindSearch();
@@ -906,7 +907,6 @@ function mpkBuildPanel() {
     <div class="mpk-subtabs" role="tablist">
       <button type="button" role="tab" data-sub="overview" class="active" onclick="mpkSubTab('overview')">Overview</button>
       <button type="button" role="tab" data-sub="analysis" onclick="mpkSubTab('analysis')">Analysis</button>
-      ${typeof mpkDaftarTabHTML === 'function' ? `<button type="button" role="tab" data-sub="daftar" onclick="mpkSubTab('daftar')">Registrations</button>` : ''}
     </div>
 
     <div id="mpk-sub-overview">
@@ -994,9 +994,7 @@ ${MPK.data.daftar ? mpkRegisterCardHTML() : ''}
         official RTD zoning); cadastral lots from NDCDB. Road-reserve width and revenue rates are assumptions.
         Every case needs site verification.</div>
     </div>
-${typeof mpkDaftarTabHTML === 'function' ? `<div id="mpk-sub-daftar" hidden>${mpkDaftarTabHTML()}</div>` : ''}
   `;
-  if (typeof mpkDaftarRenderList === 'function') mpkDaftarRenderList();
 }
 
 // Shop building plan register (Pelan Bangunan Kedai): every record, approved or not, on the map or not
@@ -1075,7 +1073,7 @@ function mpkSubTab(sub) {
     b.classList.toggle('active', b.dataset.sub === sub);
     b.setAttribute('aria-selected', String(b.dataset.sub === sub));
   });
-  for (const k of ['overview', 'analysis', 'daftar']) {
+  for (const k of ['overview', 'analysis']) {
     const el = document.getElementById('mpk-sub-' + k);
     if (el) el.hidden = sub !== k;
   }
@@ -1491,13 +1489,17 @@ function mpkShowPage(page) {
   const fl = document.getElementById('mpk-float');
   if (fl) fl.hidden = page !== 'dashboard';
   const feat = document.getElementById('mpk-feat-page'), featNav = document.getElementById('mpk-nav-feat');
+  const daftar = document.getElementById('mpk-daftar-page'), daftarNav = document.getElementById('mpk-nav-daftar');
   document.getElementById('mpk-nav-stats').classList.toggle('active', page === 'stats');
   if (featNav) featNav.classList.toggle('active', page === 'features');
+  if (daftarNav) daftarNav.classList.toggle('active', page === 'daftar');
+  if (daftar) daftar.hidden = page !== 'daftar';
   document.querySelector('.sidebar-section .nav-item:not(.mpk-nav)').classList.toggle('active', page === 'dashboard');
   document.getElementById('mpk-stats-page').hidden = page !== 'stats';
   if (feat) feat.hidden = page !== 'features';
   if (page !== 'dashboard' && typeof mpkFeatStop === 'function' && MPK_FEAT.key) mpkFeatStop();
   if (page === 'stats') mpkRenderStats();
+  else if (page === 'daftar') mpkDaftarRenderList();
   else if (map) map.resize();
 }
 

@@ -3,7 +3,7 @@
 // Click an illegal or pending building → MPK's "Borang Perkiraan Daftar Pelan Bangunan"
 // (Jabatan Kawalan Bangunan, JKB:(KP)1-03, UUKBS 1984 First Schedule) as a form to fill in,
 // with every fee worked out as it is typed. Submitted forms wait for approval in the panel's
-// Registrations tab; an approved one makes its building legal on the map and in the counts.
+// Registrations page (sidebar); an approved one makes its building legal on the map and in the counts.
 // Guideline: Kaedah-Kaedah Pengawalan Perancangan (Am) (Terengganu) (Pindaan) 2026, Tr. P.U. 9
 // (Warta 10 Sep 2026), shown as a reference beside the form.
 // Registrations are kept in this browser (localStorage); Export / Import moves them.
@@ -438,30 +438,54 @@ function mpkDaftarPrint() {
   setTimeout(done, 1500);
 }
 
-// ---------- Registrations tab ----------
-function mpkDaftarTabHTML() {
-  return `<div class="mpk-card mpk-dpb-tab">
-      <div class="mpk-card-title">Building plan registrations</div>
-      <div class="mpk-dpb-counts" id="mpk-dpb-counts"></div>
-      <div class="mpk-dpb-filters" role="tablist" id="mpk-dpb-filters"></div>
-      <div class="mpk-dpb-list" id="mpk-dpb-list"></div>
-      <div class="mpk-dpb-actions">
-        <button type="button" class="mpk-btn" onclick="mpkDaftarExport('csv')">Export CSV</button>
-        <button type="button" class="mpk-btn ghost" onclick="mpkDaftarExport('json')">Export JSON</button>
-        <label class="mpk-btn ghost mpk-dpb-import">Import JSON<input type="file" accept=".json,application/json" onchange="mpkDaftarImport(this)"></label>
-      </div>
-      <div class="mpk-note">Click an <b>illegal</b> or <b>pending</b> building on the map, then <i>Register building plan</i>, to fill in
-        MPK's Borang Perkiraan Daftar Pelan Bangunan. Approving a registration makes the building legal. Registrations are saved in this
-        browser only: use Export / Import to move them to another computer.</div>
-      <button type="button" class="mpk-btn ghost mpk-dpb-guide-btn" onclick="mpkDaftarGuide()">Guideline · Tr. P.U. 9/2026 (planning fees)</button>
-    </div>`;
+// ---------- Registrations page (sidebar, under Features) ----------
+const MPK_DPB_NAV_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+  + '<polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+function mpkDaftarBuildPage() {
+  if (!document.getElementById('mpk-nav-daftar')) {
+    const after = document.getElementById('mpk-nav-feat') || document.getElementById('mpk-nav-stats');
+    const nav = document.createElement('a');
+    nav.href = '#';
+    nav.className = 'nav-item mpk-nav';
+    nav.id = 'mpk-nav-daftar';
+    nav.innerHTML = MPK_DPB_NAV_ICON + 'Registrations';
+    nav.addEventListener('click', e => { e.preventDefault(); mpkShowPage('daftar'); });
+    after.after(nav);
+  }
+  if (!document.getElementById('mpk-daftar-page')) {
+    const page = document.createElement('section');
+    page.id = 'mpk-daftar-page';
+    page.className = 'mpk-stats-page mpk-dpb-page';
+    page.hidden = true;
+    page.setAttribute('aria-label', 'Registrations');
+    page.innerHTML = `<div class="mpk-stats-inner">
+        <div class="mpk-stats-head">
+          <div><h2>Building plan registrations</h2>
+            <p>Borang Perkiraan Daftar Pelan Bangunan filled in for illegal and pending buildings, waiting for approval or decided.</p></div>
+          <div class="mpk-dpb-actions">
+            <button type="button" class="mpk-btn ghost" onclick="mpkDaftarGuide()">Guideline · Tr. P.U. 9/2026</button>
+            <button type="button" class="mpk-btn" onclick="mpkDaftarExport('csv')">Export CSV</button>
+            <button type="button" class="mpk-btn ghost" onclick="mpkDaftarExport('json')">Export JSON</button>
+            <label class="mpk-btn ghost mpk-dpb-import">Import JSON<input type="file" accept=".json,application/json" onchange="mpkDaftarImport(this)"></label>
+          </div>
+        </div>
+        <div class="mpk-dpb-counts" id="mpk-dpb-counts"></div>
+        <div class="mpk-dpb-filters" role="tablist" id="mpk-dpb-filters"></div>
+        <div class="mpk-dpb-list" id="mpk-dpb-list"></div>
+        <div class="mpk-note">To register: on the Dashboard map click an <b>illegal</b> or <b>pending</b> building, then <i>Register building plan</i>.
+          Click a registration here to open its form: approve or reject it, reopen or delete it. Approving makes the building legal.
+          Registrations are saved in this browser only: use Export / Import to move them to another computer.</div>
+      </div>`;
+    document.getElementById('mapWrapper').appendChild(page);
+  }
+  mpkDaftarRenderList();
 }
 function mpkDaftarRenderList() {
   const list = document.getElementById('mpk-dpb-list');
   if (!list) return;
   const n = s => MPK_DPB.list.filter(r => r.status === s).length;
-  const tab = document.querySelector('.mpk-subtabs [data-sub="daftar"]');
-  if (tab) tab.innerHTML = 'Registrations' + (n('menunggu') ? ` <span class="mpk-dpb-dot">${n('menunggu')}</span>` : '');
+  const nav = document.getElementById('mpk-nav-daftar');
+  if (nav) nav.innerHTML = MPK_DPB_NAV_ICON + 'Registrations' + (n('menunggu') ? `<span class="mpk-dpb-dot" title="Pending approval">${n('menunggu')}</span>` : '');
   document.getElementById('mpk-dpb-counts').innerHTML = Object.entries(MPK_DPB_STATUS).map(([k, s]) =>
     `<div class="mpk-dpb-count ${k}"><b>${n(k)}</b><span>${s.label}</span></div>`).join('');
   document.getElementById('mpk-dpb-filters').innerHTML = [['', 'All', MPK_DPB.list.length], ...Object.entries(MPK_DPB_STATUS).map(([k, s]) => [k, s.label, n(k)])]
@@ -483,6 +507,7 @@ function mpkDaftarGo(no) {
   const r = MPK_DPB.list.find(x => x.no === no);
   if (!r) return;
   const b = r.bangunan || {};
+  if (MPK.page !== 'dashboard') mpkShowPage('dashboard');       // the building behind the form
   if (map && b.lng != null) map.flyTo({ center: [b.lng, b.lat], zoom: 18.2 });
   mpkDaftarOpen(r.bid);
 }
