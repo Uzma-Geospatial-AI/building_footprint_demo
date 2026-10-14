@@ -1025,3 +1025,4 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 /* footprint source and freshness (mpk/sumber.json) */
 .mpk-data-src { display:flex; align-items:flex-start; gap:6px; font-size:10.5px; line-height:1.4; color:var(--charcoal-light); margin:-6px 0 10px; }
 .mpk-data-dot { width:7px; height:7px; flex:none; margin-top:4px; border-radius:50%; background:#1E8E3E; box-shadow:0 0 0 3px rgba(30,142,62,0.15); }
+.mpk-data-src.live .mpk-data-dot { background:#E8772E; box-shadow:0 0 0 3px rgba(232,119,46,0.18); }

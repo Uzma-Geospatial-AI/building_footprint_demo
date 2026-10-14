@@ -303,7 +303,17 @@ CSV / JSON and Import JSON move them between computers. *Guideline · Tr. P.U. 9
 incl. 5 to 20 times the Part B fee for development without permission) and the Sixth Schedule parking contribution.
 The MPK logo (`mpk/mpk_logo.png`) is taken from the form.
 
-**Footprints update themselves** (`tools/update_footprints.py`, `.github/workflows/update-footprints.yml`): the hand-digitised
+**Footprints are live at every load** (`mpk-live.js`): the S3 bucket allows GET from any origin, so each time the dashboard
+loads it asks S3 for the footprints' Last-Modified (the download stops as soon as the headers arrive). If it matches
+`mpk/sumber.json`, the built data is used. If S3 is newer, the browser reads the footprints from S3 (~9 MB) and merges them into
+the built data: a footprint within 2 m of a built building with an area within 0.8 – 1.25 is that building (id, status, plans,
+register records, lot, height kept, outline and area new); any other footprint is classified in the browser (Teluk Kalong boundary,
+Binjai – Chukai corridor within 50 m of the road, or outside; cadastral lot; Plus Code; an approved or rejected plan under it; the
+height of the nearest built building within 120 m); built buildings without a footprint any more are dropped. The source line under
+the area chips says whether the data is live and how many footprints are new or gone; while open the app checks every 10 minutes and
+offers a refresh. The hourly rebuild below then does the full job (API suspect list, register records, GHSL heights).
+
+**Full rebuild every hour** (`tools/update_footprints.py`, `.github/workflows/update-footprints.yml`): the hand-digitised
 footprints (`building/aoi_mpk_esri_2026-09-24_z18.geojson` on S3) are edited in place. Every hour the workflow compares the file's
 ETag with `mpk/sumber.json`; when it changed it rebuilds the buildings (`build_mpk_manual.py`), the approved-plan and register
 matching (`apply_pelan_lulus.py`) and the heights (`build_heights.py`), commits and deploys. Ids stay put: a footprint keeps the id

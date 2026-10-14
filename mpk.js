@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261014e',
+  VERSION: '20261014f',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -461,6 +461,12 @@ async function mpkEnsureData() {
       data[key] = null;
     }
   }));
+  // newer footprints on S3 than the build: merge them in the browser (mpk-live.js), so every load is current
+  if (typeof mpkLiveFootprints === 'function') {
+    const live = await mpkLiveFootprints(data, MPK.sumber);
+    data.buildings = live.buildings;
+    data.others = live.others;
+  }
   const b = data.buildings.features;
   MPK.bounds = {
     all: mpkBoundsOf([...b, ...data.boundary.features, ...data.roads.features]),
@@ -1022,23 +1028,33 @@ ${MPK.data.daftar ? mpkRegisterCardHTML() : ''}
 
 // Where the footprints come from and when they were last rebuilt from the source on S3
 function mpkSumberHTML() {
-  const s = MPK.sumber;
-  if (!s) return '';
-  const when = new Date(s.last_modified || s.built);
+  const s = MPK.sumber, live = typeof MPK_LIVE !== 'undefined' ? MPK_LIVE.info : null;
+  if (!s && !live) return '';
+  const stamp = (live && live.lastModified) || (s && s.last_modified) || '';
+  const when = new Date(stamp);
   const day = isNaN(when) ? '' : when.toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  return `<div class="mpk-data-src" title="${mpkEscHtml(s.url)}"><span class="mpk-data-dot" aria-hidden="true"></span>
-    Footprints: Esri 24 Sep 2026, digitised by hand · source updated ${mpkEscHtml(day)} · ${mpkNum(s.buildings.total)} buildings · checked hourly</div>`;
+  const total = MPK.data ? MPK.data.buildings.features.length + (MPK.data.others ? MPK.data.others.features.length : 0) : 0;
+  const how = live && live.live
+    ? `live from the source · ${mpkNum(live.added)} new or redrawn, ${mpkNum(live.removed)} removed since the last full rebuild`
+    : 'up to date with the source';
+  return `<div class="mpk-data-src${live && live.live ? ' live' : ''}" title="${mpkEscHtml(s ? s.url : '')}"><span class="mpk-data-dot" aria-hidden="true"></span>
+    Footprints digitised ${mpkEscHtml(day)} · ${mpkNum(total)} buildings · ${how} · checked at every load</div>`;
 }
-// While the dashboard is open, look for a rebuild every 10 minutes and offer a reload
+// While the dashboard is open, ask the source every 10 minutes and offer a reload when it changes
 function mpkWatchSumber() {
-  if (MPK.sumberTimer) return;
+  if (MPK.sumberTimer || typeof MPK_LIVE === 'undefined') return;
   MPK.sumberTimer = setInterval(async () => {
-    if (!MPK.active || !MPK.sumber) return;
-    const s = await mpkFetchSumber();
-    if (s && s.etag && s.etag !== MPK.sumber.etag && !MPK.sumberNotified) {
-      MPK.sumberNotified = true;
-      showToast('🏗️ New building footprints are available: reload the page to see them', 12000);
-    }
+    if (!MPK.active || !MPK_LIVE.info || MPK.sumberNotified) return;
+    try {
+      const ctl = new AbortController();                       // headers only: S3 allows GET, not HEAD
+      const res = await fetch(MPK_LIVE.SRC, { cache: 'no-cache', signal: ctl.signal });
+      const lm = res.ok ? res.headers.get('Last-Modified') : '';
+      ctl.abort();
+      if (lm && lm !== MPK_LIVE.info.lastModified) {
+        MPK.sumberNotified = true;
+        showToast('🏗️ New building footprints are available: refresh the page to see them', 12000);
+      }
+    } catch (e) { /* offline */ }
   }, 10 * 60 * 1000);
 }
 
