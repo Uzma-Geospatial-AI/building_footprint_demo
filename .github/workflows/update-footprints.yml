@@ -1,0 +1,73 @@
+name: Update building footprints
+
+# The hand-digitised MPK footprints are updated in place on S3
+# (building/aoi_mpk_esri_2026-09-24_z18.geojson). Every hour this compares the file's ETag with
+# mpk/sumber.json; when it changed, tools/update_footprints.py rebuilds the buildings (ids kept for
+# unchanged footprints), the approved-plan matching and the building heights, commits the result and
+# deploys it. Manual runs via "Run workflow" (tick "force" to rebuild anyway).
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Rebuild even if the source has not changed
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-footprints
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      changed: ${{ steps.build.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache the GHSL height tile
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: ghsl-built-h-r2023a-r9c29
+
+      - name: Install rasterio
+        run: pip install --quiet rasterio
+
+      - name: Rebuild if the footprints changed
+        id: build
+        env:
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: python tools/update_footprints.py $FORCE
+
+      - name: Commit the rebuilt data
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          git config user.name "buildvision-bot"
+          git config user.email "buildvision-bot@users.noreply.github.com"
+          git add mpk/mpk_buildings.geojson mpk/mpk_buildings_luar.geojson mpk/pelan_lulus.geojson \
+                  mpk/pelan_kedai_daftar.json mpk/koridor_jalan.geojson mpk/sumber.json
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+          else
+            git commit -m "Footprints: rebuilt from S3 ($(python -c "import json;print(json.load(open('mpk/sumber.json'))['last_modified'])"))"
+            git push
+          fi
+
+  deploy:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

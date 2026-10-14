@@ -1,6 +1,7 @@
 """Replace the MPK building footprints with the ones digitised by hand from Esri imagery of 24 Sep 2026.
 
-Source (12,734 footprints, Teluk Kalong to Chukai, the extent of the MPK aerial basemap):
+Source (Teluk Kalong to Chukai, the extent of the MPK aerial basemap; 12,864 records on 14 Oct 2026, updated
+in place on S3 as the digitising goes on, so tools/update_footprints.py rebuilds from it whenever it changes):
   https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/building/aoi_mpk_esri_2026-09-24_z18.geojson
 The file is labelled EPSG:32647 but its coordinates are Web Mercator (EPSG:3857); they are converted
 to longitude / latitude here, and areas are recomputed in metres (the file's area_m2 is in Mercator
@@ -20,7 +21,13 @@ there is no approval rule for them), with area_m2, Plus Code and lot / upi.
 Every footprint gets lot / upi from the NDCDB lot under its centre, a Plus Code, area_m2 and
 sumber = 'manual_esri_20260924' (confidence 1: drawn by a person, not detected by a model).
 
-  python tools/build_mpk_manual.py [--src FILE_OR_URL] [--api FILE_OR_URL]
+Ids stay put across updates: the source renumbers its fid, so a footprint keeps the id of the footprint in the
+current output whose centre lies within MATCH_M and whose area is within 0.8 – 1.25 of it (nearest first, each
+old id used once). New or redrawn footprints get the next free id (study areas from 1, outside from 100001), so
+registrations and strata schemes saved in browsers keep pointing at the same building.
+--strict checks the counts below (the 12 Oct 2026 data); without it they are only printed.
+
+  python tools/build_mpk_manual.py [--src FILE_OR_URL] [--api FILE_OR_URL] [--strict]
 """
 import argparse
 import json
@@ -37,9 +44,10 @@ CORRIDOR_HALF_M = 50                    # corridor half-width from the road cent
 R = 6378137.0
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 110574
-EXPECTED_SRC = 12734
+EXPECTED_SRC = 12734                    # the 12 Oct 2026 data, checked with --strict only
 EXPECTED_OTHER = 10504                   # 12,734 records: 261 have no geometry; 1,969 in the study areas
 EXPECTED = {('tk', 'mockup'): 42, ('tk', 'tiada_lot'): 1512, ('bbc', 'koridor'): 415}
+MATCH_M = 2.0                            # a footprint within this distance (centre to centre) keeps its old id
 
 
 def load(src):
@@ -112,14 +120,51 @@ def plus_code(lat, lng):
     return code + A[la_g * 4 + lo_g]
 
 
+def old_ids():
+    """(id, lng, lat, area_m2, study?) of every footprint in the current outputs, gridded by ~33 m"""
+    grid = {}
+    for name, study in (('mpk_buildings.geojson', True), ('mpk_buildings_luar.geojson', False)):
+        path = os.path.join(MPK_DIR, name)
+        if not os.path.exists(path):
+            continue
+        for f in load(path)['features']:
+            p = f['properties']
+            grid.setdefault((int(p['lng'] / 0.0003), int(p['lat'] / 0.0003)), []).append((p['id'], p['lng'], p['lat'], p['area_m2'], study))
+    return grid
+
+
+def keep_ids(items, grid):
+    """items: dicts with lng, lat, area, study. Sets item['id'] to the matched old id or None."""
+    pairs = []
+    for i, it in enumerate(items):
+        gx, gy = int(it['lng'] / 0.0003), int(it['lat'] / 0.0003)
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for oid, lng, lat, area, study in grid.get((gx + dx, gy + dy), ()):
+                    d = math.hypot((lng - it['lng']) * KX, (lat - it['lat']) * KY)
+                    if d <= MATCH_M and area and 0.8 <= it['area'] / area <= 1.25 and study == it['study']:
+                        pairs.append((d, i, oid))
+    taken, done = set(), set()
+    for d, i, oid in sorted(pairs):
+        if i in done or oid in taken:
+            continue
+        items[i]['id'] = oid
+        taken.add(oid)
+        done.add(i)
+    return len(done)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--src', default=SRC_URL)
     ap.add_argument('--api', default=API_URL)
+    ap.add_argument('--strict', action='store_true')
     args = ap.parse_args()
 
     src = load(args.src)['features']
-    assert len(src) == EXPECTED_SRC, ('manual footprints', len(src))
+    print('source records:', len(src))
+    if args.strict:
+        assert len(src) == EXPECTED_SRC, ('manual footprints', len(src))
     boundary = load(os.path.join(MPK_DIR, 'tk_sempadan.geojson'))['features'][0]['geometry']
     tk_ring = boundary['coordinates'][0] if boundary['type'] == 'Polygon' else boundary['coordinates'][0][0]
     roads = {f['properties']['kawasan']: [(l[i], l[i + 1]) for l in f['geometry']['coordinates'] for i in range(len(l) - 1)]
@@ -135,6 +180,8 @@ def main():
 
     out, others, matched_mock = [], [], set()
     for f in src:
+        if not f.get('geometry') or not f['geometry'].get('coordinates'):
+            continue
         polys = [[[merc_to_lnglat(*c) for c in ring] for ring in poly] for poly in f['geometry']['coordinates']]
         polys = [p for p in polys if len(p[0]) >= 4]
         if not polys:
@@ -169,21 +216,31 @@ def main():
         (others if props.get('luar_kajian') else out).append({'type': 'Feature', 'properties': props, 'geometry': geom})
 
     features = out
-    for i, f in enumerate(features):
-        f['properties']['id'] = i + 1
+    grid = old_ids()
+    items = [{'lng': f['properties']['lng'], 'lat': f['properties']['lat'], 'area': f['properties']['area_m2'], 'study': True} for f in features] \
+        + [{'lng': f['properties']['lng'], 'lat': f['properties']['lat'], 'area': f['properties']['area_m2'], 'study': False} for f in others]
+    kept = keep_ids(items, grid)
+    next_id = {True: max([it['id'] for it in items if it['study'] and it.get('id')] + [0]) + 1,
+               False: max([it['id'] for it in items if not it['study'] and it.get('id')] + [100000]) + 1}
+    for f, it in zip(features + others, items):
+        if not it.get('id'):
+            it['id'] = next_id[it['study']]
+            next_id[it['study']] += 1
+        f['properties']['id'] = it['id']
+    print(f'ids kept: {kept} of {len(items)} footprints; new ids: {len(items) - kept}')
     counts = Counter((f['properties']['kawasan'], f['properties']['kategori']) for f in features)
     print('per kawasan/kategori:', dict(sorted(counts.items())))
     print(f'API suspect buildings matched to a 2026 footprint: {len(matched_mock)} of {len(api)}')
-    for k, n in EXPECTED.items():
-        assert counts[k] == n, (k, counts[k], n)
+    if args.strict:
+        for k, n in EXPECTED.items():
+            assert counts[k] == n, (k, counts[k], n)
     with open(os.path.join(MPK_DIR, 'mpk_buildings.geojson'), 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': features}, f, ensure_ascii=False, separators=(',', ':'))
     print('wrote mpk/mpk_buildings.geojson:', len(features), 'buildings')
-    assert len(others) == EXPECTED_OTHER, ('outside the study areas', len(others))
-    for i, f in enumerate(others):
-        p = f['properties']
-        p.pop('luar_kajian', None)
-        p['id'] = 100001 + i                           # never clashes with a study-area id
+    if args.strict:
+        assert len(others) == EXPECTED_OTHER, ('outside the study areas', len(others))
+    for f in others:
+        f['properties'].pop('luar_kajian', None)       # ids from 100001 never clash with a study-area id
     with open(os.path.join(MPK_DIR, 'mpk_buildings_luar.geojson'), 'w', encoding='utf-8') as f:
         json.dump({'type': 'FeatureCollection', 'features': others}, f, ensure_ascii=False, separators=(',', ':'))
     print('wrote mpk/mpk_buildings_luar.geojson:', len(others), 'buildings outside the study areas',

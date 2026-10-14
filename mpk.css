@@ -1021,3 +1021,7 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 .strata-col .mpk-h-card { margin-bottom:0; }
 .strata-body .mpk-h-t select { min-width:150px; }
 .strata-col .strata-stack { max-width:760px; }
+
+/* footprint source and freshness (mpk/sumber.json) */
+.mpk-data-src { display:flex; align-items:flex-start; gap:6px; font-size:10.5px; line-height:1.4; color:var(--charcoal-light); margin:-6px 0 10px; }
+.mpk-data-dot { width:7px; height:7px; flex:none; margin-top:4px; border-radius:50%; background:#1E8E3E; box-shadow:0 0 0 3px rgba(30,142,62,0.15); }

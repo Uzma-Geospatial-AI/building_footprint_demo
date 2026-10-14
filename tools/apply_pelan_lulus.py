@@ -60,8 +60,8 @@ OUT_REGISTER = os.path.join(ROOT, 'pelan_kedai_daftar.json')   # every shop reco
 NO_VALUE = {'0', '-9', '-99', '-999', '-9999', '-999999', 'None'}   # placeholders the register uses for blank
 KEMAMAN = (103.13, 4.0, 103.65, 4.6)                 # district box: shop records outside it are mis-placed
 EXPECTED = {'records': 966, 'kedai_records': 4547, 'kedai_approvals': 414}   # 414 as in MPK's register summary
-EXPECTED_CLASSES = {('tk', 'lulus'): 347, ('tk', 'mockup'): 25, ('tk', 'tiada_pelan'): 1182,
-                    ('bbc', 'lulus'): 40, ('bbc', 'tolak'): 1, ('bbc', 'koridor'): 374}
+EXPECTED_CLASSES = {('tk', 'lulus'): 360, ('tk', 'mockup'): 25, ('tk', 'tiada_pelan'): 1176,   # footprints of 14 Oct 2026;
+                    ('bbc', 'lulus'): 40, ('bbc', 'tolak'): 1, ('bbc', 'koridor'): 369}         # update_footprints.py skips the check
 KX = 111320 * math.cos(math.radians(4.27))
 KY = 111320
 GRID = 0.001                                         # ~110 m index cells

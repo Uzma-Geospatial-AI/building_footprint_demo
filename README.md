@@ -253,8 +253,8 @@ map layer, switch and count (with a share bar) in the panel:
 *Illegal buildings* (red: the API suspect list in Teluk Kalong without an approved plan, road-reserve
 encroachment in the corridors), *Approved buildings* (green: covered by a plan in MPK's
 register of approved building plans) and *Pending buildings* (blue: no approved plan found, which may be a
-gap in the register rather than an offence). Teluk Kalong inside the boundary: 347 legal, 25 suspected,
-1,182 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
+gap in the register rather than an offence). Teluk Kalong inside the boundary (footprints of 14 Oct 2026): 360 legal, 25 suspected,
+1,176 not verified. Popups are coloured and worded by status; a legal building's popup gives its plan
 file no., approval date and status and the approved building type.
 
 **Shop building plans** (all 4,547 records — Lulus 362, Lulus Bersyarat 46, Tolak 2, Tidak dinyatakan 4, no decision 4,133 — are listed in Analysis → *Shop building plan register*, with status and on-map filters and a click-to-zoom for the 1,206 drawn on the map; MPK's *Pelan Bangunan Kedai* register, Chukai and Binjai, 4,547 records,
@@ -302,6 +302,16 @@ CSV / JSON and Import JSON move them between computers. *Guideline · Tr. P.U. 9
 (Terengganu) (Amendment) Rules 2026 (gazette of 10 Sep 2026): the main amendments and the Third Schedule fees (Parts A to D,
 incl. 5 to 20 times the Part B fee for development without permission) and the Sixth Schedule parking contribution.
 The MPK logo (`mpk/mpk_logo.png`) is taken from the form.
+
+**Footprints update themselves** (`tools/update_footprints.py`, `.github/workflows/update-footprints.yml`): the hand-digitised
+footprints (`building/aoi_mpk_esri_2026-09-24_z18.geojson` on S3) are edited in place. Every hour the workflow compares the file's
+ETag with `mpk/sumber.json`; when it changed it rebuilds the buildings (`build_mpk_manual.py`), the approved-plan and register
+matching (`apply_pelan_lulus.py`) and the heights (`build_heights.py`), commits and deploys. Ids stay put: a footprint keeps the id
+of the old one within 2 m with an area within 0.8 – 1.25 (14 Oct 2026: 11,968 of 12,545 kept, 577 new), so registrations and strata
+schemes saved in browsers keep their building. The app reads `mpk/sumber.json` uncached, puts its version in every data URL, shows
+the source date under the area chips and, while open, checks every 10 minutes and offers a reload when new footprints arrive.
+14 Oct 2026: 12,864 records, 12,545 with a geometry; Teluk Kalong 1,561, Binjai – Chukai 410, outside the study areas 10,574.
+Run by hand: `python tools/update_footprints.py [--force]` (needs rasterio; the GHSL tile is cached in `.cache/`).
 
 **Strata mode** (`mpk-strata.js`, Area dropdown → *Strata*): the strata title process as it runs in Malaysia, on the MPK
 buildings (the study areas and every hand-drawn footprint outside them), from the map to the register. MPK's illegal-construction
@@ -382,6 +392,7 @@ with each council.
 ```bash
 python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, scipy, scikit-image, Pillow
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
+python tools/update_footprints.py [--force]                            # the three steps below when the S3 footprints changed (also hourly in CI)
 python tools/build_mpk_manual.py                                       # stdlib; 2026 hand-drawn footprints for Teluk Kalong + Binjai–Chukai
 python tools/apply_pelan_lulus.py                                      # stdlib; Teluk Kalong + shop building plans (run after the lines above)
 python tools/build_heights.py PATH/TO/GHS_BUILT_H_..._R9_C29.tif         # rasterio; building heights for the study areas (run after build_mpk_manual)

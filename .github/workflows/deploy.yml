@@ -11,6 +11,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # also called by update-footprints.yml after it commits rebuilt building data (a push made with the
+  # workflow token does not start this workflow by itself)
+  workflow_call:
 
 permissions:
   contents: read
@@ -27,6 +30,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+          # a push deploys its own commit; a call from update-footprints.yml deploys main as it is now
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
 
       - name: Inject password digest
         env:
@@ -69,6 +74,7 @@ jobs:
             --exclude='docs' \
             --exclude='tools' \
             --exclude='__pycache__' \
+            --exclude='.cache' \
             --chmod=D755,F644 \
             -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes" \
             ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/buildvision/"

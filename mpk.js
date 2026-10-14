@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261014d',
+  VERSION: '20261014e',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -431,10 +431,21 @@ function mpkBoundsOf(features) {
   return [[minLng, minLat], [maxLng, maxLat]];
 }
 
+// mpk/sumber.json (tools/update_footprints.py): when and from what the buildings were last rebuilt. Read
+// without the cache so a rebuild reaches the browser at once: its version is part of every data URL.
+async function mpkFetchSumber() {
+  try {
+    const res = await fetch('mpk/sumber.json?t=' + Date.now(), { cache: 'no-store' });
+    return res.ok ? await res.json() : null;
+  } catch (e) { return null; }
+}
+const mpkDataV = () => MPK.VERSION + (MPK.sumber && MPK.sumber.version ? '-' + MPK.sumber.version : '');
+
 async function mpkEnsureData() {
   if (MPK.data) return;
+  MPK.sumber = await mpkFetchSumber();
   const entries = await Promise.all(Object.entries(MPK.FILES).map(async ([key, url]) => {
-    const res = await fetch(url + '?v=' + MPK.VERSION);
+    const res = await fetch(url + '?v=' + mpkDataV());
     if (!res.ok) throw new Error('HTTP ' + res.status + ' · ' + url);
     return [key, await res.json()];
   }));
@@ -444,7 +455,7 @@ async function mpkEnsureData() {
   data.buildings = { ...data.buildings, features: data.buildings.features.filter(f => mpkInScope(f.properties)) };
   await Promise.all(Object.entries(MPK.OPTIONAL_FILES).map(async ([key, url]) => {
     try {
-      const res = await fetch(url + '?v=' + MPK.VERSION);
+      const res = await fetch(url + '?v=' + mpkDataV());
       data[key] = res.ok ? await res.json() : null;
     } catch (e) {
       data[key] = null;
@@ -805,6 +816,7 @@ async function mpkEnter() {
     MPK.daftarReady = true;
   }
   MPK.active = true;
+  mpkWatchSumber();
   document.body.classList.add('mpk-mode');
 
   // Leave any Seremban interaction state behind
@@ -922,6 +934,7 @@ function mpkBuildPanel() {
     <div id="mpk-sub-overview">
       <div class="mpk-chips" role="tablist">${chips}</div>
       <div class="mpk-scope" id="mpk-hero-sub"></div>
+      ${mpkSumberHTML()}
 
       <div class="mpk-kpis">
         <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings<br><span id="mpk-k-m2">—</span></div></div>
@@ -1005,6 +1018,28 @@ ${MPK.data.daftar ? mpkRegisterCardHTML() : ''}
         Every case needs site verification.</div>
     </div>
   `;
+}
+
+// Where the footprints come from and when they were last rebuilt from the source on S3
+function mpkSumberHTML() {
+  const s = MPK.sumber;
+  if (!s) return '';
+  const when = new Date(s.last_modified || s.built);
+  const day = isNaN(when) ? '' : when.toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return `<div class="mpk-data-src" title="${mpkEscHtml(s.url)}"><span class="mpk-data-dot" aria-hidden="true"></span>
+    Footprints: Esri 24 Sep 2026, digitised by hand · source updated ${mpkEscHtml(day)} · ${mpkNum(s.buildings.total)} buildings · checked hourly</div>`;
+}
+// While the dashboard is open, look for a rebuild every 10 minutes and offer a reload
+function mpkWatchSumber() {
+  if (MPK.sumberTimer) return;
+  MPK.sumberTimer = setInterval(async () => {
+    if (!MPK.active || !MPK.sumber) return;
+    const s = await mpkFetchSumber();
+    if (s && s.etag && s.etag !== MPK.sumber.etag && !MPK.sumberNotified) {
+      MPK.sumberNotified = true;
+      showToast('🏗️ New building footprints are available: reload the page to see them', 12000);
+    }
+  }, 10 * 60 * 1000);
 }
 
 // Shop building plan register (Pelan Bangunan Kedai): every record, approved or not, on the map or not
