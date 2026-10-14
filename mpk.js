@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261014a',
+  VERSION: '20261014b',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -556,6 +556,7 @@ function mpkAddLayers() {
     return false;
   }
   mpkApplyLayerVisibility();
+  if (typeof mpkHartaLayers === 'function') mpkHartaLayers();          // BIM 3D and cemetery sites
   if (MPK.wayback.on) mpkShowWaybackImagery();
   if (typeof mpkChangeRestore === 'function') mpkChangeRestore();
   return true;
@@ -676,6 +677,7 @@ function mpkStatusFilter(status) {
 
 function mpkRemoveLayers() {
   if (!map) return;
+  if (typeof mpkHartaRemoveLayers === 'function') mpkHartaRemoveLayers();
   MPK.LAYERS.forEach(id => { try { if (map.getLayer(id)) map.removeLayer(id); } catch (e) {} });
   MPK.SOURCES.forEach(id => { try { if (map.getSource(id)) map.removeSource(id); } catch (e) {} });
 }
@@ -794,7 +796,11 @@ async function mpkEnter() {
     return;
   }
   hideLoading();
-  if (typeof mpkDaftarInit === 'function' && !MPK.daftarReady) { mpkDaftarInit(); MPK.daftarReady = true; }   // registrations: before the layers are drawn
+  if (typeof mpkDaftarInit === 'function' && !MPK.daftarReady) {     // registrations: before the layers are drawn
+    mpkDaftarInit();
+    if (typeof mpkHartaInit === 'function') mpkHartaInit();
+    MPK.daftarReady = true;
+  }
   MPK.active = true;
   document.body.classList.add('mpk-mode');
 
@@ -1283,6 +1289,7 @@ function mpkShowPopup(p, lngLat) {
       ${jenis ? row('Est. processing fee', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
       ${jenis ? row('Est. assessment tax', mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr') : ''}
       ${typeof mpkDaftarPopupHTML === 'function' ? mpkDaftarPopupHTML(p) : ''}
+      ${typeof mpkHartaPopupHTML === 'function' ? mpkHartaPopupHTML(p) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   // focusAfterOpen off: otherwise the Enter that picked a search result also "presses" the
@@ -1499,7 +1506,7 @@ function mpkShowPage(page) {
   if (feat) feat.hidden = page !== 'features';
   if (page !== 'dashboard' && typeof mpkFeatStop === 'function' && MPK_FEAT.key) mpkFeatStop();
   if (page === 'stats') mpkRenderStats();
-  else if (page === 'daftar') mpkDaftarRenderList();
+  else if (page === 'daftar') { mpkDaftarRenderList(); if (typeof mpkHartaRender === 'function') mpkHartaRender(); }
   else if (map) map.resize();
 }
 

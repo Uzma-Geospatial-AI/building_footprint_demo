@@ -47,6 +47,7 @@ building_footprint_demo/
 ├── mpk-features2.js         # MPK Features: tools 12–15
 ├── mpk-features3.js         # MPK Features: Site Check, Developer Portfolio, Notice Drafter, Approval Timeline, Revenue Map
 ├── mpk-daftar.js            # MPK building plan registration form, Registrations tab, Tr. P.U. 9/2026 guideline
+├── mpk-harta.js             # MPK Property & Tax: strata units, assessment tax bills, BIM LOD, cemeteries
 ├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
 ├── tools/                   # data builders (Python) and logic tests (Node)
 ├── uzma-dashboard.css       # legacy standalone stylesheet
@@ -302,6 +303,22 @@ CSV / JSON and Import JSON move them between computers. *Guideline · Tr. P.U. 9
 incl. 5 to 20 times the Part B fee for development without permission) and the Sixth Schedule parking contribution.
 The MPK logo (`mpk/mpk_logo.png`) is taken from the form.
 
+**Property & Tax** (`mpk-harta.js`, second tab of the Registrations page): click any study building, then *Strata · tax · BIM*.
+- *Strata units*: create the units (petak M<floor>-<nn>) from floors × units per floor (the footprint shared on each floor) or
+  one by one, each with floor, area, use (Kediaman / Komersial / Industri / Lain-lain), owner and annual value.
+- *Assessment tax* (cukai taksiran, Local Government Act 1976 s.127): tax = annual value × the rate of the unit's use; an empty
+  annual value is estimated as area × monthly rent of its use × 12. *Generate <year> bills* bills every unit; each bill is paid
+  in two halves (penggal 1 / 2), marked paid with the date. Billed, collected, outstanding, arrears from earlier years and the
+  collection rate; Export bills CSV. Rates and rents are assumptions (defaults 6 / 9 / 9 / 6 % and RM 4 / 12 / 6 / 4 per m² a
+  month), set under *Rates and rents*.
+- *BIM level of development*: LOD 100 (footprint) to 500 (as-built), suggested from the record (floors → 200, floors and an
+  approved plan → 300, verified on site → 500) and changeable; floors and height (4 m a floor when empty). *Show BIM 3D on the
+  map* raises the modelled buildings to their height, coloured by level; counts per level and model coverage.
+- *Cemeteries*: *Add a site on the map*, click where it is, then name, type (Islam / Bukan Islam / Swasta / Krematorium),
+  status, area, grave capacity (≈ area ÷ 2.5 m² when empty), lots in use and manager; brown points with names on the map, a
+  capacity bar per site, and the Tr. P.U. 9/2026 planning fee (RM 500 per application, plus RM 100 a plot for a private layout).
+Kept in this browser's localStorage (`mpk_harta_v1`) with CSV exports and JSON export / import.
+
 **Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
 for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,
 recreation, agriculture, forest, water, under development) plus the district boundary. Click a
@@ -359,6 +376,7 @@ node tools/test_mpk_features.js && node tools/test_mpk_gesture.js      # Feature
 node tools/test_mpk_features2.js                                       # Features tools 12–15
 node tools/test_mpk_features3.js                                       # Features tools 2, 3, 5, 8, 10
 node tools/test_mpk_daftar.js                                          # registration form fees
+node tools/test_mpk_harta.js                                           # strata tax, LOD, collection
 ```
 
 The MPK source map image is client material and is not committed.

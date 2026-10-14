@@ -459,6 +459,11 @@ function mpkDaftarBuildPage() {
     page.hidden = true;
     page.setAttribute('aria-label', 'Registrations');
     page.innerHTML = `<div class="mpk-stats-inner">
+        <div class="mpk-dpb-tabs" role="tablist">
+          <button type="button" role="tab" data-t="plans" class="active" aria-selected="true" onclick="mpkDaftarTab('plans')">Building plans</button>
+          ${typeof mpkHartaTabHTML === 'function' ? `<button type="button" role="tab" data-t="harta" aria-selected="false" onclick="mpkDaftarTab('harta')">Property &amp; Tax</button>` : ''}
+        </div>
+        <div id="mpk-dpb-tab-plans">
         <div class="mpk-stats-head">
           <div><h2>Building plan registrations</h2>
             <p>Borang Perkiraan Daftar Pelan Bangunan filled in for illegal and pending buildings, waiting for approval or decided.</p></div>
@@ -475,6 +480,11 @@ function mpkDaftarBuildPage() {
         <div class="mpk-note">To register: on the Dashboard map click an <b>illegal</b> or <b>pending</b> building, then <i>Register building plan</i>.
           Click a registration here to open its form: approve or reject it, reopen or delete it. Approving makes the building legal.
           Registrations are saved in this browser only: use Export / Import to move them to another computer.</div>
+        </div>
+        ${typeof mpkHartaTabHTML === 'function' ? `<div id="mpk-dpb-tab-harta" hidden>
+          <div class="mpk-stats-head"><div><h2>Property &amp; Tax</h2>
+            <p>Strata units and their assessment tax, BIM level of development of each building, and cemetery sites.</p></div></div>
+          ${mpkHartaTabHTML()}</div>` : ''}
       </div>`;
     document.getElementById('mapWrapper').appendChild(page);
   }
@@ -503,6 +513,14 @@ function mpkDaftarRenderList() {
   }).join('') : `<div class="mpk-reg-empty">${MPK_DPB.list.length ? 'No registration with this status.' : 'No registrations yet.'}</div>`;
 }
 function mpkDaftarFilter(k) { MPK_DPB.filter = k; mpkDaftarRenderList(); }
+// Building plans / Property & Tax on the Registrations page
+function mpkDaftarTab(t) {
+  document.querySelectorAll('.mpk-dpb-tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.t === t); b.setAttribute('aria-selected', String(b.dataset.t === t));
+  });
+  for (const k of ['plans', 'harta']) { const el = document.getElementById('mpk-dpb-tab-' + k); if (el) el.hidden = k !== t; }
+  if (t === 'harta' && typeof mpkHartaRender === 'function') mpkHartaRender();
+}
 function mpkDaftarGo(no) {
   const r = MPK_DPB.list.find(x => x.no === no);
   if (!r) return;
