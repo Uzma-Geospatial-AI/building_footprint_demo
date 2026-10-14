@@ -806,34 +806,16 @@ body.mpk-feat-on .mpk-float { display:none; }
   body.mpk-dpb-printing .dpb-paper { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 }
 
-/* ---------- Property & Tax (mpk-harta.js) ---------- */
-.mpk-dpb-tabs { display:inline-flex; gap:3px; padding:3px; margin-bottom:16px; border-radius:10px; background:rgba(30,44,68,0.07); }
-.mpk-dpb-tabs button { height:34px; padding:0 16px; border:none; border-radius:8px; background:transparent; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--charcoal-light); cursor:pointer; }
-.mpk-dpb-tabs button.active { background:#fff; color:var(--charcoal-dark); box-shadow:0 1px 3px rgba(30,44,68,0.14); }
-.mpk-dpb-tabs button:focus-visible { outline:2px solid var(--orange); outline-offset:1px; }
-#mpk-dpb-tab-plans[hidden], #mpk-dpb-tab-harta[hidden] { display:none; }
+/* ---------- Tables, cards and forms shared by Strata (mpk-strata.js) ---------- */
 .mpk-dpb-actions.left { justify-content:flex-start; margin:4px 0 10px; }
-.mpk-h-sec { background:#fff; border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(30,44,68,0.08); }
-.mpk-h-sec-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-.mpk-h-sec-head h3 { font-size:15px; font-weight:800; color:var(--charcoal-dark); margin:0; margin-right:auto; }
-.mpk-h-sec-head h3 small { font-weight:500; color:var(--charcoal-light); font-size:12px; }
-.mpk-h-sub { flex-basis:100%; font-size:11.5px; color:var(--charcoal-light); margin-top:-6px; }
-.mpk-h-year { font-size:12px; color:var(--charcoal-light); display:flex; align-items:center; gap:6px; }
-.mpk-h-year select { height:28px; border:1px solid rgba(30,44,68,0.18); border-radius:7px; font-family:inherit; }
 .mpk-h-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-bottom:12px; }
 .mpk-h-kpi { border-radius:10px; padding:10px 12px; background:rgba(30,44,68,0.04); }
 .mpk-h-kpi b { display:block; font-size:17px; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; }
 .mpk-h-kpi span { font-size:11px; color:var(--charcoal-light); }
 .mpk-h-kpi.ok b { color:#1B6B36; }
 .mpk-h-kpi.bad b { color:#A51D1A; }
-.mpk-h-list { border:1px solid rgba(30,44,68,0.08); border-radius:10px; overflow:hidden; max-height:340px; overflow-y:auto; }
 .mpk-h-pill { display:inline-block; padding:1px 7px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(30,44,68,0.07); color:var(--charcoal-dark); }
 .mpk-h-pill.lod { background:var(--c); color:#fff; }
-.mpk-h-bar { height:10px; border-radius:5px; background:#FDE2E1; overflow:hidden; }
-.mpk-h-bar i { display:block; height:100%; background:#1E8E3E; border-radius:5px 0 0 5px; }
-.mpk-h-barl { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--charcoal-light); margin:5px 0 10px; }
-.mpk-h-rates { margin:4px 0 12px; font-size:12px; }
-.mpk-h-rates summary { cursor:pointer; font-weight:600; color:var(--charcoal-dark); }
 .mpk-h-tablewrap { overflow-x:auto; border:1px solid rgba(30,44,68,0.08); border-radius:10px; }
 .mpk-h-t { width:100%; border-collapse:collapse; font-size:12px; }
 .mpk-h-t th { text-align:left; font-size:10.5px; font-weight:700; color:var(--charcoal-light); background:#F7F8FA; padding:7px 8px; white-space:nowrap; }
@@ -851,19 +833,11 @@ body.mpk-feat-on .mpk-float { display:none; }
 .mpk-h-empty { text-align:center; color:var(--charcoal-light); padding:14px !important; }
 .mpk-h-pay { height:26px; padding:0 9px; border-radius:6px; border:1.5px solid #D93025; background:#fff; color:#B3261E; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
 .mpk-h-pay.paid { border-color:#1E8E3E; background:#DDF3E4; color:#1B6B36; }
-.mpk-h-lodbars { display:grid; gap:6px; margin-bottom:10px; }
-.mpk-h-lodbar { display:grid; grid-template-columns:minmax(150px, 230px) 1fr 40px; align-items:center; gap:10px; font-size:12px; color:var(--charcoal-dark); }
-.mpk-h-lodbar span { display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mpk-h-lodbar span i { width:10px; height:10px; border-radius:3px; flex:none; }
-.mpk-h-lodbar > div { height:10px; border-radius:5px; background:rgba(30,44,68,0.06); overflow:hidden; }
-.mpk-h-lodbar > div i { display:block; height:100%; border-radius:5px; }
-.mpk-h-lodbar em { font-style:normal; text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
 .mpk-h-cap { height:5px; border-radius:3px; background:rgba(30,44,68,0.08); margin-top:6px; overflow:hidden; }
 .mpk-h-cap i { display:block; height:100%; background:#6D4C41; }
 .mpk-h-cap.full i { background:#D93025; }
 .mpk-h-hint { font-size:11px; line-height:1.5; color:var(--charcoal-light); margin-top:8px; }
 
-/* building modal */
 .mpk-dpb-shell.small { width:min(560px, 100%); }
 .mpk-h-card { background:#fff; border-radius:10px; padding:14px; margin-bottom:12px; }
 .mpk-h-card h4 { margin:0 0 10px; font-size:13.5px; color:var(--charcoal-dark); }
@@ -890,4 +864,92 @@ body.mpk-feat-on .mpk-float { display:none; }
   .mpk-h-lods { grid-template-columns:1fr 1fr; }
   .mpk-h-form { grid-template-columns:1fr; }
   .mpk-h-lodbar { grid-template-columns:1fr 1fr 32px; }
+}
+
+/* ---------- Strata mode (mpk-strata.js) ---------- */
+#ptab-strata { display:none; white-space:nowrap; color:#5E35B1; font-weight:600; }
+body.mpk-mode.strata-mode .ptab#ptab-strata { display:block !important; }
+body.strata-mode #ptab-mpk, body.strata-mode .mpk-nav, body.strata-mode #mpk-float, body.strata-mode #mpk-hud { display:none !important; }
+body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:none !important; }
+#tab-strata { padding-bottom:8px; }
+.strata-intro .mpk-card-title { margin-bottom:8px; }
+.strata-flow { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+.strata-flow li { display:flex; align-items:center; gap:9px; position:relative; }
+.strata-flow li i { width:22px; height:22px; flex:none; border-radius:50%; background:#5E35B1; color:#fff; font-style:normal; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.strata-flow li:not(:last-child)::after { content:''; position:absolute; left:10.5px; top:22px; width:1px; height:6px; background:#B39DDB; }
+.strata-flow b { font-size:12px; color:var(--charcoal-dark); margin-right:5px; }
+.strata-flow small { font-size:10.5px; color:var(--charcoal-light); }
+.strata-hint { margin-top:9px; font-size:11px; color:#5E35B1; font-weight:600; }
+.strata-kpis { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; }
+.strata-kpi { background:#fff; border-radius:10px; padding:8px; box-shadow:0 1px 2px rgba(30,44,68,0.08); }
+.strata-kpi b { display:block; font-size:14px; color:var(--charcoal-dark); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.strata-kpi span { font-size:9.5px; color:var(--charcoal-light); line-height:1.25; display:block; }
+.strata-legend { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:11px; color:var(--charcoal-dark); margin-bottom:8px; }
+.strata-legend span { display:inline-flex; align-items:center; gap:5px; }
+.strata-legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+.strata-legend i.common, .strata-cell.common { background:repeating-linear-gradient(135deg, #ECEFF1 0 4px, #CFD8DC 4px 8px); }
+.strata-legend.small { font-size:10.5px; margin:8px 0 0; }
+.strata-wide { width:100%; }
+.strata-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; color:#fff; background:var(--c); white-space:nowrap; }
+.strata-badge.big { font-size:12px; padding:5px 12px; }
+.mpk-row .mpk-btn { margin-left:auto; }
+
+/* workspace */
+.strata-ws { background:#EEF1F5; }
+.strata-ws[hidden] { display:none; }
+.strata-inner { max-width:1200px; }
+.strata-ws-head { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+.strata-ws-t { flex:1; min-width:0; }
+.strata-ws-t h2 { font-size:19px; font-weight:800; color:var(--charcoal-dark); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.strata-ws-t p { font-size:12px; color:var(--charcoal-light); margin-top:2px; }
+.strata-steps { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; margin-bottom:14px; }
+.strata-steps button { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1.5px solid rgba(30,44,68,0.12); border-radius:10px; background:#fff;
+  font-family:inherit; font-size:12.5px; font-weight:600; color:var(--charcoal-light); cursor:pointer; text-align:left; }
+.strata-steps button i { width:24px; height:24px; flex:none; border-radius:50%; background:rgba(30,44,68,0.08); color:var(--charcoal-dark); font-style:normal; font-size:11.5px;
+  display:flex; align-items:center; justify-content:center; }
+.strata-steps button.done i { background:#DDF3E4; color:#1B6B36; }
+.strata-steps button.on { border-color:#5E35B1; color:var(--charcoal-dark); box-shadow:0 0 0 1px #5E35B1; }
+.strata-steps button.on i { background:#5E35B1; color:#fff; }
+.strata-steps button:focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
+.strata-body .mpk-h-card { box-shadow:0 1px 3px rgba(30,44,68,0.08); }
+.strata-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+.strata-grid2.wide-left { grid-template-columns:1.6fr 1fr; }
+.strata-grid2.wide-right { grid-template-columns:1fr 2fr; }
+.strata-ws-foot { display:flex; align-items:center; gap:10px; margin-top:4px; padding:12px 0 30px; }
+.strata-saved { font-size:11px; color:var(--charcoal-light); }
+.mpk-h-form.flat { padding:0; background:none; }
+.strata-row-btns { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+.strata-facts { width:100%; border-collapse:collapse; font-size:12px; }
+.strata-facts th { text-align:left; font-weight:600; color:var(--charcoal-light); padding:6px 8px 6px 0; width:42%; vertical-align:top; }
+.strata-facts td { padding:6px 0; color:var(--charcoal-dark); border-bottom:1px solid rgba(30,44,68,0.06); }
+.strata-warn { margin-top:10px; padding:9px 11px; border-radius:8px; background:#FDECEA; color:#A51D1A; font-size:11.5px; line-height:1.45; }
+.strata-stack { display:flex; flex-direction:column; gap:3px; padding:6px 4px 0; }
+.strata-floor { display:flex; align-items:center; gap:8px; }
+.strata-fl { width:50px; flex:none; font-size:10.5px; color:var(--charcoal-light); text-align:right; }
+.strata-cells { flex:1; display:flex; gap:2px; height:30px; padding:2px; background:#fff; border:1.5px solid #455A64; border-radius:3px; }
+.strata-cell { min-width:0; border-radius:2px; color:#fff; font-size:9.5px; font-weight:700; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,0.3); }
+.strata-ground { height:6px; margin:2px 0 0 58px; border-radius:2px; background:#8D6E63; }
+.strata-sharebar { width:90px; height:8px; border-radius:4px; background:rgba(30,44,68,0.07); overflow:hidden; }
+.strata-sharebar i { display:block; height:100%; border-radius:4px; }
+.strata-timeline { list-style:none; margin:0; padding:0; }
+.strata-timeline li { display:flex; gap:12px; position:relative; padding-bottom:14px; }
+.strata-timeline li:not(:last-child)::before { content:''; position:absolute; left:13px; top:28px; bottom:0; width:2px; background:rgba(30,44,68,0.1); }
+.strata-timeline li.done:not(:last-child)::before { background:var(--c); }
+.strata-timeline li > i { width:28px; height:28px; flex:none; border-radius:50%; border:2px solid rgba(30,44,68,0.15); background:#fff; color:var(--charcoal-light);
+  font-style:normal; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.strata-timeline li.done > i { background:var(--c); border-color:var(--c); color:#fff; }
+.strata-timeline li.now > i { border-color:var(--c); color:var(--c); box-shadow:0 0 0 3px color-mix(in srgb, var(--c) 20%, transparent); }
+.strata-timeline li > div { display:flex; flex-direction:column; gap:3px; flex:1; padding-top:3px; }
+.strata-timeline b { font-size:13px; color:var(--charcoal-dark); }
+.strata-timeline span { font-size:11.5px; color:var(--charcoal-light); }
+.strata-timeline label { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--charcoal-light); margin-top:3px; }
+.strata-timeline input { height:28px; padding:0 8px; border:1px solid rgba(30,44,68,0.18); border-radius:7px; font-family:inherit; font-size:12px; }
+.strata-ok { font-size:12.5px; font-weight:700; color:#1B6B36; }
+.strata-doc { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--charcoal-dark); padding:5px 0; }
+.strata-doc input { width:16px; height:16px; }
+.strata-rates summary { cursor:pointer; font-size:12.5px; font-weight:700; color:var(--charcoal-dark); }
+.strata-rates[open] summary { margin-bottom:8px; }
+@media (max-width:900px) {
+  .strata-grid2, .strata-grid2.wide-left, .strata-grid2.wide-right { grid-template-columns:1fr; }
+  .strata-steps { grid-template-columns:1fr 1fr; }
 }

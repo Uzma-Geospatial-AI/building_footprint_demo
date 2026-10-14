@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="mpk.css?v=20261014b" rel="stylesheet">
+<link href="mpk.css?v=20261014c" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
@@ -726,6 +726,7 @@
     <select id="area-mode" class="area-mode-select" onchange="mpkSetMode(this.value)" title="Area" aria-label="Area">
       <option value="seremban">Seremban</option>
       <option value="mpk">MPK Kemaman</option>
+      <option value="strata">Strata</option>
     </select>
     <button class="topbar-btn upload-btn" onclick="openUploadModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -4324,14 +4325,14 @@ function toggleSide(which, closed) {
   if (v === '1') toggleSide(w, true);
 });
 </script>
-<script src="mpk.js?v=20261014b"></script>
-<script src="mpk-change.js?v=20261014b"></script>
-<script src="mpk-report.js?v=20261014b"></script>
-<script src="mpk-features.js?v=20261014b"></script>
-<script src="mpk-gesture.js?v=20261014b"></script>
-<script src="mpk-features2.js?v=20261014b"></script>
-<script src="mpk-features3.js?v=20261014b"></script>
-<script src="mpk-daftar.js?v=20261014b"></script>
-<script src="mpk-harta.js?v=20261014b"></script>
+<script src="mpk.js?v=20261014c"></script>
+<script src="mpk-change.js?v=20261014c"></script>
+<script src="mpk-report.js?v=20261014c"></script>
+<script src="mpk-features.js?v=20261014c"></script>
+<script src="mpk-gesture.js?v=20261014c"></script>
+<script src="mpk-features2.js?v=20261014c"></script>
+<script src="mpk-features3.js?v=20261014c"></script>
+<script src="mpk-daftar.js?v=20261014c"></script>
+<script src="mpk-strata.js?v=20261014c"></script>
 </body>
 </html>
