@@ -303,29 +303,40 @@ CSV / JSON and Import JSON move them between computers. *Guideline · Tr. P.U. 9
 incl. 5 to 20 times the Part B fee for development without permission) and the Sixth Schedule parking contribution.
 The MPK logo (`mpk/mpk_logo.png`) is taken from the form.
 
-**Strata mode** (`mpk-strata.js`, Area dropdown → *Strata*): a concept of the strata title process on the MPK buildings
-(the study areas and every hand-drawn footprint outside them, 12,473), from the map to the register. MPK's illegal-construction
-layers, sidebar pages and floating card give way to a *Strata* panel and the buildings coloured by scheme stage.
-1. *Map*: click any building → *Start strata scheme* (STR/2026/0001, …).
-2. *Parcels & 3D*: the building's floors, height (4 m a floor when empty) and BIM level of development (LOD 100 – 500, suggested
-   from the record: floors → 200, floors and an approved plan → 300, verified on site → 500); the parcels (petak M<floor>-<nn>)
-   created as floors × parcels per floor, each 85 % of the floor shared equally, or one by one, with use, owner and an accessory
-   parcel (parking) and its area; common property = footprint × floors less the parcels unless entered; a floor stack drawing.
-   On the map each scheme rises to its height (*Tilt the map for 3D*).
-3. *Share units*: share unit = parcel area × weightage of its use + accessory area × accessory weightage, rounded; the schedule
-   of parcels with each parcel's share. Weightages (Kediaman 1, Komersial 1.3, Industri 1, Lain-lain 1, accessory 0.25) are
-   assumptions to set to the State's strata rules.
-4. *Strata title*: Draft → proposed strata plan certified by JUPEM (CPSP) → Form 1 application to the Land Office (PTG) →
-   strata titles registered (Act 318), with dates, PTG file no. and titles issued; a document checklist; the managing body
-   (developer → JMB → MC, Act 757).
-5. *Tax & charges*: per parcel the assessment tax (annual value × rate of its use; an empty annual value is area × monthly rent
-   × 12), the maintenance charge (share units × RM a share unit a month) and the sinking fund (10 % of the charge); yearly
-   assessment bills paid in two halves, collected / outstanding. Rates (6 / 9 / 9 / 6 %) and rents (RM 4 / 12 / 6 / 4 per m² a
-   month) are assumptions.
-The panel also keeps the **cemetery sites** (*Add a site*, click the map: type, status, area, grave capacity ≈ area ÷ 2.5 m²,
-lots in use, manager; the Tr. P.U. 9/2026 fee of RM 500 per application) and totals across schemes; parcels and cemeteries
-export as CSV, everything as JSON (import too). Kept in this browser's localStorage (`mpk_strata_v1`); data from the earlier
-Property & Tax tab (`mpk_harta_v1`) is carried over the first time.
+**Strata mode** (`mpk-strata.js`, Area dropdown → *Strata*): the strata title process as it runs in Malaysia, on the MPK
+buildings (the study areas and every hand-drawn footprint outside them), from the map to the register. MPK's illegal-construction
+layers, sidebar pages and floating card give way to a *Strata* panel; click a building → *Start strata scheme* (STR/2026/0001, …).
+1. *Building & conditions*: proprietor, master title, mukim, tenure and lease years left, type of application (building / building
+   and land / land); the JKPTG conditions (final title, no charge or lien, land-use category, ≥ 21 years of lease, building within
+   the lot, CCC / CFO).
+2. *Parcels & 3D*: floors and height (pre-filled from the building heights), BIM level of development (LOD 100 – 500); parcels
+   created as floors × parcels a floor (85 % of a floor, the rest common property; a shop-house scheme gets ground-floor and
+   upper-floor parcels) or one by one, each with its parcel type (WF1), whole-floor parcel (WF2), owner and an accessory parcel
+   with its area and place (WF3); a floor stack drawing and a floor X-ray on the map.
+3. *Share units*: allocated share units = (area × WF1 × WF2) + (accessory area × WF3), rounded to the nearest whole number,
+   with the weightages of the Strata Management Act 2013 (Act 757) First Schedule (Table 1 by parcel type, air-conditioned common
+   areas and a common lift; Table 2 whole floors 0.85 / 0.80; Table 3 accessory parcels 0.25 outside / 0.5 within the building);
+   SiFUS (PTG) and the schedule of parcels filed with the Commissioner of Buildings (s.6); a what-if of air-con, lifts and whole floors.
+4. *Strata title*: SiFUS & schedule → CPSP (JUPEM) → application to subdivide (PTG) → strata titles registered (Act 318), with the
+   JKPTG time limits (CPSP within 3 months of completion, subdivision within 1 month of the CPSP, each + 1 month) and a document list.
+5. *Management & tax*: developer → JMB (first AGM within 12 months of vacant possession, Act 757 s.17 – 18) → MC (when the strata
+   register opens); Charges by share units and the 10 % sinking fund (s.25); assessment tax per parcel with yearly bills paid in
+   two halves.
+6. *PDF report* (Bahasa Melayu, A4, MPK logo): particulars, conditions, floor stack, schedule of parcels with share units, filings,
+   stages and deadlines, management, Charges, sinking fund and assessment tax per parcel, notes and signature blocks.
+Ten tools in the panel: strata potential (a 0 – 100 score for every study-area building on the map, with the best candidates),
+building heights in 3D, floor X-ray, share-unit what-if, AGM vote by share units (ordinary / special ¾ / unanimous), deadline radar
+across schemes, 10-year sinking fund forecast against capital works, parcel passports with a QR code (PDF), owner statements (PDF,
+one page per parcel), and the strata pipeline with a timeline. Cemetery sites (type, status, area, grave capacity ≈ area ÷ 2.5 m²,
+lots in use; Tr. P.U. 9/2026 fee RM 500) live here too. Assessment rates (6 / 9 / 9 / 6 %), rents (RM 4 / 12 / 6 / 4 per m² a
+month), RM 0.30 a share unit and the first capital works are assumptions. Kept in this browser's localStorage (`mpk_strata_v2`;
+earlier `mpk_strata_v1` / `mpk_harta_v1` data carries over), with CSV / JSON export and JSON import.
+
+**Building heights** (study areas, `tinggi_m`, `tingkat_est`, `tinggi_src` in `mpk_buildings.geojson`, `tools/build_heights.py`):
+no survey of heights exists for Kemaman, so each building takes OpenStreetMap's mapped height or levels (× 3.5 m) where a mapped
+building's centre lies in it (3), else the JRC GHSL Built-H 2018 average net building height of its ~90 m cell (1,924), else one
+floor (42). Floors = height ÷ 3.5 m, rounded: 753 one-floor, 729 two, 409 three, 78 four or more. Overture Maps carries no height
+here. Estimates to confirm on site.
 
 **Land use** (Map layers → *Land use · Kemaman (OSM)*): OpenStreetMap `landuse=*` polygons
 for the whole Kemaman district (367 zones: industrial, residential, commercial, institutional,
@@ -373,6 +384,7 @@ python tools/vectorize_teluk_kalong.py path/to/teluk_kalong_map.png   # numpy, s
 python tools/build_mpk_illegal.py                                      # stdlib; streams ~980 MB + Overpass
 python tools/build_mpk_manual.py                                       # stdlib; 2026 hand-drawn footprints for Teluk Kalong + Binjai–Chukai
 python tools/apply_pelan_lulus.py                                      # stdlib; Teluk Kalong + shop building plans (run after the lines above)
+python tools/build_heights.py PATH/TO/GHS_BUILT_H_..._R9_C29.tif         # rasterio; building heights for the study areas (run after build_mpk_manual)
 python tools/build_rekod_semua.py path/to/rekod_semua.csv                 # stdlib; all 23,214 Teluk Kalong register records as points
 python tools/build_landuse.py                                          # stdlib; OSM land use for Kemaman (Overpass)
 python tools/build_wayback.py                                          # stdlib; queries ~200 Esri releases (~10 min)
@@ -384,7 +396,7 @@ node tools/test_mpk_features.js && node tools/test_mpk_gesture.js      # Feature
 node tools/test_mpk_features2.js                                       # Features tools 12–15
 node tools/test_mpk_features3.js                                       # Features tools 2, 3, 5, 8, 10
 node tools/test_mpk_daftar.js                                          # registration form fees
-node tools/test_mpk_strata.js                                          # strata parcels, share units, tax, charges
+node tools/test_mpk_strata.js                                          # strata share units (Act 757), deadlines, votes, sinking fund
 ```
 
 The MPK source map image is client material and is not committed.
