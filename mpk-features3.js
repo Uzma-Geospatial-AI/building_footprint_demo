@@ -639,22 +639,43 @@ function mpkPortShow(i) {
   const feats = MPK.data.pelan.features.filter(f => f.properties.pemohon && mpkApplicantKey(f.properties.pemohon) === a.key);
   map.getSource('mpk-feat-port').setData(mpkFC(feats));
   if (feats.length) map.fitBounds(mpkBoundsOf(feats), { padding: MPK_HUD_PAD, maxZoom: 18, duration: 1100 });
+  // one row per plan: records with the same file, lot, decision and date are the same plan drawn in pieces
   const byRec = new Map(feats.map(f => [f.properties.rekod, f.properties]));
-  const files = [...byRec.values()].sort((x, y) => String(y.tarikh).localeCompare(String(x.tarikh)));
+  const rows = new Map();
+  for (const p of byRec.values()) {
+    const k = [p.fail || p.rekod, p.lot, p.keputusan, String(p.tarikh || '').slice(0, 10)].join('|');
+    if (rows.has(k)) rows.get(k).n++; else rows.set(k, { p, n: 1, fail: p.fail });
+  }
+  const files = [...rows.values()].sort((x, y) => String(y.p.tarikh).localeCompare(String(x.p.tarikh)));
   document.getElementById('mpk-port-list').innerHTML = '';
   document.getElementById('mpk-port-card').innerHTML = `
+    <div class="mpk-port-top"><button type="button" class="mpk-port-back" onclick="mpkPortBack()" aria-label="Back to all developers">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>All developers</button></div>
     <div class="mpk-port-name">${mpkEsc(a.name)}</div>
-    <div class="mpk-hud-stats"><div><b>${a.records}</b><small>plans on the map</small></div><div><b>${a.lulus}</b><small>approved</small></div>
+    <div class="mpk-hud-stats"><div><b>${a.records}</b><small>records on the map</small></div><div><b>${a.lulus}</b><small>approved</small></div>
       <div><b>${a.built}</b><small>with a building</small></div></div>
     <div class="mpk-hud-sub">${a.first ? `Approvals ${a.first}${a.last !== a.first ? ' to ' + a.last : ''}` : 'No approval dates'}${a.tolak ? ` · ${a.tolak} rejected` : ''}${a.off ? ` · ${a.off} more shop record${a.off > 1 ? 's' : ''} without a drawing` : ''}</div>
-    <div class="mpk-hud-list">${files.slice(0, 30).map(p => `
-      <button class="mpk-hud-item" onclick="mpkPortFly('${mpkEsc(p.rekod)}')"><b>${mpkEsc(p.fail || p.rekod)}</b>
-        <span>${p.lot ? 'Lot ' + mpkEsc(p.lot) : ''}</span>
+    <div class="mpk-hud-sub">${mpkNum(files.length)} plan file${files.length === 1 ? '' : 's'}${files.length > 30 ? ' · latest 30 shown' : ''}</div>
+    <div class="mpk-hud-list">${files.slice(0, 30).map(({ p, n }) => `
+      <button class="mpk-hud-item" onclick="mpkPortFly(${mpkEsc(JSON.stringify([p.fail || '', p.lot || '', p.rekod]))})"><b>${mpkEsc(p.fail || p.rekod)}</b>
+        <span>${p.lot ? 'Lot ' + mpkEsc(p.lot) : ''}${n > 1 ? ` <em class="mpk-port-n">× ${n}</em>` : ''}</span>
         <span class="num">${p.keputusan === 'lulus' ? 'Approved' : p.keputusan === 'tolak' ? 'Rejected' : 'No decision'}${p.tarikh ? ' · ' + mpkEsc(String(p.tarikh).slice(0, 10)) : ''}</span></button>`).join('')}</div>
-    <div class="mpk-hud-actions"><button class="mpk-wb-btn" onclick="document.getElementById('mpk-port-card').innerHTML='';mpkPortList()">Back to the list</button></div>`;
+    <div class="mpk-hud-actions"><button class="mpk-wb-btn" onclick="mpkPortBack()">Back to all developers</button></div>`;
+  const card = document.getElementById('mpk-port-card');
+  if (card.closest('.mpk-hud-body')) card.closest('.mpk-hud-body').scrollTop = 0;
 }
-function mpkPortFly(rekod) {
-  const fs = MPK.data.pelan.features.filter(f => f.properties.rekod === rekod);
+// Back to every developer: the search kept, the map cleared and back on the area
+function mpkPortBack() {
+  document.getElementById('mpk-port-card').innerHTML = '';
+  try { map.getSource('mpk-feat-port').setData(mpkFC([])); } catch (e) {}
+  if (MPK.bounds) map.fitBounds(MPK.bounds[MPK.area], { padding: MPK_HUD_PAD, duration: 900 });
+  mpkPortList();
+  const q = document.getElementById('mpk-port-q');
+  if (q) q.focus();
+}
+// [file, lot, record]: every piece of that plan (same file and lot), or the one record
+function mpkPortFly([fail, lot, rekod]) {
+  const fs = MPK.data.pelan.features.filter(f => fail ? f.properties.fail === fail && (f.properties.lot || '') === lot : f.properties.rekod === rekod);
   if (fs.length) map.fitBounds(mpkBoundsOf(fs), { padding: MPK_HUD_PAD, maxZoom: 19, duration: 900 });
 }
 

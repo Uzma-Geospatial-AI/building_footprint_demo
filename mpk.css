@@ -1439,3 +1439,10 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
   #mpk-stats-page .mpk-lg-row.wide { grid-template-columns:minmax(0, 1fr) auto; }
   #mpk-stats-page .mpk-lg-row.wide .mpk-lg-bar { grid-row:2; grid-column:1 / -1; }
 }
+
+/* developer portfolio: back to every developer */
+.mpk-port-top { margin:2px 0 4px; }
+.mpk-port-back { display:inline-flex; align-items:center; gap:4px; padding:5px 10px 5px 6px; border-radius:8px; border:1px solid #D5DAE1; background:#fff;
+  color:#1E2C44; font:600 12px/1 inherit; font-family:inherit; cursor:pointer; }
+.mpk-port-back:hover, .mpk-port-back:focus-visible { border-color:#E8772E; color:#E8772E; outline:none; }
+.mpk-port-n { font-style:normal; font-weight:700; color:#7C4DFF; margin-left:4px; }
