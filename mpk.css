@@ -1301,3 +1301,6 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 .pu9-org { font-size:10.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:rgba(255,255,255,0.78); margin-bottom:1px; }
 @media (max-width:640px) { .pu9-logo { width:54px; height:40px; } .pu9-logo img { width:46px; } }
 .pu9-hero .mpk-dpb-bar-t > div.pu9-org { font-size:10.5px; font-weight:700; letter-spacing:0.5px; color:rgba(255,255,255,0.8); margin-bottom:2px; }
+
+.mpk-k-out { font-size:9.5px; color:#C56200; font-weight:600; }
+.mpk-st-row[hidden] { display:none !important; }

@@ -371,7 +371,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015f',
+  VERSION: '20261015g',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -397,7 +397,7 @@ const MPK = {
   settings: { rizab: 10 },
   area: 'all',
   // land use starts off so the map shows the buildings first (switch it on in Analysis)
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'others', 'othersBbc', 'rekod'].includes(k)])),
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'rekod'].includes(k)])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -454,6 +454,21 @@ function mpkSegM(p, a, b) {
   const x = p[0] * KX, y = p[1] * KY, x1 = a[0] * KX, y1 = a[1] * KY, dx = b[0] * KX - x1, dy = b[1] * KY - y1;
   const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / ((dx * dx + dy * dy) || 1)));
   return Math.hypot(x - x1 - t * dx, y - y1 - t * dy);
+}
+// Outside buildings on the map now: the side(s) of the selected area chip whose switch is on
+function mpkOutsideShown() {
+  if (!MPK.data || !MPK.data.others) return [];
+  return MPK.data.others.features.filter(f => {
+    const k = f.properties.dekat, d = MPK_DEKAT[k];
+    return d && MPK.layerOn[d.group] && (MPK.area === 'all' || MPK.area === k);
+  });
+}
+// Overview: only the outside row(s) of the selected area chip
+function mpkSyncOutsideRows() {
+  for (const [k, d] of Object.entries(MPK_DEKAT)) {
+    const row = document.getElementById('mpk-group-' + d.group);
+    if (row) row.hidden = !(MPK.area === 'all' || MPK.area === k);
+  }
 }
 function mpkTagNearest(data) {
   const segs = lines => lines.flatMap(l => l.slice(1).map((c, i) => [l[i], c]));
@@ -719,6 +734,7 @@ function mpkToggleLayer(key) {
   document.getElementById('mpk-group-' + key).classList.toggle('is-off', !MPK.layerOn[key]);
   if (key === 'suspect' && !MPK.layerOn.suspect && MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   if (map) mpkApplyLayerVisibility();
+  if (key === 'others' || key === 'othersBbc') mpkRender();          // the total counts the outside buildings switched on
 }
 
 // MapLibre filter for one building status (mirrors mpkStatus)
@@ -1215,8 +1231,12 @@ function mpkRender() {
   MPK.lastStats = s;
   MPK.lastBreakdown = b;
   document.getElementById('mpk-rizab-val').textContent = MPK.settings.rizab + ' m';
-  document.getElementById('mpk-k-total').textContent = mpkNum(b.total);
-  document.getElementById('mpk-k-m2').textContent = mpkM2(b.m2);
+  // the total counts the outside buildings switched on as well (they have no status, so the shares stay on the study area)
+  const out = mpkOutsideShown(), outM2 = out.reduce((a, f) => a + f.properties.area_m2, 0);
+  MPK.lastOutside = { n: out.length, m2: outM2 };
+  document.getElementById('mpk-k-total').textContent = mpkNum(b.total + out.length);
+  document.getElementById('mpk-k-m2').innerHTML = mpkM2(b.m2 + outM2) + (out.length ? `<br><small class="mpk-k-out">incl. ${mpkNum(out.length)} outside</small>` : '');
+  mpkSyncOutsideRows();
   document.getElementById('mpk-k-legal').textContent = mpkPct(b.byStatus.legal.pct);
   document.getElementById('mpk-k-illegal').textContent = mpkPct(b.byStatus.suspected.pct);
   mpkRenderFloatCard(b);
@@ -1629,8 +1649,10 @@ function mpkToggleFloatCard(close) {
 }
 function mpkRenderFloatCard(b) {
   if (!document.getElementById('mpk-float')) return;
+  const out = MPK.lastOutside && MPK.lastOutside.n;
   document.getElementById('mpk-float-area').textContent =
-    (MPK_AREAS[MPK.area] ? MPK_AREAS[MPK.area].short : 'All study areas') + ' · ' + mpkNum(b.total) + ' buildings';
+    (MPK_AREAS[MPK.area] ? MPK_AREAS[MPK.area].short : 'All study areas') + ' · ' + mpkNum(b.total + (out || 0)) + ' buildings'
+    + (out ? ` (${mpkNum(out)} outside, no status)` : '');
   for (const k of ['legal', 'suspected', 'unverified']) {
     document.getElementById('mpk-float-v-' + k).textContent = mpkStatPct(b.byStatus[k], b.total);
     document.getElementById('mpk-float-n-' + k).innerHTML = mpkStatCount(b.byStatus[k], b.total);
