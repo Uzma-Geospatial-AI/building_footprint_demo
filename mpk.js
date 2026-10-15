@@ -369,7 +369,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261014f',
+  VERSION: '20261015a',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1265,30 +1265,86 @@ function mpkOnStatsRate() {
   mpkRenderStatsRevenue();
 }
 
+// Statistics page, money first: what the illegal buildings cost the council every year (assessment tax not
+// collected) and what it would gain by regularising them (processing fees once, then the tax every year)
 function mpkRenderStatsRevenue() {
   const el = document.getElementById('mpk-rev-body');
   if (!el || MPK.page !== 'stats') return;
-  const r = mpkRevenue(mpkAreaFeatures(), MPK.settings, MPK.rates), sp = r.suspected;
-  const row = (label, x, cls = '') => `<tr class="${cls}"><td>${label}</td><td class="num">${mpkNum(x.n)}</td><td class="num">${mpkNum(x.m2)}</td>
-    <td class="num">${mpkRM(x.fee)}</td><td class="num">${mpkRM(x.tax)}</td><td class="num"><b>${mpkRM(x.year1)}</b></td></tr>`;
-  const head = first => `<thead><tr><th>${first}</th><th class="num">Buildings</th><th class="num">m²</th><th class="num">Processing fee</th>
-    <th class="num">Assessment tax / yr</th><th class="num">First year</th></tr></thead>`;
+  const r = mpkRevenue(mpkAreaFeatures(), MPK.settings, MPK.rates), sp = r.suspected, yr = sp.tax;
+  const where = MPK.area === 'all' ? 'Teluk Kalong and Binjai – Chukai' : MPK_AREAS[MPK.area].short;
+  if (!sp.n) {
+    el.innerHTML = `<section class="mpk-loss-hero ok"><div><small>Money lost every year</small><b>RM 0</b>
+      <p>No illegal buildings in ${where}.</p></div></section>`;
+    return;
+  }
+  const years = [1, 3, 5, 10];
+  const maxLoss = yr * 10;
+  const bar = (v, max, cls) => `<i class="${cls}" style="width:${max ? Math.max(v / max * 100, 1.5) : 0}%"></i>`;
+  const areas = Object.entries(r.byArea).filter(([, x]) => x.n), maxA = Math.max(...areas.map(([, x]) => x.tax), 1);
+  const types = Object.entries(r.byType).filter(([, x]) => x.n), maxT = Math.max(...types.map(([, x]) => x.tax), 1);
+  const top = mpkAreaFeatures().filter(f => mpkJenis(f.properties, MPK.settings))
+    .sort((a, b) => b.properties.area_m2 - a.properties.area_m2).slice(0, 10);
+  const maxTop = top.length ? top[0].properties.area_m2 * MPK.rates.cukai : 1;
   el.innerHTML = `
-    <div class="mpk-rev-cards">
-      <div class="mpk-rev-card"><small>One-off processing fees</small><b>${mpkRM(sp.fee)}</b><span>${mpkNum(sp.m2)} m² × RM ${MPK.rates.fee}/m²</span></div>
-      <div class="mpk-rev-card"><small>Assessment tax every year</small><b>${mpkRM(sp.tax)}</b><span>${mpkNum(sp.m2)} m² × RM ${MPK.rates.cukai}/m²</span></div>
-      <div class="mpk-rev-card main"><small>First-year total</small><b>${mpkRM(sp.year1)}</b><span>fees + one year of tax</span></div>
-      <div class="mpk-rev-card"><small>Over ${r.years} years</small><b>${mpkRM(sp.multi)}</b><span>fees + ${r.years} years of tax</span></div>
+    <section class="mpk-loss-hero">
+      <div class="mpk-loss-main">
+        <small>Money MPK loses every year</small>
+        <b>${mpkRM(yr)}</b>
+        <p>Assessment tax not collected from <strong>${mpkNum(sp.n)} illegal buildings</strong> (${mpkNum(sp.m2)} m²) in ${where}.</p>
+      </div>
+      <div class="mpk-loss-split">
+        <div><b>${mpkRM(yr / 12)}</b><span>a month</span></div>
+        <div><b>${mpkRM(yr / 365)}</b><span>a day</span></div>
+        <div><b>${mpkRM(yr / sp.n)}</b><span>a building, a year</span></div>
+      </div>
+    </section>
+
+    <div class="mpk-lg">
+      <section class="mpk-stats-card mpk-lg-card loss">
+        <h3><span class="mpk-lg-ic" aria-hidden="true">▼</span> If nothing is done</h3>
+        <p class="mpk-lg-sub">The loss keeps adding up, year after year.</p>
+        ${years.map(y => `<div class="mpk-lg-row"><span>After ${y} year${y > 1 ? 's' : ''}</span>
+          <div class="mpk-lg-bar">${bar(yr * y, maxLoss, 'loss')}</div><b>${mpkRM(yr * y)}</b></div>`).join('')}
+      </section>
+      <section class="mpk-stats-card mpk-lg-card gain">
+        <h3><span class="mpk-lg-ic" aria-hidden="true">▲</span> If they are regularised</h3>
+        <p class="mpk-lg-sub">Approve the buildings and put them on the assessment roll.</p>
+        <div class="mpk-lg-steps">
+          <div><small>Collected once</small><b>${mpkRM(sp.fee)}</b><span>processing fees</span></div>
+          <div class="plus" aria-hidden="true">+</div>
+          <div><small>Then every year</small><b>${mpkRM(yr)}</b><span>assessment tax</span></div>
+        </div>
+        <div class="mpk-lg-total"><span>First year</span><b>${mpkRM(sp.year1)}</b></div>
+        <div class="mpk-lg-total soft"><span>Over ${r.years} years</span><b>${mpkRM(sp.multi)}</b></div>
+      </section>
     </div>
-    <p class="mpk-rev-sub">From the <b>${mpkNum(sp.n)} suspected buildings</b> if they are regularised (approved and put on the assessment roll).</p>
-    <table class="mpk-table">${head('Area')}<tbody>
-      ${Object.entries(r.byArea).filter(([, x]) => x.n).map(([k, x]) => row(MPK_AREAS[k].name, x)).join('')}
-      ${row('All suspected buildings', sp, 'total')}</tbody></table>
-    <table class="mpk-table">${head('Why suspected')}<tbody>
-      ${Object.entries(r.byType).filter(([, x]) => x.n).map(([k, x]) => row(MPK_JENIS[k].label, x)).join('')}</tbody></table>
-    <div class="mpk-rev-upper"><b>Upper bound:</b> if the ${mpkNum(r.unverified.n)} not-verified buildings (${mpkNum(r.unverified.m2)} m²) also lacked
-      approval, they would add up to <b>${mpkRM(r.unverified.year1)}</b> in the first year (${mpkRM(r.unverified.fee)} fees +
-      ${mpkRM(r.unverified.tax)} tax a year).</div>`;
+
+    <div class="mpk-stats-grid">
+      <section class="mpk-stats-card">
+        <h3>Where the money is lost</h3>
+        ${areas.map(([k, x]) => `<div class="mpk-lg-row wide"><span>${MPK_AREAS[k].short}<small>${mpkNum(x.n)} building${x.n === 1 ? '' : 's'}</small></span>
+          <div class="mpk-lg-bar">${bar(x.tax, maxA, 'loss')}</div><b>${mpkRM(x.tax)}<small>/ year</small></b></div>`).join('')}
+      </section>
+      <section class="mpk-stats-card">
+        <h3>Why they are illegal</h3>
+        ${types.map(([k, x]) => `<div class="mpk-lg-row wide"><span>${MPK_JENIS[k].label}<small>${mpkNum(x.n)} building${x.n === 1 ? '' : 's'}</small></span>
+          <div class="mpk-lg-bar">${bar(x.tax, maxT, 'loss')}</div><b>${mpkRM(x.tax)}<small>/ year</small></b></div>`).join('')}
+      </section>
+    </div>
+
+    <section class="mpk-stats-card">
+      <h3>The 10 buildings that cost the most</h3>
+      <p class="mpk-lg-sub">Start enforcement here: the biggest buildings lose the most tax.</p>
+      <div class="mpk-top">${top.map((f, i) => { const p = f.properties, loss = p.area_m2 * MPK.rates.cukai;
+        return `<div class="mpk-top-row"><span class="mpk-top-n">${i + 1}</span>
+          <div class="mpk-top-t"><b>${p.plus_code}</b><small>${MPK_AREAS[p.kawasan].short} · ${mpkNum(p.area_m2)} m² · ${MPK_JENIS[mpkJenis(p, MPK.settings)].label}</small></div>
+          <div class="mpk-lg-bar">${bar(loss, maxTop, 'loss')}</div>
+          <b class="mpk-top-v">${mpkRM(loss)}<small>/ year</small></b>
+          <button class="mpk-link" onclick="mpkShowPage('dashboard');mpkZoomTo(${p.id})">View</button></div>`; }).join('')}</div>
+    </section>
+
+    <p class="mpk-lg-note">If the ${mpkNum(r.unverified.n)} pending buildings (${mpkNum(r.unverified.m2)} m², not yet checked) also turn out to lack approval,
+      the loss could reach a further <b>${mpkRM(r.unverified.tax)}</b> a year.</p>`;
 }
 
 // ---------- Map interaction ----------
@@ -1615,7 +1671,7 @@ function mpkRenderStats() {
     <div class="mpk-stats-inner">
       <header class="mpk-stats-head">
         <div><h2>Statistics</h2>
-          <p>Buildings in the marked areas only: Teluk Kalong inside the planning boundary, and along the Binjai – Bandar Chukai corridor.</p></div>
+          <p>What illegal buildings cost the council, and what it gains by regularising them. Teluk Kalong inside the planning boundary and the Binjai – Bandar Chukai corridor.</p></div>
         <div class="mpk-stats-actions">
           <button class="mpk-btn" onclick="mpkExportReport()">Export PDF report</button>
           <button class="mpk-wb-btn" onclick="mpkExportAllCSV()">Export CSV</button>
@@ -1623,29 +1679,27 @@ function mpkRenderStats() {
       </header>
       <div class="mpk-chips">${chips}</div>
 
-      <div class="mpk-stats-cards">
-        <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings</div></div>
-        <div class="mpk-stat"><div class="v">${mpkNum(b.m2)}</div><div class="l">Total footprint (m²)</div></div>
-        <div class="mpk-stat legal"><div class="v">${mpkStatPct(b.byStatus.legal, b.total)}</div><div class="l">Approved buildings</div>
-          <div class="n">${mpkStatCount(b.byStatus.legal, b.total)}</div></div>
-        <div class="mpk-stat danger"><div class="v">${mpkStatPct(b.byStatus.suspected, b.total)}</div><div class="l">Illegal buildings</div>
-          <div class="n">${mpkStatCount(b.byStatus.suspected, b.total)}</div></div>
-        <div class="mpk-stat"><div class="v">${mpkStatPct(b.byStatus.unverified, b.total)}</div><div class="l">Pending buildings</div>
-          <div class="n">${mpkStatCount(b.byStatus.unverified, b.total)}</div></div>
+      <div class="mpk-simple-cards">
+        <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings checked</div></div>
+        <div class="mpk-stat legal"><div class="v">${mpkNum(b.byStatus.legal.n)}</div><div class="l">Approved <small>${mpkStatPct(b.byStatus.legal, b.total)}</small></div></div>
+        <div class="mpk-stat danger"><div class="v">${mpkNum(b.byStatus.suspected.n)}</div><div class="l">Illegal <small>${mpkStatPct(b.byStatus.suspected, b.total)}</small></div></div>
+        <div class="mpk-stat"><div class="v">${mpkNum(b.byStatus.unverified.n)}</div><div class="l">Pending check <small>${mpkStatPct(b.byStatus.unverified, b.total)}</small></div></div>
       </div>
 
-      <section class="mpk-stats-card mpk-rev">
-        <div class="mpk-rev-head">
-          <div><h3>Revenue potential <span class="mpk-tag">estimate</span></h3>
-            <p>What the council could collect from the suspected buildings in ${area === 'all' ? 'all areas' : MPK_AREAS[area].short}. The rates are assumptions: set them to MPK's schedule.</p></div>
-          <div class="mpk-rev-rates">
-            <label>Processing fee<small>RM / m², one-off</small><input type="number" id="mpk-srate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnStatsRate()"></label>
-            <label>Assessment tax<small>RM / m² / year</small><input type="number" id="mpk-srate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnStatsRate()"></label>
-          </div>
-        </div>
-        <div id="mpk-rev-body"></div>
-      </section>
+      <div id="mpk-rev-body"></div>
 
+      <details class="mpk-stats-card mpk-how">
+        <summary>How we work it out <span class="mpk-tag">estimate</span></summary>
+        <p>Money lost a year = floor area of the illegal buildings × assessment tax rate. Gain = the same tax every year, plus a one-off
+          processing fee when each building is approved. Set the rates to MPK's schedule: every number on this page follows them.</p>
+        <div class="mpk-rev-rates">
+          <label>Processing fee<small>RM / m², one-off</small><input type="number" id="mpk-srate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnStatsRate()"></label>
+          <label>Assessment tax<small>RM / m² / year</small><input type="number" id="mpk-srate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnStatsRate()"></label>
+        </div>
+      </details>
+
+      <details class="mpk-more-details">
+        <summary>More details: status, building size, areas and the largest buildings</summary>
       <div class="mpk-stats-grid">
         <section class="mpk-stats-card">
           <h3>Legal vs illegal</h3>
@@ -1675,6 +1729,7 @@ function mpkRenderStats() {
         <table class="mpk-table"><thead><tr><th class="num">#</th><th>Plus Code</th><th>Area</th><th>Status</th><th>Lot</th>
           <th class="num">m²</th><th></th></tr></thead><tbody>${largest}</tbody></table>
       </section>
+      </details>
     </div>`;
   mpkRenderStatsRevenue();
 }

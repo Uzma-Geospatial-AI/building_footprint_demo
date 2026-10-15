@@ -1098,3 +1098,62 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 .mpk-data-src { display:flex; align-items:flex-start; gap:6px; font-size:10.5px; line-height:1.4; color:var(--charcoal-light); margin:-6px 0 10px; }
 .mpk-data-dot { width:7px; height:7px; flex:none; margin-top:4px; border-radius:50%; background:#1E8E3E; box-shadow:0 0 0 3px rgba(30,142,62,0.15); }
 .mpk-data-src.live .mpk-data-dot { background:#E8772E; box-shadow:0 0 0 3px rgba(232,119,46,0.18); }
+
+/* Statistics, money first */
+.mpk-simple-cards { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:14px; }
+.mpk-simple-cards .mpk-stat .l small { font-weight:600; color:var(--charcoal-light); margin-left:4px; }
+.mpk-loss-hero { display:grid; grid-template-columns:1.4fr 1fr; gap:20px; align-items:center; padding:24px 26px; margin-bottom:14px; border-radius:16px;
+  background:linear-gradient(135deg, #B3261E, #D93025); color:#fff; box-shadow:0 6px 20px rgba(179,38,30,0.22); }
+.mpk-loss-hero.ok { background:linear-gradient(135deg, #17732F, #1E8E3E); }
+.mpk-loss-main small { font-size:13px; font-weight:600; opacity:0.9; letter-spacing:0.2px; }
+.mpk-loss-main b { display:block; font-size:44px; font-weight:800; line-height:1.1; margin:4px 0 6px; font-variant-numeric:tabular-nums; }
+.mpk-loss-main p { font-size:13px; opacity:0.92; margin:0; }
+.mpk-loss-split { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.mpk-loss-split div { background:rgba(255,255,255,0.14); border-radius:12px; padding:12px; text-align:center; }
+.mpk-loss-split b { display:block; font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+.mpk-loss-split span { font-size:11px; opacity:0.88; }
+.mpk-lg { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.mpk-lg-card h3 { display:flex; align-items:center; gap:8px; }
+.mpk-lg-ic { width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:#fff; }
+.mpk-lg-card.loss .mpk-lg-ic { background:#D93025; }
+.mpk-lg-card.gain .mpk-lg-ic { background:#1E8E3E; }
+.mpk-lg-card.loss { border-top:4px solid #D93025; }
+.mpk-lg-card.gain { border-top:4px solid #1E8E3E; }
+.mpk-lg-sub { font-size:12px; color:var(--charcoal-light); margin:-4px 0 12px; }
+.mpk-lg-row { display:grid; grid-template-columns:110px 1fr 120px; align-items:center; gap:12px; padding:7px 0; font-size:12.5px; color:var(--charcoal-dark); }
+.mpk-lg-row.wide { grid-template-columns:170px 1fr 140px; }
+.mpk-lg-row span small, .mpk-lg-row b small, .mpk-top-v small { display:block; font-size:10.5px; font-weight:500; color:var(--charcoal-light); }
+.mpk-lg-row b, .mpk-top-v { text-align:right; font-variant-numeric:tabular-nums; }
+.mpk-lg-bar { height:12px; border-radius:6px; background:rgba(30,44,68,0.06); overflow:hidden; }
+.mpk-lg-bar i { display:block; height:100%; border-radius:6px; }
+.mpk-lg-bar i.loss { background:#D93025; }
+.mpk-lg-bar i.gain { background:#1E8E3E; }
+.mpk-lg-steps { display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; margin-bottom:12px; }
+.mpk-lg-steps > div:not(.plus) { background:#DDF3E4; border-radius:12px; padding:12px 14px; }
+.mpk-lg-steps small { display:block; font-size:11px; font-weight:600; color:#1B6B36; }
+.mpk-lg-steps b { display:block; font-size:20px; font-weight:800; color:#14532D; font-variant-numeric:tabular-nums; }
+.mpk-lg-steps span { font-size:11px; color:#1B6B36; }
+.mpk-lg-steps .plus { font-size:22px; font-weight:800; color:#1E8E3E; }
+.mpk-lg-total { display:flex; justify-content:space-between; align-items:baseline; padding:10px 14px; border-radius:10px; background:#1E8E3E; color:#fff; margin-bottom:6px; }
+.mpk-lg-total b { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; }
+.mpk-lg-total.soft { background:#F1F8F3; color:#14532D; }
+.mpk-lg-total.soft b { font-size:16px; }
+.mpk-top { display:grid; }
+.mpk-top-row { display:grid; grid-template-columns:28px minmax(180px, 1.3fr) 1fr 130px 52px; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(30,44,68,0.06); font-size:12.5px; }
+.mpk-top-n { width:24px; height:24px; border-radius:50%; background:#FDE2E1; color:#A51D1A; font-weight:800; font-size:11px; display:flex; align-items:center; justify-content:center; }
+.mpk-top-t b { display:block; color:var(--charcoal-dark); }
+.mpk-top-t small { font-size:11px; color:var(--charcoal-light); }
+.mpk-lg-note { font-size:12px; color:var(--charcoal-light); background:#FFF8E1; border-radius:10px; padding:10px 14px; margin:0 0 14px; }
+.mpk-how summary, .mpk-more-details > summary { cursor:pointer; font-size:13px; font-weight:700; color:var(--charcoal-dark); }
+.mpk-how p { font-size:12px; color:var(--charcoal-light); margin:10px 0; }
+.mpk-how .mpk-rev-rates { display:flex; gap:14px; }
+.mpk-more-details { margin:4px 0 30px; }
+.mpk-more-details > summary { padding:12px 16px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(30,44,68,0.08); margin-bottom:14px; }
+@media (max-width:900px) {
+  .mpk-simple-cards { grid-template-columns:1fr 1fr; }
+  .mpk-loss-hero, .mpk-lg { grid-template-columns:1fr; }
+  .mpk-loss-main b { font-size:34px; }
+  .mpk-lg-row.wide { grid-template-columns:120px 1fr 110px; }
+  .mpk-top-row { grid-template-columns:24px 1fr 110px 44px; }
+  .mpk-top-row .mpk-lg-bar { display:none; }
+}
