@@ -611,12 +611,15 @@ function mpkPortRun() {
   if (!MPK.data.pelan) { mpkHud('Developer Portfolio', 'The plan registers did not load.', { icon: '🏢', side: true }); return; }
   MPK_FEAT.port = mpkPortfolios(MPK.data.pelan.features, MPK.data.daftar);
   mpkFeatSrc('mpk-feat-port', mpkFC([]));
+  // bright yellow with a dark edge: no other layer uses it, so the developer's plans stand out on any basemap
   mpkFeatLayer({ id: 'mpk-feat-port-fill', type: 'fill', source: 'mpk-feat-port', filter: ['==', ['geometry-type'], 'Polygon'],
-    paint: { 'fill-color': '#7C4DFF', 'fill-opacity': 0.35 } });
+    paint: { 'fill-color': '#FFEA00', 'fill-opacity': 0.28 } });
+  mpkFeatLayer({ id: 'mpk-feat-port-case', type: 'line', source: 'mpk-feat-port',
+    paint: { 'line-color': '#1A1A1A', 'line-width': 5, 'line-opacity': 0.75 } });
   mpkFeatLayer({ id: 'mpk-feat-port-line', type: 'line', source: 'mpk-feat-port',
-    paint: { 'line-color': ['case', ['==', ['get', 'keputusan'], 'tolak'], '#D50000', '#651FFF'], 'line-width': 2.4 } });
+    paint: { 'line-color': ['case', ['==', ['get', 'keputusan'], 'tolak'], '#FF5252', '#FFEA00'], 'line-width': 2.6 } });
   mpkFeatLayer({ id: 'mpk-feat-port-dot', type: 'circle', source: 'mpk-feat-port', maxzoom: 15,
-    paint: { 'circle-color': '#651FFF', 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 } });
+    paint: { 'circle-color': '#FFEA00', 'circle-radius': 5.5, 'circle-stroke-color': '#1A1A1A', 'circle-stroke-width': 2 } });
   mpkHud('Developer Portfolio', `
     <input type="search" class="mpk-reg-q" id="mpk-port-q" placeholder="Search a developer or applicant" oninput="mpkPortList()" aria-label="Applicant">
     <div class="mpk-hud-sub" id="mpk-port-sum"></div>
