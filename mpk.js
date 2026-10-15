@@ -347,8 +347,10 @@ const MPK_LAYER_GROUPS = {
   sizes:     { label: 'Building size labels', swatch: [], layers: ['mpk-size-label'], legend: [] },
   unverified: { label: MPK_STATUS.unverified.label, swatch: [MPK_STATUS.unverified.color],
                layers: ['mpk-unverified-fill'], legend: [] },
-  others:    { label: 'Outside the study areas', swatch: ['#FF9100'],
+  others:    { label: 'Outside · near Teluk Kalong', swatch: ['#FF9100'],
                layers: ['mpk-other-fill', 'mpk-other-line'], legend: [] },
+  othersBbc: { label: 'Outside · near Binjai – Chukai', swatch: ['#AB47BC'],
+               layers: ['mpk-other-bbc-fill', 'mpk-other-bbc-line'], legend: [] },
   pelan:     { label: 'Approved building plans · MPK', swatchClass: 'pelan',
                layers: ['mpk-pelan-fill', 'mpk-pelan-line'],
                legend: [['Approved plan covering a building', '.pelan', 'covers'], ['Approved, no building found', '.pelan-none', 'none'],
@@ -369,7 +371,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015e',
+  VERSION: '20261015f',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -384,7 +386,7 @@ const MPK = {
   // every record of the Teluk Kalong register as a point (tools/build_rekod_semua.py), loaded the
   // first time its layer is switched on; the counts are that script's output
   REKOD: { file: 'mpk/rekod_semua.geojson', total: 23214, placed: 22086, data: null, loading: false },
-  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-pelan-fill', 'mpk-pelan-line', 'mpk-other-fill', 'mpk-other-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
+  LAYERS: ['mpk-wayback-layer', 'mpk-landuse-fill', 'mpk-landuse-line', 'mpk-district-line', 'mpk-pelan-fill', 'mpk-pelan-line', 'mpk-other-fill', 'mpk-other-line', 'mpk-other-bbc-fill', 'mpk-other-bbc-line', 'mpk-kadaster-line', 'mpk-boundary-fill', 'mpk-boundary-line', 'mpk-koridor-band',
            'mpk-koridor-line', 'mpk-unverified-fill', 'mpk-legal-fill', 'mpk-legal-line', 'mpk-suspect-fill', 'mpk-suspect-line',
            'mpk-suspect-extrude', 'mpk-highlight-line', 'mpk-rekod-pt', 'mpk-size-label'],
   SOURCES: ['mpk-wayback', 'mpk-rekod', 'mpk-size-pts', 'mpk-other', 'mpk-pelan', 'mpk-landuse', 'mpk-kadaster', 'mpk-boundary', 'mpk-roads', 'mpk-buildings', 'mpk-highlight'],
@@ -395,7 +397,7 @@ const MPK = {
   settings: { rizab: 10 },
   area: 'all',
   // land use starts off so the map shows the buildings first (switch it on in Analysis)
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'others', 'rekod'].includes(k)])),
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'others', 'othersBbc', 'rekod'].includes(k)])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -441,6 +443,31 @@ async function mpkFetchSumber() {
 }
 const mpkDataV = () => MPK.VERSION + (MPK.sumber && MPK.sumber.version ? '-' + MPK.sumber.version : '');
 
+// Buildings outside the study areas, split by the study area they are nearer to: the Teluk Kalong boundary
+// or the Binjai – Chukai corridor road (straight-line distance from the footprint's centre), as p.dekat
+const MPK_DEKAT = {
+  tk: { label: 'Outside · near Teluk Kalong', color: '#FF9100', outline: '#C56200', group: 'others' },
+  bbc: { label: 'Outside · near Binjai – Chukai', color: '#AB47BC', outline: '#6A1B9A', group: 'othersBbc' },
+};
+function mpkSegM(p, a, b) {
+  const KX = 111320 * Math.cos(4.27 * Math.PI / 180), KY = 110574;
+  const x = p[0] * KX, y = p[1] * KY, x1 = a[0] * KX, y1 = a[1] * KY, dx = b[0] * KX - x1, dy = b[1] * KY - y1;
+  const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / ((dx * dx + dy * dy) || 1)));
+  return Math.hypot(x - x1 - t * dx, y - y1 - t * dy);
+}
+function mpkTagNearest(data) {
+  const segs = lines => lines.flatMap(l => l.slice(1).map((c, i) => [l[i], c]));
+  const tkG = data.boundary.features[0].geometry;
+  const tk = segs(tkG.type === 'Polygon' ? tkG.coordinates : tkG.coordinates.flat());
+  const bbc = segs(data.roads.features.filter(f => f.properties.kawasan === 'bbc')
+    .flatMap(f => f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates));
+  const near = (p, list) => list.reduce((m, [a, b]) => Math.min(m, mpkSegM(p, a, b)), Infinity);
+  for (const f of data.others.features) {
+    const p = f.properties, pt = [p.lng, p.lat];
+    p.dekat = !bbc.length || near(pt, tk) <= near(pt, bbc) ? 'tk' : 'bbc';
+  }
+}
+
 async function mpkEnsureData() {
   if (MPK.data) return;
   MPK.sumber = await mpkFetchSumber();
@@ -467,6 +494,7 @@ async function mpkEnsureData() {
     data.buildings = live.buildings;
     data.others = live.others;
   }
+  if (data.others) mpkTagNearest(data);
   const b = data.buildings.features;
   MPK.bounds = {
     all: mpkBoundsOf([...b, ...data.boundary.features, ...data.roads.features]),
@@ -530,9 +558,12 @@ function mpkAddLayers() {
     if (MPK.data.others) {
       // the hand-drawn footprints outside the study areas: on the map, no status
       map.addSource('mpk-other', { type: 'geojson', data: MPK.data.others });
-      map.addLayer({ id: 'mpk-other-fill', type: 'fill', source: 'mpk-other', paint: { 'fill-color': '#FF9100', 'fill-opacity': 0.5 } });
-      map.addLayer({ id: 'mpk-other-line', type: 'line', source: 'mpk-other',
-        paint: { 'line-color': MPK_OUTLINE.others, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.2] } });
+      for (const [k, d] of Object.entries(MPK_DEKAT)) {
+        const id = k === 'tk' ? 'mpk-other' : 'mpk-other-bbc', only = ['==', ['get', 'dekat'], k];
+        map.addLayer({ id: id + '-fill', type: 'fill', source: 'mpk-other', filter: only, paint: { 'fill-color': d.color, 'fill-opacity': 0.5 } });
+        map.addLayer({ id: id + '-line', type: 'line', source: 'mpk-other', filter: only,
+          paint: { 'line-color': d.outline, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1.2] } });
+      }
     }
     map.addLayer({ id: 'mpk-unverified-fill', type: 'fill', source: 'mpk-buildings', filter: mpkStatusFilter('unverified'),
       paint: { 'fill-color': MPK_STATUS.unverified.color, 'fill-opacity': 0.55, 'fill-outline-color': MPK_OUTLINE.unverified } });
@@ -591,6 +622,11 @@ function mpkApplyBuildingFilters() {
     for (const id of MPK_LAYER_GROUPS[st].layers) if (map.getLayer(id)) map.setFilter(id, mpkInArea(mpkStatusFilter(st)));
   }
   if (map.getLayer('mpk-size-label')) map.setFilter('mpk-size-label', MPK.area === 'all' ? null : ['==', ['get', 'kawasan'], MPK.area]);
+  // outside buildings: each side follows its own switch and the area chip
+  for (const [k, d] of Object.entries(MPK_DEKAT)) {
+    const show = MPK.layerOn[d.group] && (MPK.area === 'all' || MPK.area === k);
+    MPK_LAYER_GROUPS[d.group].layers.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none'); });
+  }
 }
 
 // Map layers that belong to one legend entry of their group
@@ -761,15 +797,15 @@ function mpkSetSerembanVisible(on) {
 function mpkBindEvents() {
   if (MPK.boundMap === map) return;
   MPK.boundMap = map;
-  map.on('click', 'mpk-other-fill', e => {
+  ['mpk-other-fill', 'mpk-other-bbc-fill'].forEach(layer => map.on('click', layer, e => {
     if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture)) return;
     const onStudy = map.queryRenderedFeatures(e.point, { layers: ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill']
       .filter(id => map.getLayer(id)) }).length;
     if (!onStudy) mpkShowOtherPopup(e.features[0].properties, e.lngLat);
-  });
-  ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill', 'mpk-other-fill'].forEach(layer => {
+  }));
+  ['mpk-suspect-fill', 'mpk-legal-fill', 'mpk-unverified-fill', 'mpk-other-fill', 'mpk-other-bbc-fill'].forEach(layer => {
     map.on('click', layer, e => {
-      if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture) || layer === 'mpk-other-fill') return;
+      if (!MPK.active || !e.features.length || (typeof MPK_FEAT !== 'undefined' && MPK_FEAT.capture) || layer.startsWith('mpk-other')) return;
       mpkShowPopup(e.features[0].properties, e.lngLat);
     });
     map.on('mouseenter', layer, () => { if (MPK.active) map.getCanvas().style.cursor = 'pointer'; });
@@ -958,13 +994,13 @@ function mpkBuildPanel() {
           <button type="button" class="layer-toggle off" id="mpk-tog-studyarea" role="switch" aria-checked="false"
             aria-label="Study area outline" onclick="mpkToggleStudyArea()"></button>
         </div>
-        ${MPK.data.others ? `<div class="mpk-st-row mpk-layer-group${MPK.layerOn.others ? '' : ' is-off'}" id="mpk-group-others"
-            title="Hand-drawn footprints outside Teluk Kalong's boundary and the Binjai – Chukai corridor: shown on the map, no status">
-          <i class="sw" style="background:#FF9100;border:1px solid #C56200"></i>
-          <div class="mpk-st-main"><div class="mpk-st-label">Outside the study areas</div>
-            <div class="mpk-st-sub">${mpkNum(MPK.data.others.features.length)} buildings · map only, no status</div></div>
-          ${toggle('others', 'Outside the study areas')}
-        </div>` : ''}
+        ${MPK.data.others ? Object.entries(MPK_DEKAT).map(([k, d]) => `<div class="mpk-st-row mpk-layer-group${MPK.layerOn[d.group] ? '' : ' is-off'}" id="mpk-group-${d.group}"
+            title="Hand-drawn footprints outside the study areas, nearer to ${k === 'tk' ? 'the Teluk Kalong boundary' : 'the Binjai – Chukai corridor'}: shown on the map, no status">
+          <i class="sw" style="background:${d.color};border:1px solid ${d.outline}"></i>
+          <div class="mpk-st-main"><div class="mpk-st-label">${d.label}</div>
+            <div class="mpk-st-sub">${mpkNum(MPK.data.others.features.filter(f => f.properties.dekat === k).length)} buildings · map only, no status</div></div>
+          ${toggle(d.group, d.label)}
+        </div>`).join('') : ''}
         <div class="mpk-st-row mpk-layer-group${MPK.layerOn.sizes ? '' : ' is-off'}" id="mpk-group-sizes">
           <i class="sw sizes">m²</i>
           <div class="mpk-st-main"><div class="mpk-st-label">Building size labels</div>
@@ -1470,8 +1506,8 @@ function mpkShowOtherPopup(p, lngLat) {
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
   const zone = MPK.data.landuse ? mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features)) : null;
   const html = `
-    <div class="popup-header" style="background:#C56200">
-      <div class="popup-fc">Outside the study areas · no status</div>
+    <div class="popup-header" style="background:${(MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).outline}">
+      <div class="popup-fc">${(MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).label} · no status</div>
       <div class="popup-name">${mpkEscHtml(p.plus_code)}</div>
     </div>
     <div class="popup-body">
