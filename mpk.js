@@ -371,7 +371,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015i',
+  VERSION: '20261015j',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1446,18 +1446,7 @@ function mpkShowPopup(p, lngLat) {
       <div class="popup-name">${p.plus_code}</div>
     </div>
     <div class="popup-body">
-      ${row('Area', MPK_AREAS[p.kawasan].short)}
-      ${MPK.data.landuse ? row('Land use (OSM)', mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features))) : ''}
-      ${p.kategori === 'luar' ? row('Distance from boundary', p.jarak_m + ' m') : ''}
-      ${p.kategori === 'koridor' ? row('Distance from road centreline',
-        p.jarak_jalan_m == null ? 'no road data' : p.jarak_jalan_m + ' m') : ''}
-      ${mpkPlanRows(p, row)}
-      ${row('Lot no.', p.lot || 'no cadastral lot')}
-      ${p.upi ? row('UPI', p.upi) : ''}
-      ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
-      ${row('Footprint source', mpkSourceLabel(p))}
-      ${jenis ? row('Est. processing fee', mpkRM(p.area_m2 * MPK.rates.fee)) : ''}
-      ${jenis ? row('Est. assessment tax', mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr') : ''}
+      ${mpkPopupFull(p, { area: MPK_AREAS[p.kawasan].short, money: true, jenis })}
       ${typeof mpkDaftarPopupHTML === 'function' ? mpkDaftarPopupHTML(p) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
@@ -1534,15 +1523,50 @@ function mpkShowOtherPopup(p, lngLat) {
       <div class="popup-name">${mpkEscHtml(p.plus_code)}</div>
     </div>
     <div class="popup-body">
-      ${zone ? row('Land use (OSM)', zone) : ''}
-      ${row('Lot no.', p.lot ? mpkEscHtml(p.lot) : 'no cadastral lot')}
-      ${p.upi ? row('UPI', mpkEscHtml(p.upi)) : ''}
-      ${row('Footprint area', mpkNum(p.area_m2) + ' m²')}
-      ${row('Footprint source', mpkSourceLabel(p))}
-      ${mpkPlanRows(p, row)}
+      ${mpkPopupFull(p, { area: (MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).label, zone, money: false })}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+}
+
+// Every building's popup lists the same details, grouped; a detail the records do not have says so
+// instead of leaving the row out (the most complete building shows every row filled)
+function mpkPopupFull(p, o) {
+  const na = t => `<span class="popup-na">${t || 'No record'}</span>`;
+  const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
+  const sec = t => `<div class="popup-sec">${t}</div>`;
+  const esc = mpkEscHtml;
+  const zone = o.zone !== undefined ? o.zone : (MPK.data.landuse ? mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features)) : null);
+  const rejected = /TOLAK/i.test(p.pelan_status || '');
+  const hasPlan = !!(p.pelan_fail || p.pelan_status);
+  const regShown = p.rekod_id && !p.pelan_fail;
+  const st = p.kawasan ? mpkStatus(p, MPK.settings) : null;
+  const money = v => o.jenis ? mpkRM(v) : na(st === 'legal' ? 'Not applicable · approved' : st ? 'Only for illegal buildings' : 'Not applicable · no status');
+  return [
+    sec('Location'),
+    row('Area', esc(o.area)),
+    row('Land use (OSM)', zone && zone !== 'not mapped' ? zone : na('Not mapped')),
+    row('Lot no.', p.lot ? esc(p.lot) : na('No cadastral lot')),
+    row('UPI', p.upi ? esc(p.upi) : na()),
+    row('Distance from road centreline', p.kawasan === 'bbc' ? (p.jarak_jalan_m == null ? na('No road data') : p.jarak_jalan_m + ' m') : na('Not in the corridor')),
+    sec('Building'),
+    row('Footprint area', mpkNum(p.area_m2) + ' m²'),
+    row('Height · floors', p.tinggi_m ? `${p.tinggi_m} m · ${p.tingkat_est} floor${p.tingkat_est > 1 ? 's' : ''}` : na()),
+    row('Footprint source', mpkSourceLabel(p)),
+    sec('Building plan'),
+    row(rejected ? 'Rejected plan' : 'Plan on record', hasPlan ? esc(p.pelan_fail || '—') + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '') : na('No plan on record')),
+    row(rejected ? 'Decided on' : 'Approved on', p.pelan_tarikh ? mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + esc(p.pelan_status) : '') : na()),
+    row('Plan building type', p.pelan_jenis ? esc(p.pelan_jenis) : na()),
+    row('Register', p.pelan_sumber ? esc(MPK_PLAN_REGISTER[p.pelan_sumber] || 'Teluk Kalong') : na()),
+    sec('Register records'),
+    row('Records on this building', p.rekod_n ? mpkNum(p.rekod_n) + (p.rekod_sah ? ` · ${mpkNum(p.rekod_sah)} with a status` : ' · none with a status') : na('None')),
+    row('Record', regShown ? `#${esc(p.rekod_id)} · ` + ([p.rekod_fail, p.rekod_pemohon].filter(Boolean).map(esc).join(' · ') || '—') : na(p.rekod_id ? 'Shown under Building plan' : 'None')),
+    row('Building (register)', regShown && p.rekod_jenis ? esc(p.rekod_jenis) : na()),
+    row('Status (register)', regShown && p.rekod_status ? esc(p.rekod_status) + (p.rekod_tarikh ? ' · ' + mpkPlanDateLabel(p.rekod_tarikh) : '') : na()),
+    ...(o.money ? [sec('Estimated revenue'),
+      row('Est. processing fee', money(p.area_m2 * MPK.rates.fee)),
+      row('Est. assessment tax', o.jenis ? mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr' : money(0))] : []),
+  ].join('');
 }
 
 // Popup rows for the building plan on record (approved or rejected), if any

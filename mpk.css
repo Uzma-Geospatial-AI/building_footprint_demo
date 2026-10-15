@@ -1304,3 +1304,9 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 
 .mpk-k-out { font-size:9.5px; color:#C56200; font-weight:600; }
 .mpk-st-row[hidden] { display:none !important; }
+
+/* building popups: every detail listed, the missing ones said so */
+.popup-sec { margin:9px 0 3px; padding-top:7px; border-top:1px solid rgba(30,44,68,0.08); font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; color:#E8772E; }
+.popup-body .popup-sec:first-child { margin-top:0; padding-top:0; border-top:none; }
+.popup-na { color:#9AA3AE; font-style:italic; font-weight:400; }
+.maplibregl-popup .popup-body { max-height:min(62vh, 560px); overflow-y:auto; }
