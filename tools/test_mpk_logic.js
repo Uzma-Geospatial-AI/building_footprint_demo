@@ -210,4 +210,18 @@ assert.deepStrictEqual([rev.byArea.tk.n, rev.byArea.tk.m2, rev.byArea.bbc.n, rev
 assert.deepStrictEqual([rev.byType.mockup.n, rev.byType.rizab.n, rev.byType.tolak.n], [2, 1, 0]);
 assert.deepStrictEqual([rev.unverified.n, rev.unverified.m2, rev.unverified.year1], [4, 360, 360 * 8]);
 
+// search any detail: every word must match some detail; a whole detail ranks first; numbers match from the start
+const { mpkSearchAttrs } = require('../mpk.js');
+const sf = props => ({ properties: props });
+const sg = [{ kind: 'b', labels: { rekod_pemohon: 'Applicant', lot: 'Lot' }, skip: ['lng'],
+  features: [sf({ rekod_pemohon: 'Syarikat Kalong Jaya', lot: '3351', lng: 103.4 }), sf({ rekod_pemohon: 'Kalong', lot: '13351' }), sf({ lot: '99', area_m2: 351 })] }];
+const sr = mpkSearchAttrs('kalong', sg);
+assert.deepStrictEqual(sr.map(r => [r.feature.properties.lot, r.field]), [['13351', 'Applicant'], ['3351', 'Applicant']]);
+assert.strictEqual(sr[0].total, 2);
+assert.deepStrictEqual(mpkSearchAttrs('jaya 3351', sg).map(r => r.feature.properties.lot), ['3351']);
+assert.deepStrictEqual(mpkSearchAttrs('351', sg).map(r => r.feature.properties.lot), ['99', '3351', '13351']);   // a whole detail first
+assert.deepStrictEqual(mpkSearchAttrs('51', sg).map(r => r.feature.properties.lot), ['3351', '13351']);   // the number 351 only from its start
+assert.deepStrictEqual(mpkSearchAttrs('103', sg), []);                                           // skipped key
+assert.deepStrictEqual(mpkSearchAttrs('x', sg), []);
+
 console.log('mpk logic: all tests passed');

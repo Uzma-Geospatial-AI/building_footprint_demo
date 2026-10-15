@@ -293,8 +293,44 @@ function mpkSearchLocal(query, areas, lots, buildings, limit = 6) {
   return out;
 }
 
+// Search every detail (attribute) of a set of features. groups: [{ kind, features, labels: {key: label},
+// skip: [keys], extra: p => [[label, value], ...] }]. Every word typed must be found in some detail of the
+// feature; a number matches from its start. Best first (a whole detail, then its start, then anywhere),
+// at most `limit` per group, with how many matched in all and the detail that matched.
+function mpkSearchAttrs(query, groups, limit = 8) {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+  if (!words.length) return [];
+  const out = [];
+  for (const g of groups) {
+    const hits = [];
+    for (const f of g.features || []) {
+      const p = f.properties, skip = g.skip || [];
+      const fields = Object.entries(p).filter(([k, v]) => v != null && v !== '' && !skip.includes(k))
+        .map(([k, v]) => [g.labels[k] || k, v]).concat(g.extra ? g.extra(p) : []);
+      let score = 0, best = null;
+      const ok = words.every(w => {
+        let top = 0, at = null;
+        for (const [label, v] of fields) {
+          const t = String(v).toLowerCase(), num = typeof v === 'number';
+          const s = t === w ? 3 : t.startsWith(w) ? 2 : !num && t.includes(w) ? 1 : 0;
+          if (s > top) { top = s; at = [label, String(v)]; if (s === 3) break; }
+        }
+        if (!top) return false;
+        score += top;
+        if (!best || w.length > best.w.length) best = { w, label: at[0], value: at[1] };
+        return true;
+      });
+      if (ok) hits.push({ f, score, best });
+    }
+    hits.sort((a, b) => b.score - a.score);
+    hits.slice(0, limit).forEach((h, i) => out.push({ kind: g.kind, feature: h.f, field: h.best.label, value: h.best.value,
+      word: h.best.w, total: i === 0 ? hits.length : undefined }));
+  }
+  return out;
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { mpkInScope, mpkSizeClass, MPK_SIZE_CLASSES, mpkBreakdown, mpkCSVAll, mpkStatus, mpkZoneAt, mpkParseCoords, mpkSearchLocal, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
+  module.exports = { mpkInScope, mpkSizeClass, MPK_SIZE_CLASSES, mpkBreakdown, mpkCSVAll, mpkStatus, mpkZoneAt, mpkParseCoords, mpkSearchLocal, mpkSearchAttrs, mpkJenis, mpkSuspectFilter, mpkStats, mpkCSV, mpkMonthLabel, mpkWaybackTileUrl,
                      mpkDayLabel, mpkSentinelTileUrl, mpkSentinelYears, mpkDefaultMonth, mpkImagerySource,
                      mpkYearBest, mpkEsriImages };
 }
@@ -374,7 +410,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015l',
+  VERSION: '20261015m',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -758,10 +794,10 @@ function mpkRemoveLayers() {
 const MPK_REKOD_COLOR = { lulus: '#00897B', syarat: '#F9A825', lain: '#7E57C2', tiada: '#90A4AE' };
 
 // Fetches the register's records (3.6 MB) the first time their layer is switched on
-async function mpkLoadRekod() {
+async function mpkLoadRekod(quiet) {
   if (MPK.REKOD.data || MPK.REKOD.loading) return;
   MPK.REKOD.loading = true;
-  showToast('Loading ' + mpkNum(MPK.REKOD.total) + ' plan records…', 2500);
+  if (!quiet) showToast('Loading ' + mpkNum(MPK.REKOD.total) + ' plan records…', 2500);
   try {
     const res = await fetch(MPK.REKOD.file + '?v=' + MPK.VERSION);
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2130,6 +2166,13 @@ function mpkSearchRun(query) {
   }
   MPK_SEARCH.results = mpkSearchLocal(q, MPK_AREAS, MPK.data.kadaster.features,
     MPK.data.buildings.features);
+  // every detail of the buildings, the plans and the register (debounced: tens of thousands of features)
+  MPK_SEARCH.query = q;
+  clearTimeout(MPK_SEARCH.attrTimer);
+  MPK_SEARCH.attrTimer = setTimeout(() => { if (seq === MPK_SEARCH.seq) mpkSearchAttrRun(q, seq); }, 160);
+  if (q.length >= 2 && !MPK.REKOD.data && !MPK.REKOD.loading) {
+    mpkLoadRekod(true).then(() => { if (seq === MPK_SEARCH.seq && MPK.REKOD.data) mpkSearchAttrRun(q, seq); });
+  }
   mpkSearchRender(q.length >= 3);
   if (q.length < 3) return;
   // place names: wait for a pause in typing (Nominatim allows ~1 request per second)
@@ -2147,19 +2190,79 @@ function mpkSearchRun(query) {
   }, 600);
 }
 
+// Labels of the details searched (the rest are searched under their own key)
+const MPK_ATTR_LABELS = {
+  bld: { plus_code: 'Plus Code', lot: 'Lot', upi: 'UPI', area_m2: 'Area m²', tinggi_m: 'Height m', tingkat_est: 'Floors', tinggi_src: 'Height source',
+    pelan_fail: 'Plan file', pelan_jenis: 'Plan building type', pelan_status: 'Plan status', pelan_tarikh: 'Plan date', pelan_sumber: 'Plan register',
+    rekod_fail: 'Register file', rekod_pemohon: 'Applicant', rekod_jenis: 'Building (register)', rekod_status: 'Status (register)', rekod_tarikh: 'Register date',
+    rekod_id: 'Register record', kategori: 'Class', sumber: 'Footprint source', jarak_jalan_m: 'From road m', daftar_no: 'Registration no.',
+    daftar_status: 'Registration', catatan: 'Note', id: 'Building id', api_fid: 'API id', src_fid: 'Source id', asal: 'Origin' },
+  pelan: { fail: 'Plan file', jenis: 'Building', keputusan: 'Decision', lot: 'Lot', luas: 'Floor area m²', pemohon: 'Applicant', rekod: 'Register record',
+    status: 'Status', sumber: 'Register', tarikh: 'Date' },
+  rekod: { i: 'Record no.', f: 'File no.', p: 'Applicant', j: 'Building', l: 'Lot', s: 'Status as written', c: 'Status', t: 'Approved on',
+    g: 'CAD piece', a: 'CAD area m²', u: 'Data issues' },
+};
+function mpkSearchAttrGroups() {
+  const st = p => p.kawasan ? MPK_STATUS[mpkStatus(p, MPK.settings)].label : '';
+  const bldExtra = p => {
+    const j = p.kawasan ? mpkJenis(p, MPK.settings) : null;
+    return [['Status', st(p)], ...(p.pelan_sumber ? [['Plan register', MPK_PLAN_REGISTER[p.pelan_sumber] || 'Teluk Kalong']] : []), ['Area', p.kawasan ? MPK_AREAS[p.kawasan].name : (MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).label],
+      ...(j ? [['Why illegal', MPK_JENIS[j].label]] : []), ...(p.edit_status ? [['Set by', 'MPK officer']] : [])];
+  };
+  const skip = ['lng', 'lat', 'dalam', 'pelan_sumber', 'kategori', 'confidence', 'kawasan', 'dekat', 'edited', 'edit_status', 'daftar_asal', 'pelan_n', 'rekod_n', 'rekod_sah', 'bangunan'];
+  return [
+    { kind: 'a-bld', features: MPK.data.buildings.features, labels: MPK_ATTR_LABELS.bld, skip, extra: bldExtra },
+    { kind: 'a-out', features: MPK.data.others ? MPK.data.others.features : [], labels: MPK_ATTR_LABELS.bld, skip, extra: bldExtra },
+    { kind: 'a-pelan', features: MPK.data.pelan ? MPK.data.pelan.features : [], labels: MPK_ATTR_LABELS.pelan, skip: ['bangunan', 'sumber'],
+      extra: p => [['Register', p.sumber === 'Kedai' ? 'Shops (Pelan Bangunan Kedai)' : 'Teluk Kalong']] },
+    { kind: 'a-rekod', features: MPK.REKOD.data ? MPK.REKOD.data.features : [], labels: MPK_ATTR_LABELS.rekod, skip: ['k', 'd'],
+      extra: p => [['Area', p.d ? 'Teluk Kalong' : 'Outside Teluk Kalong']] },
+  ];
+}
+function mpkSearchAttrRun(q, seq) {
+  const shown = new Set(MPK_SEARCH.results.filter(r => r.kind === 'building').map(r => String(r.id)));
+  const attrs = mpkSearchAttrs(q, mpkSearchAttrGroups())
+    .filter(r => !(r.kind === 'a-bld' && shown.has(String(r.feature.properties.id))));
+  if (seq !== MPK_SEARCH.seq) return;
+  MPK_SEARCH.results = MPK_SEARCH.results.filter(r => !r.kind.startsWith('a-'));
+  const at = MPK_SEARCH.results.findIndex(r => r.kind === 'place');
+  MPK_SEARCH.results.splice(at < 0 ? MPK_SEARCH.results.length : at, 0, ...attrs.map(r => {
+    const p = r.feature.properties;
+    const label = r.kind === 'a-pelan' ? (p.fail || 'Plan · no file no.') : r.kind === 'a-rekod' ? `Record #${p.i}${p.f ? ' · ' + p.f : ''}` : p.plus_code;
+    return { ...r, label, sub: r.field + ': ' + r.value };
+  }));
+  mpkSearchRender(false);
+}
+
 function mpkSearchRender(placesPending) {
   const dd = document.getElementById('mpk-search-dd');
-  const icons = { coord: '🎯', area: '🗺️', lot: '📐', building: '🏠', place: '📍' };
-  const titles = { coord: 'Coordinate', area: 'Study areas', lot: 'Cadastral lots', building: 'Buildings', place: 'Places in Kemaman' };
+  const icons = { coord: '🎯', area: '🗺️', lot: '📐', building: '🏠', place: '📍', 'a-bld': '🏠', 'a-out': '🏚️', 'a-pelan': '📄', 'a-rekod': '🗂️' };
+  const titles = { coord: 'Coordinate', area: 'Study areas', lot: 'Cadastral lots', building: 'Buildings', place: 'Places in Kemaman',
+    'a-bld': 'Buildings · any detail', 'a-out': 'Outside the study areas · any detail', 'a-pelan': 'Building plans · any detail', 'a-rekod': 'Teluk Kalong register · any detail' };
+  const esc = mpkEscHtml;
+  // the matched word marked in the detail shown (long details cut around it)
+  const mark = (text, w) => {
+    let t = String(text);
+    const i = w ? t.toLowerCase().indexOf(w) : -1;
+    if (t.length > 70 && i > 30) t = '…' + t.slice(i - 25);
+    if (t.length > 70) t = t.slice(0, 68) + '…';
+    const j = w ? t.toLowerCase().indexOf(w) : -1;
+    return j < 0 ? esc(t) : esc(t.slice(0, j)) + '<mark>' + esc(t.slice(j, j + w.length)) + '</mark>' + esc(t.slice(j + w.length));
+  };
   let html = '', last = null;
   MPK_SEARCH.results.forEach((r, i) => {
-    if (r.kind !== last) { html += `<div class="search-section-header">${titles[r.kind]}</div>`; last = r.kind; }
+    if (r.kind !== last) {
+      const n = r.total, more = n > 8 ? ` <small>${mpkNum(n)} found · first 8 shown, type more to narrow</small>` : n ? ` <small>${mpkNum(n)} found</small>` : '';
+      html += `<div class="search-section-header">${titles[r.kind]}${more}</div>`; last = r.kind;
+    }
+    const isAttr = r.kind.startsWith('a-');
     html += `<div class="search-item" role="option" onclick="mpkSearchPick(${i})">
       <div class="search-item-icon">${icons[r.kind]}</div>
-      <div class="search-item-body"><div class="search-item-id">${r.label}</div><div class="search-item-cls">${r.sub || ''}</div></div></div>`;
+      <div class="search-item-body"><div class="search-item-id">${isAttr ? esc(r.label) : r.label}</div><div class="search-item-cls">${isAttr ? esc(r.field) + ': ' + mark(r.value, r.word) : r.sub || ''}</div></div></div>`;
   });
+  if (MPK.REKOD.loading) html += '<div class="search-loading">Loading the Teluk Kalong register to search it too…</div>';
   if (placesPending) html += '<div class="search-loading">Searching places…</div>';
-  if (!html) html = '<div class="search-loading">No matches. Try a lot no., UPI, Plus Code, place name or coordinate (e.g. 4.2681, 103.452).</div>';
+  if (!html) html = '<div class="search-loading">No matches. Search any detail: lot, UPI, Plus Code, file no., applicant, building type, status, place name or coordinate (e.g. 4.2681, 103.452).</div>';
   dd.innerHTML = html;
   dd.style.display = 'block';
 }
@@ -2179,8 +2282,23 @@ function mpkSearchPick(i) {
     map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 17), duration: 1000 });
   } else if (r.kind === 'area') {
     mpkSelectArea(r.key);
-  } else if (r.kind === 'building') {
-    mpkZoomTo(r.id);
+  } else if (r.kind === 'building' || r.kind === 'a-bld') {
+    mpkZoomTo(r.id || r.feature.properties.id);
+  } else if (r.kind.startsWith('a-')) {
+    const f = r.feature, p = f.properties, b = mpkBoundsOf([f]);
+    const at = [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2];
+    if (b[0][0] === b[1][0]) map.flyTo({ center: at, zoom: Math.max(map.getZoom(), 18), duration: 1000 });
+    else map.fitBounds(b, { padding: 140, maxZoom: 18, duration: 1000 });
+    if (r.kind === 'a-out') {
+      if (!MPK.layerOn[(MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).group]) mpkToggleLayer((MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).group);
+      try { map.getSource('mpk-highlight').setData(f); } catch (e) {}
+      mpkShowOtherPopup(p, [p.lng, p.lat]);
+    } else if (r.kind === 'a-pelan') {
+      try { map.getSource('mpk-highlight').setData(f.geometry.type === 'Point' ? { type: 'FeatureCollection', features: [] } : f); } catch (e) {}
+      mpkShowPlanPopup(p, at);
+    } else {
+      mpkShowRekodPopup(p, at);
+    }
   } else if (r.kind === 'lot') {
     map.fitBounds(mpkBoundsOf([r.feature]), { padding: 120, maxZoom: 18, duration: 1000 });
     try { map.getSource('mpk-highlight').setData(r.feature); } catch (e) {}

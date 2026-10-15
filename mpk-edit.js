@@ -98,7 +98,7 @@ function mpkEditHeader(p, withStatus) {
           ${p.edit_status ? '<option value="restore">↺ Restore status from the records</option>' : ''}
         </select></label>` : ''}
       <button type="button" class="popup-edit${MPK_EDIT.editing === String(p.id) ? ' on' : ''}" title="Edit the details" aria-label="Edit the details"
-        onclick='mpkEditStart(${id})'>✏️</button>
+        onclick='mpkEditStart(${id})'><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     </div>
     ${sub ? `<div class="popup-fc">${sub}</div>` : ''}`;
 }
@@ -148,7 +148,7 @@ function mpkEditSaveFields(id) {
   if (!Object.keys(rec.fields).length && !rec.status && !rec.history.length) delete MPK_EDIT.s[id];
   if (!mpkEditSave()) return;
   mpkEditApply();
-  showToast(`✏️ ${p.plus_code}: ${changes.length} detail${changes.length === 1 ? '' : 's'} saved`);
+  showToast(`${p.plus_code}: ${changes.length} detail${changes.length === 1 ? '' : 's'} saved`);
   addActivityLog('Building edited', p.plus_code + ' · ' + by);
   mpkEditRedraw(id);
 }
