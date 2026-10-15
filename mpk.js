@@ -371,7 +371,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015g',
+  VERSION: '20261015h',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -995,7 +995,7 @@ function mpkBuildPanel() {
       ${mpkSumberHTML()}
 
       <div class="mpk-kpis">
-        <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Buildings<br><span id="mpk-k-m2">—</span></div></div>
+        <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Total buildings<br><span id="mpk-k-m2">—</span></div></div>
         <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Approved buildings</div></div>
         <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Illegal buildings</div></div>
       </div>
