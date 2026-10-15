@@ -207,7 +207,7 @@ function strataPotential(p, status) {
 
 // ---------- Store ----------
 const STRATA = { KEY: 'mpk_strata_v2', s: null, active: false, cur: null, step: 1, year: new Date().getFullYear(), bound: false, picking: false,
-  kubur: null, view: 'skim', xray: false, whatif: null };
+  kubur: null, view: 'skim', xray: false, whatif: null, details: {}, genFloors: null, genPerFloor: null, saveOk: null };
 function strataBlank() { return { schemes: {}, kubur: [], ...JSON.parse(JSON.stringify(STRATA_DEFAULTS)) }; }
 function strataLoad() {
   let s = null;
@@ -262,8 +262,8 @@ function strataNormalise(sc) {
   return sc;
 }
 function strataSave() {
-  try { localStorage.setItem(STRATA.KEY, JSON.stringify(STRATA.s)); return true; }
-  catch (e) { showToast('⚠️ Could not save in this browser: ' + e.message, 5000); return false; }
+  try { localStorage.setItem(STRATA.KEY, JSON.stringify(STRATA.s)); STRATA.saveOk = true; return true; }
+  catch (e) { STRATA.saveOk = false; showToast('⚠️ Could not save in this browser: ' + e.message, 5000); return false; }
 }
 const strataEsc = v => mpkEscHtml(v == null ? '' : v);
 const strataRM = v => 'RM ' + (v || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -292,8 +292,8 @@ function strataEnter() {
   const title = document.getElementById('page-title'), sub = document.getElementById('page-sub'), panelSub = document.getElementById('panel-sub');
   STRATA.prevTitle = { title: title.textContent, sub: sub.textContent, panelSub: panelSub.textContent };
   title.textContent = 'Strata Titles — MPK Kemaman';
-  sub.textContent = 'From the map to the strata register · Act 318 · Act 757';
-  panelSub.textContent = 'Strata schemes, share units, titles, management, assessment tax and cemeteries';
+  sub.textContent = 'Manage a strata scheme, one step at a time';
+  panelSub.textContent = 'Select a building to begin, or continue a saved scheme.';
   switchTab(document.getElementById('ptab-strata'), 'strata');
   strataLayers();
   strataHideMpk();
@@ -456,16 +456,16 @@ function strataPopup(bid, lngLat) {
 
 // ---------- Panel ----------
 const STRATA_TOOLS = [
-  ['potensi', '◎', 'Strata potential', 'Scores every building in the study areas for strata: storeys, size, approval, lot.'],
-  ['tinggi', '▥', 'Building heights 3D', 'Heights gathered for the study areas (OSM, GHSL) raised in 3D, by floors.'],
-  ['xray', '☰', 'Floor X-ray', 'Splits the open scheme into floating floors on the map, coloured by parcel type.'],
-  ['whatif', '⇄', 'Share-unit what-if', 'Change air-con, lifts or whole floors and see every owner\'s Charges move.'],
-  ['undi', '✋', 'AGM vote by share units', 'Ordinary, special (¾) and unanimous resolutions, counted by share units.'],
-  ['radar', '⏱', 'Deadline radar', 'CPSP in 3 months, subdivision in 1, JMB AGM in 12: every scheme, overdue first.'],
-  ['sinking', '📈', 'Sinking fund forecast', 'Ten years of the 10 % fund against repainting, lifts and roof works.'],
-  ['pasport', '▦', 'Parcel passports (QR)', 'A card for each parcel with its share units and a QR to the building.'],
-  ['penyata', '🧾', 'Owner statements', 'One page per owner: assessment tax to MPK, Charges and sinking fund.'],
-  ['saluran', '⟿', 'Strata pipeline', 'Every scheme by stage, with a timeline from preparation to titles.'],
+  ['potensi', '◎', 'Find potential buildings', 'Compare buildings by their size, floors, approval and lot information.'],
+  ['tinggi', '▥', 'View building heights', 'See estimated building heights and floors on the 3D map.'],
+  ['xray', '☰', 'View floors in 3D', 'Separate the selected scheme into floors, coloured by parcel type.'],
+  ['whatif', '⇄', 'Compare share units', 'Try different shared facilities and see how estimated monthly fees change.'],
+  ['undi', '✋', 'Count AGM votes', 'Record votes and calculate the result using share units (unit syer).'],
+  ['radar', '⏱', 'Check deadlines', 'Review application and meeting deadlines, with overdue items first.'],
+  ['sinking', '📈', 'Plan the sinking fund', 'Estimate whether the fund can cover future repairs and major works.'],
+  ['pasport', '▦', 'Download parcel cards', 'Create a card for each parcel (petak), with its share units and a map QR code.'],
+  ['penyata', '🧾', 'Download owner statements', 'Summarise assessment tax, maintenance fees and sinking fund contributions.'],
+  ['saluran', '⟿', 'Track title applications', 'See the stage and timeline of every saved strata scheme.'],
 ];
 function strataBuildPanel() {
   if (!document.getElementById('ptab-strata')) {
@@ -498,8 +498,8 @@ function strataRenderPanel() {
   const el = document.getElementById('tab-strata');
   if (!el || !STRATA.s) return;
   const s = STRATA.s, t = strataTotals();
-  const steps = [['Building & conditions', 'syarat JKPTG'], ['Parcels & 3D', 'petak, aksesori, LOD'], ['Share units', 'Act 757 formula · COB'],
-    ['Strata title', 'SiFUS → CPSP → PTG'], ['Management & tax', 'JMB, MC, caj, cukai'], ['PDF report', 'download']];
+  const openSections = new Set(Array.from(el.querySelectorAll('details[data-strata-panel][open]'), d => d.dataset.strataPanel));
+  const ws = document.getElementById('strata-ws'), editing = ws && !ws.hidden;
   const schemes = Object.values(s.schemes).sort((a, b) => b.updated.localeCompare(a.updated));
   const kpi = (v, l, cls = '') => `<div class="strata-kpi ${cls}"><b>${v}</b><span>${l}</span></div>`;
   const legend = STRATA.view === 'potensi' ? `<div class="strata-ramp pot"></div><div class="strata-ramp-l"><span>0 low</span><span>strata potential</span><span>100 high</span></div>`
@@ -507,32 +507,41 @@ function strataRenderPanel() {
     : `<div class="strata-legend">${STRATA_STAGES.map(st => `<span><i style="background:${st.color}"></i>${st.label}</span>`).join('')}<span><i style="background:#90A4AE"></i>No scheme</span></div>`;
   el.innerHTML = `
     <div class="mpk-card strata-intro">
-      <div class="mpk-card-title">From the map to the strata register</div>
-      <ol class="strata-flow">${steps.map(([a, b], i) => `<li><i>${i + 1}</i><span><b>${a}</b><small>${b}</small></span></li>`).join('')}</ol>
-      <div class="strata-hint">Click any building on the map, then <i>Start strata scheme</i>.</div>
+      <div class="mpk-card-title">Start with a building</div>
+      <p class="strata-panel-copy">Click a building on the map, then choose <b>Start strata scheme</b>. We will guide you through the details, one step at a time.</p>
+      ${editing ? '<button type="button" class="mpk-btn ghost strata-wide" onclick="strataBackToMap()">Back to map to choose a building</button>' : ''}
+      <div class="strata-hint">Already started? Open a saved scheme below to continue.</div>
+      <details class="strata-panel-details" data-strata-panel="steps"${openSections.has('steps') ? ' open' : ''}>
+        <summary>How the 6 steps work</summary>
+        <ol class="strata-flow">${STRATA_STEP_NAMES.map((name, i) => `<li><i>${i + 1}</i><span><b>${name}</b><small>${STRATA_STEP_HELP[i].short}</small></span></li>`).join('')}</ol>
+      </details>
     </div>
-    <div class="strata-kpis">${kpi(mpkNum(t.n), 'schemes')}${kpi(mpkNum(t.parcels), 'parcels')}${kpi(mpkNum(t.su), 'share units')}
-      ${kpi(mpkNum(t.titles), 'with strata titles')}${kpi(strataRM(t.tax), 'assessment tax / year')}${kpi(mpkNum(t.late), 'deadlines missed', t.late ? 'bad' : '')}</div>
+    <div class="strata-kpis">${kpi(mpkNum(t.n), 'saved schemes')}${kpi(mpkNum(t.parcels), 'parcels (petak)')}${kpi(mpkNum(t.su), 'share units (unit syer)')}
+      ${kpi(mpkNum(t.titles), 'schemes with titles')}${kpi(strataRM(t.tax), 'est. assessment tax / year')}${kpi(mpkNum(t.late), 'overdue deadlines', t.late ? 'bad' : '')}</div>
     <div class="mpk-card">
       <div class="mpk-card-title">Map view</div>
-      <div class="strata-seg" role="radiogroup">${[['skim', 'Schemes'], ['potensi', 'Potential'], ['tinggi', 'Heights 3D']].map(([k, l]) =>
+      <div class="strata-seg" role="radiogroup" aria-label="Strata map view">${[['skim', 'Scheme status'], ['potensi', 'Potential'], ['tinggi', '3D heights']].map(([k, l]) =>
         `<button type="button" role="radio" aria-checked="${STRATA.view === k}" class="${STRATA.view === k ? 'on' : ''}" onclick="strataSetView('${k}')">${l}</button>`).join('')}</div>
       ${legend}
-      <button type="button" class="mpk-btn ghost strata-wide" onclick="strataTilt()">Tilt the map for 3D</button>
+      <button type="button" class="mpk-btn ghost strata-wide" onclick="strataTilt()">Switch between 2D and 3D</button>
     </div>
     <div class="mpk-card">
-      <div class="mpk-card-title">Strata tools</div>
-      <div class="strata-tools">${STRATA_TOOLS.map(([k, ic, n, d], i) => `<button type="button" class="strata-tool" onclick="strataTool('${k}')" title="${strataEsc(d)}">
-        <span class="ic" aria-hidden="true">${ic}</span><b>${i + 1}. ${n}</b><small>${d}</small></button>`).join('')}</div>
-    </div>
-    <div class="mpk-card">
-      <div class="mpk-card-title">Strata schemes</div>
+      <div class="mpk-card-title">Saved schemes</div>
+      ${schemes.length ? '<p class="strata-panel-copy">Choose a scheme to review or continue editing.</p>' : ''}
       ${schemes.length ? `<div class="mpk-dpb-list">${schemes.map(x => { const st = STRATA_STAGES[strataStageIdx(x)];
         return `<button type="button" class="mpk-dpb-row" onclick='strataGo(${JSON.stringify(String(x.bid))})'>
           <div class="mpk-dpb-row-t"><b>${strataEsc(x.no)}</b><span class="strata-badge" style="--c:${st.color}">${st.label}</span></div>
           <div class="mpk-dpb-row-l">${strataEsc(x.nama)}</div>
           <div class="mpk-dpb-row-m">${[x.bld.plus_code, mpkNum(x.parcels.length) + ' parcels', mpkNum(strataShareUnits(x.parcels, x.kompleks).total) + ' share units'].map(strataEsc).join(' · ')}</div>
-        </button>`; }).join('')}</div>` : '<div class="mpk-reg-empty">No strata schemes yet.</div>'}
+        </button>`; }).join('')}</div>` : '<div class="mpk-reg-empty">No saved schemes yet. Select a building on the map to start your first scheme.</div>'}
+    </div>
+    <div class="mpk-card">
+      <details class="strata-panel-details" data-strata-panel="tools"${openSections.has('tools') ? ' open' : ''}>
+        <summary>More strata tools <span>Optional</span></summary>
+        <p class="strata-panel-copy">Use these when you need extra analysis or individual documents.</p>
+        <div class="strata-tools">${STRATA_TOOLS.map(([k, ic, n, d]) => `<button type="button" class="strata-tool" onclick="strataTool('${k}')" title="${strataEsc(d)}">
+          <span class="ic" aria-hidden="true">${ic}</span><b>${n}</b><small>${d}</small></button>`).join('')}</div>
+      </details>
     </div>
     <div class="mpk-card">
       <div class="mpk-row"><div class="mpk-card-title">Cemeteries</div><button type="button" class="mpk-btn" onclick="strataPickSite()">+ Add a site</button></div>
@@ -569,6 +578,7 @@ function strataNewScheme(bid) {
 }
 function strataOpen(bid) {
   const s = STRATA.s;
+  if (STRATA.cur !== String(bid)) { STRATA.genFloors = null; STRATA.genPerFloor = null; STRATA.details = {}; }
   if (!s.schemes[bid]) {
     const sc = strataNewScheme(bid);
     if (!sc) { showToast('⚠️ Building not found'); return; }
@@ -605,6 +615,7 @@ function strataCloseWs() {
 function strataBackToMap() {
   const sc = STRATA.s.schemes[STRATA.cur];
   strataCloseWs();
+  strataRenderPanel();
   if (sc && sc.bld.lng != null) map.flyTo({ center: [sc.bld.lng, sc.bld.lat], zoom: 18.3, pitch: 58, bearing: -20, duration: 1200 });
 }
 function strataStep(n) { STRATA.step = n; strataRenderWs(); const ws = document.getElementById('strata-ws'); if (ws) ws.scrollTop = 0; }
@@ -627,6 +638,7 @@ function strataF(path, v) {
   let o = sc;
   keys.slice(0, -1).forEach(k => { o = o[k] = o[k] || {}; });
   o[keys[keys.length - 1]] = v;
+  if (path === 'bim.tingkat') STRATA.genFloors = v;
   if (path.startsWith('bim.') && path !== 'bim.lod') {
     const f = strataBuilding(sc.bid), sug = strataLodSuggest(f ? f.properties : {}, sc.bim);
     if (!sc.bim.lodPicked || sc.bim.lod < sug) sc.bim.lod = sug;
@@ -636,7 +648,16 @@ function strataF(path, v) {
 function strataP(i, k, v) { strataSc().parcels[i][k] = v; strataChanged(true); }
 function strataG(path, v) { const [a, b] = path.split('.'); STRATA.s[a][b] = strataNum(v); strataChanged(true); }
 
-const STRATA_STEP_NAMES = ['Building & conditions', 'Parcels & 3D', 'Share units', 'Strata title', 'Management & tax', 'PDF report'];
+const STRATA_STEP_NAMES = ['Building details', 'Parcels & floors', 'Share units', 'Title application', 'Management & fees', 'Review & download'];
+const STRATA_STEP_HELP = [
+  { title: 'Check the building details', short: 'Building information and checklist', text: 'Confirm the scheme name, land title and building information. Tick each condition once you have checked it.' },
+  { title: 'Divide the building into parcels', short: 'Create units on each floor', text: 'A parcel (petak) is an individual unit, such as an apartment, shop or office. Start with the number of floors and units on each floor.' },
+  { title: 'Review each parcel’s share units', short: 'Calculate each unit’s share', text: 'Share units (unit syer) determine each parcel’s share of maintenance charges and voting weight. They are calculated from the parcel details and shared facilities below.' },
+  { title: 'Track the title application', short: 'Record approvals and documents', text: 'Choose the current application stage, then record the approval dates and supporting documents as they become available.' },
+  { title: 'Set up management and fees', short: 'Manage charges and assessment tax', text: 'Record who manages the building, set the monthly maintenance rate and review each parcel’s estimated fees and assessment tax.' },
+  { title: 'Review your scheme and download', short: 'Check the summary and save a PDF', text: 'Check the information below before downloading the report. You can return to any step to make changes.' },
+];
+const strataDetailsAttrs = key => `id="${key}"${STRATA.details[key] ? ' open' : ''} ontoggle="STRATA.details['${key}'] = this.open"`;
 function strataRenderWs() {
   const ws = document.getElementById('strata-ws'), sc = strataSc();
   if (!ws || !sc || ws.hidden) return;
@@ -646,22 +667,25 @@ function strataRenderWs() {
   const body = [strataStep1, strataStep2, strataStep3, strataStep4, strataStep5, strataStep6][STRATA.step - 1](sc);
   ws.innerHTML = `<div class="mpk-stats-inner strata-inner">
     <div class="strata-ws-head">
-      <button type="button" class="mpk-btn ghost" onclick="strataBackToMap()">← Map</button>
+      <button type="button" class="mpk-btn ghost" onclick="strataBackToMap()">← Back to map</button>
       <div class="strata-ws-t"><h2>${strataEsc(sc.no)} · ${strataEsc(sc.nama)}</h2>
         <p>${[sc.bld.plus_code, (MPK_AREAS[sc.bld.kawasan] || {}).short || 'Outside the study areas', sc.bld.lot ? 'Lot ' + sc.bld.lot : '', mpkNum(sc.bld.area_m2) + ' m² footprint',
           sc.bim.tingkat ? sc.bim.tingkat + ' floors' : ''].filter(Boolean).map(strataEsc).join(' · ')}</p></div>
-      <button type="button" class="mpk-btn" onclick="strataPdf()">⬇ PDF</button>
+      <button type="button" class="mpk-btn ghost" onclick="strataStep(6)">Review report</button>
       <span class="strata-badge big" style="--c:${st.color}">${st.label}</span>
     </div>
-    <nav class="strata-steps" aria-label="Steps">${STRATA_STEP_NAMES.map((n, i) => `<button type="button" class="${STRATA.step === i + 1 ? 'on' : ''}${done[i] ? ' done' : ''}"
+    <nav class="strata-steps" aria-label="Strata scheme steps">${STRATA_STEP_NAMES.map((n, i) => `<button type="button" class="${STRATA.step === i + 1 ? 'on' : ''}${done[i] ? ' done' : ''}"
       ${STRATA.step === i + 1 ? 'aria-current="step"' : ''} onclick="strataStep(${i + 1})"><i>${done[i] && STRATA.step !== i + 1 ? '✓' : i + 1}</i>${n}</button>`).join('')}</nav>
+    <div class="strata-step-guide"><span>Step ${STRATA.step} of ${STRATA_STEP_NAMES.length}</span><h3>${STRATA_STEP_HELP[STRATA.step - 1].title}</h3><p>${STRATA_STEP_HELP[STRATA.step - 1].text}</p></div>
     <div class="strata-body">${body}</div>
     <div class="strata-ws-foot">
-      ${STRATA.step > 1 ? `<button type="button" class="mpk-dpb-b ghost" onclick="strataStep(${STRATA.step - 1})">← ${STRATA_STEP_NAMES[STRATA.step - 2]}</button>` : ''}
-      <span class="mpk-dpb-spacer"></span><span class="strata-saved">Saved automatically</span>
-      ${STRATA.step < 6 ? `<button type="button" class="mpk-dpb-b primary" onclick="strataStep(${STRATA.step + 1})">${STRATA_STEP_NAMES[STRATA.step]} →</button>` : ''}
+      ${STRATA.step > 1 ? `<button type="button" class="mpk-dpb-b ghost" onclick="strataStep(${STRATA.step - 1})">← Previous</button>` : ''}
+      <span class="strata-saved${STRATA.saveOk === false ? ' strata-bad' : ''}" role="status">${STRATA.saveOk === false ? 'Changes could not be saved. Export a backup from the map panel.' : 'Changes saved in this browser'}</span>
+      <span class="mpk-dpb-spacer"></span>
+      ${STRATA.step < 6 ? `<button type="button" class="mpk-dpb-b primary" onclick="strataStep(${STRATA.step + 1})">Next: ${STRATA_STEP_NAMES[STRATA.step]} →</button>` : ''}
     </div>
   </div>`;
+  if (STRATA.step === 2) strataGenPreview();
 }
 const sIn = (key, val, attrs = '') => `<input data-key="${key}" value="${strataEsc(val)}" ${attrs} onchange="strataF('${key}', this.value)">`;
 const sDate = (key, val) => `<input type="date" data-key="${key}" value="${strataEsc(val)}" onchange="strataF('${key}', this.value)">`;
@@ -717,71 +741,89 @@ function strataStep2(sc) {
   const sug = strataLodSuggest(p, sc.bim);
   const floors = Math.max(1, Math.floor(strataNum(sc.bim.tingkat) || Math.max(1, ...sc.parcels.map(x => strataNum(x.tingkat)))));
   const common = strataCommon(sc);
-  const pIn = (i, k, v) => `<input data-key="p${i}.${k}" value="${strataEsc(v)}" onchange="strataP(${i}, '${k}', this.value)">`;
-  const pSel = (i, k, v, opts) => `<select data-key="p${i}.${k}" onchange="strataP(${i}, '${k}', this.value)">${Object.entries(opts).map(([o, l]) =>
+  const genFloors = STRATA.genFloors == null ? floors : STRATA.genFloors;
+  const perFloor = STRATA.genPerFloor == null ? (sc.parcels.length ? Math.max(1, Math.round(sc.parcels.length / floors)) : 2) : STRATA.genPerFloor;
+  const labels = { petak: 'Parcel number', tingkat: 'Floor', luas: 'Area in square metres', jenis: 'Parcel use', pemilik: 'Owner', wf2: 'Whole-floor arrangement', aks_no: 'Accessory parcel number', aks_luas: 'Accessory area in square metres', aks_lokasi: 'Accessory location' };
+  const pIn = (i, k, v) => {
+    const numeric = ['tingkat', 'luas', 'aks_luas'].includes(k);
+    const display = numeric && v !== '' && v != null ? String(v).replace(/,/g, '') : v;
+    return `<input data-key="p${i}.${k}" aria-label="${labels[k]}, parcel ${i + 1}" value="${strataEsc(display)}" ${numeric ? `type="number" min="${k === 'tingkat' ? 1 : 0}" step="${k === 'tingkat' ? 1 : '0.01'}"` : ''} onchange="strataP(${i}, '${k}', this.value)">`;
+  };
+  const pSel = (i, k, v, opts) => `<select data-key="p${i}.${k}" aria-label="${labels[k]}, parcel ${i + 1}" onchange="strataP(${i}, '${k}', this.value)">${Object.entries(opts).map(([o, l]) =>
     `<option value="${o}"${o === v ? ' selected' : ''}>${strataEsc(l[0])}</option>`).join('')}</select>`;
   const stack = [];
   for (let fl = floors; fl >= 1; fl--) {
     const on = sc.parcels.filter(x => Math.floor(strataNum(x.tingkat)) === fl);
     const used = on.reduce((a, x) => a + strataNum(x.luas), 0), rest = Math.max(0, strataNum(sc.bld.area_m2) - used);
-    stack.push(`<div class="strata-floor"><span class="strata-fl">Floor ${fl}</span><div class="strata-cells">
+    stack.push(`<div class="strata-floor"><span class="strata-fl">${fl === 1 ? '1 · Ground' : 'Floor ' + fl}</span><div class="strata-cells">
       ${on.map(x => `<span class="strata-cell" style="flex:${Math.max(strataNum(x.luas), 1)};background:${STRATA_TYPE_COLOR[x.jenis] || '#90A4AE'}" title="${strataEsc(x.petak)} · ${strataEsc(x.luas)} m² · ${strataEsc((STRATA_WF1[x.jenis] || [''])[0])}">${strataEsc(x.petak)}</span>`).join('')}
       ${rest > 0.5 ? `<span class="strata-cell common" style="flex:${rest}" title="Common property ${mpkNum(rest)} m²"></span>` : ''}</div></div>`);
   }
   const acc = sc.parcels.filter(x => x.aks_no);
   const types = [...new Set(sc.parcels.map(x => x.jenis))];
-  return `<section class="mpk-h-card"><h4>Building model <small>· BIM level of development</small></h4>
-      <div class="mpk-h-row">
-        <label>Floors<input type="number" min="1" step="1" data-key="bim.tingkat" value="${strataEsc(sc.bim.tingkat)}" onchange="strataF('bim.tingkat', this.value)"></label>
-        <label>Height (m)<input type="number" min="0" step="0.1" data-key="bim.tinggi" value="${strataEsc(sc.bim.tinggi)}" placeholder="${STRATA_FLOOR_M} m a floor" onchange="strataF('bim.tinggi', this.value)"></label>
-        <label class="mpk-h-check"><input type="checkbox" data-key="bim.disahkan" ${sc.bim.disahkan ? 'checked' : ''} onchange="strataF('bim.disahkan', this.checked)">Verified on site (as-built)</label>
-        <button type="button" class="mpk-btn${STRATA.xray ? '' : ' ghost'}" onclick="strataXray()">${STRATA.xray ? 'Hide' : 'Show'} floor X-ray on the map</button>
-      </div>
-      ${p.tinggi_m ? `<div class="mpk-h-hint" style="margin:-4px 0 8px">Auto from the building heights: <b>${p.tinggi_m} m · ${p.tingkat_est} floors</b> (${strataEsc(p.tinggi_src)}). Change it if the site shows otherwise.</div>` : ''}
-      <div class="mpk-h-lods">${STRATA_LOD.map(l => `<button type="button" class="mpk-h-lod${sc.bim.lod === l.v ? ' on' : ''}" style="--c:${l.color}" aria-pressed="${sc.bim.lod === l.v}" onclick="strataLod(${l.v})">
-        <b>LOD ${l.v}</b><span>${l.name}</span><small>${l.text}</small></button>`).join('')}</div>
-      <div class="mpk-h-hint">Suggested from the record: <b>LOD ${sug}</b>. Height on the map: <b>${Math.round(strataHeight(sc.bim) * 10) / 10} m</b>.</div>
-    </section>
-    <div class="strata-col">
-      <section class="mpk-h-card"><h4>Parcels <small>(petak), accessory parcels and common property</small></h4>
-        <div class="mpk-h-row gen">
-          <span>Create:</span>
-          <label>Scheme type${sSel('kompleks.jenis', sc.kompleks.jenis, STRATA_SCHEME_TYPES)}</label>
-          <label>Floors<input type="number" min="1" id="strata-gf" value="${strataEsc(sc.bim.tingkat || 1)}"></label>
-          <label>Parcels / floor<input type="number" min="1" id="strata-gu" value="${sc.parcels.length ? Math.max(1, Math.round(sc.parcels.length / floors)) : 2}"></label>
-          <button type="button" class="mpk-btn" onclick="strataGen()">Create</button>
-          <button type="button" class="mpk-btn ghost" onclick="strataAdd()">+ One parcel</button>
+  return `<div class="strata-col">
+      <section class="mpk-h-card"><h4>Set up your parcels</h4>
+        <div class="mpk-h-row gen strata-parcel-setup">
+          <label class="strata-scheme-type">Building use${sSel('kompleks.jenis', sc.kompleks.jenis, STRATA_SCHEME_TYPES)}</label>
+          <label>Number of floors<input type="number" min="1" step="1" id="strata-gf" data-key="gen.floors" value="${strataEsc(genFloors)}" oninput="STRATA.genFloors = this.value; strataGenPreview()"></label>
+          <label>Parcels on each floor<input type="number" min="1" step="1" id="strata-gu" data-key="gen.perFloor" value="${strataEsc(perFloor)}" oninput="STRATA.genPerFloor = this.value; strataGenPreview()"></label>
+          <button type="button" class="mpk-btn" id="strata-gen-btn" onclick="strataGen()">${sc.parcels.length ? 'Replace' : 'Create'} parcels</button>
         </div>
-        <div class="mpk-h-tablewrap"><table class="mpk-h-t">
-          <thead><tr><th>Petak</th><th>Floor</th><th>Area m²</th><th>Type (WF1)</th><th>Whole floor (WF2)</th><th>Owner</th><th>Accessory</th><th>Acc. m²</th><th>Acc. where (WF3)</th><th></th></tr></thead>
+        <p id="strata-gen-preview" class="strata-setup-preview" aria-live="polite">${strataEsc(genFloors)} floors × ${strataEsc(perFloor)} parcels = <b>${mpkNum(strataNum(genFloors) * strataNum(perFloor))} parcels</b></p>
+        <p class="mpk-h-hint">Include the ground floor in your count (Floor 1). Parcel areas start as equal estimates using ${Math.round(STRATA_NET * 100)}% of each floor; edit them below to match your plan.${p.tinggi_m ? ` The map estimates ${strataEsc(p.tingkat_est)} floors for this building.` : ''}</p>
+      </section>
+      <section class="mpk-h-card"><div class="strata-section-head"><h4>Your parcels <small>(${sc.parcels.length})</small></h4><button type="button" class="mpk-btn ghost" onclick="strataAdd()">+ Add one parcel</button></div>
+        ${sc.parcels.length ? `<div class="mpk-h-tablewrap"><table class="mpk-h-t strata-parcel-table">
+          <thead><tr><th>Parcel no.</th><th>Floor</th><th>Area (m²)</th><th>Use</th><th>Owner <small>(optional)</small></th><th></th></tr></thead>
           <tbody>${sc.parcels.length ? sc.parcels.map((x, i) => `<tr>
             <td>${pIn(i, 'petak', x.petak)}</td><td class="n">${pIn(i, 'tingkat', x.tingkat)}</td><td class="n">${pIn(i, 'luas', x.luas)}</td>
-            <td>${pSel(i, 'jenis', x.jenis, STRATA_WF1)}</td><td>${pSel(i, 'wf2', x.wf2, STRATA_WF2)}</td>
-            <td>${pIn(i, 'pemilik', x.pemilik)}</td><td>${pIn(i, 'aks_no', x.aks_no)}</td><td class="n">${pIn(i, 'aks_luas', x.aks_luas)}</td>
-            <td>${pSel(i, 'aks_lokasi', x.aks_lokasi, STRATA_WF3)}</td>
-            <td><button type="button" class="mpk-h-del" onclick="strataDel(${i})" aria-label="Remove parcel">×</button></td></tr>`).join('')
-            : '<tr><td colspan="10" class="mpk-h-empty">No parcels yet: pick the scheme type and create them above.</td></tr>'}</tbody>
+            <td>${pSel(i, 'jenis', x.jenis, STRATA_WF1)}</td><td>${pIn(i, 'pemilik', x.pemilik)}</td>
+            <td><button type="button" class="mpk-h-del" onclick="strataDel(${i})" aria-label="Remove parcel ${strataEsc(x.petak)}">×</button></td></tr>`).join('') : ''}</tbody>
         </table></div>
-        <div class="mpk-h-row" style="margin-top:10px">
-          <label>Common property m² (harta bersama)<input type="number" min="0" data-key="common" value="${strataEsc(sc.common)}" placeholder="${mpkNum(common)}" onchange="strataF('common', this.value)"></label>
-          <span class="mpk-h-hint" style="margin:0">Empty: footprint × floors less the parcels. New parcels take ${Math.round(STRATA_NET * 100)}% of a floor. Accessory parcels (car bays, store rooms,
-            roof or garden areas) belong to a parcel and cannot be sold apart from it.</span>
-        </div>
+        <details class="strata-details" ${strataDetailsAttrs('strata-parcel-extras')}><summary>Accessory parcels &amp; whole-floor settings <span>Optional</span></summary>
+          <p class="mpk-h-hint">An accessory parcel (petak aksesori) is a car bay, store room or similar space attached to a unit. Enter it here if shown in your plan. Whole-floor settings apply to a unit that occupies an entire floor.</p>
+          <div class="mpk-h-tablewrap"><table class="mpk-h-t"><thead><tr><th>Parcel</th><th>Whole-floor arrangement (WF2)</th><th>Accessory no.</th><th>Accessory area (m²)</th><th>Accessory location (WF3)</th></tr></thead>
+          <tbody>${sc.parcels.map((x, i) => `<tr><td><b>${strataEsc(x.petak)}</b></td><td>${pSel(i, 'wf2', x.wf2, STRATA_WF2)}</td><td>${pIn(i, 'aks_no', x.aks_no)}</td><td>${pIn(i, 'aks_luas', x.aks_luas)}</td><td>${pSel(i, 'aks_lokasi', x.aks_lokasi, STRATA_WF3)}</td></tr>`).join('')}</tbody></table></div>
+        </details>` : '<div class="strata-empty"><b>No parcels added yet</b><p>Choose the building use and floor counts above, then select <strong>Create parcels</strong>. For an irregular layout, add one parcel at a time.</p></div>'}
       </section>
-      <section class="mpk-h-card"><h4>Floor stack</h4>
+      <section class="mpk-h-card"><div class="strata-section-head"><h4>Floor preview</h4><button type="button" class="mpk-btn ghost" onclick="strataXray()">${STRATA.xray ? 'Hide' : 'View'} floors in 3D</button></div>
+        <p class="mpk-h-hint">${sc.parcels.length ? 'Each coloured block is a parcel. Striped areas show the remaining shared space.' : 'Your parcels will appear here after you create them.'}</p>
         <div class="strata-stack">${stack.join('')}<div class="strata-ground"></div></div>
-        <div class="strata-legend small">${types.map(t => `<span><i style="background:${STRATA_TYPE_COLOR[t]}"></i>${strataEsc(STRATA_WF1[t][0])}</span>`).join('')}<span><i class="common"></i>Common property</span></div>
+        <div class="strata-legend small">${types.map(t => `<span><i style="background:${STRATA_TYPE_COLOR[t]}"></i>${strataEsc((STRATA_WF1[t] || ['Other'])[0])}</span>`).join('')}<span><i class="common"></i>Shared space (common property)</span></div>
         ${acc.length ? `<div class="mpk-h-hint">Accessory parcels: ${acc.map(x => strataEsc(x.aks_no) + ' → ' + strataEsc(x.petak)).join(', ')}</div>` : ''}
+        <details class="strata-details" ${strataDetailsAttrs('strata-common-settings')}><summary>Shared space <span>${mpkNum(common)} m²</span></summary>
+          <p class="mpk-h-hint">Common property (harta bersama) includes shared corridors, stairs and other communal areas. Leave the field blank to calculate the building’s total floor area minus its parcels.</p>
+          <div class="mpk-h-row"><label>Shared area (m²)<input type="number" min="0" data-key="common" value="${strataEsc(sc.common)}" placeholder="${mpkNum(common)}" onchange="strataF('common', this.value)"></label></div>
+        </details>
+        <details class="strata-details" ${strataDetailsAttrs('strata-model-settings')}><summary>3D model settings <span>Height &amp; level of detail</span></summary>
+          <div class="mpk-h-row">
+            <label>Building floors${sIn('bim.tingkat', sc.bim.tingkat || floors, 'type="number" min="1" step="1"')}</label>
+            <label>Building height (m)<input type="number" min="0" step="0.1" data-key="bim.tinggi" value="${strataEsc(sc.bim.tinggi)}" placeholder="${STRATA_FLOOR_M} m per floor" onchange="strataF('bim.tinggi', this.value)"></label>
+            <label class="mpk-h-check"><input type="checkbox" data-key="bim.disahkan" ${sc.bim.disahkan ? 'checked' : ''} onchange="strataF('bim.disahkan', this.checked)">Checked against the actual building</label>
+          </div>
+          <p class="mpk-h-hint">LOD (level of development) describes how detailed the building model is. Current: <b>LOD ${sc.bim.lod}</b>. Suggested from the record: <b>LOD ${sug}</b>.${p.tinggi_m ? ` Height source: ${strataEsc(p.tinggi_src)} (${strataEsc(p.tinggi_m)} m).` : ''}</p>
+          <div class="mpk-h-lods">${STRATA_LOD.map(l => `<button type="button" class="mpk-h-lod${sc.bim.lod === l.v ? ' on' : ''}" style="--c:${l.color}" aria-pressed="${sc.bim.lod === l.v}" onclick="strataLod(${l.v})"><b>LOD ${l.v}</b><span>${l.name}</span><small>${l.text}</small></button>`).join('')}</div>
+        </details>
       </section>
     </div>`;
+}
+function strataGenPreview() {
+  const floorInput = document.getElementById('strata-gf'), unitInput = document.getElementById('strata-gu');
+  const valid = floorInput.value !== '' && unitInput.value !== '' && floorInput.checkValidity() && unitInput.checkValidity();
+  const total = Number(floorInput.value) * Number(unitInput.value);
+  document.getElementById('strata-gen-preview').textContent = valid ? `${floorInput.value} floors × ${unitInput.value} parcels = ${total.toLocaleString()} parcels` : 'Enter a whole number of at least 1 for both fields.';
+  document.getElementById('strata-gen-btn').disabled = !valid;
 }
 function strataLod(v) { const sc = strataSc(); sc.bim.lod = v; sc.bim.lodPicked = true; strataChanged(true); }
 function strataGen() {
   const sc = strataSc();
-  const ps = strataGenParcels(document.getElementById('strata-gf').value, document.getElementById('strata-gu').value, sc.bld.area_m2, sc.kompleks.jenis);
-  if (sc.parcels.length && !confirm(`Replace the ${sc.parcels.length} parcels with ${ps.length} new ones?`)) return;
+  const floorInput = document.getElementById('strata-gf'), unitInput = document.getElementById('strata-gu');
+  if (!floorInput.value || !unitInput.value || !floorInput.reportValidity() || !unitInput.reportValidity()) { strataGenPreview(); return; }
+  const ps = strataGenParcels(floorInput.value, unitInput.value, sc.bld.area_m2, sc.kompleks.jenis);
+  if (sc.parcels.length && !confirm(`Replace all ${sc.parcels.length} existing parcels with ${ps.length} new parcels? Their areas, owners and accessory details will be reset.`)) return;
   sc.parcels = ps.map((x, i) => ({ ...x, id: Date.now().toString(36) + i }));
-  strataF('bim.tingkat', sc.bim.tingkat || document.getElementById('strata-gf').value);
+  strataF('bim.tingkat', floorInput.value);
+  showToast(`${ps.length} parcels created. Review their areas and owners below.`);
 }
 function strataAdd() {
   const sc = strataSc(), base = strataGenParcels(1, 1, sc.bld.area_m2, sc.kompleks.jenis)[0];
