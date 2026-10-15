@@ -1349,3 +1349,14 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 #mpk-search-dd .search-section-header small { font-weight:500; text-transform:none; letter-spacing:0; color:#8A94A3; margin-left:4px; }
 #mpk-search-dd mark { background:#FFE0B2; color:inherit; border-radius:2px; padding:0 1px; }
 #mpk-search-dd .search-item-cls { overflow:hidden; text-overflow:ellipsis; }
+
+/* pages of the suspected-buildings list */
+.mpk-pager { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 8px 6px; border-top:1px solid rgba(30,44,68,0.08); flex-wrap:wrap; }
+.mpk-pg-info { font-size:11px; color:#5B6573; font-weight:600; }
+.mpk-pg-btns { display:flex; align-items:center; gap:4px; }
+.mpk-pg-n { min-width:28px; height:28px; padding:0 7px; border-radius:7px; border:1px solid #D5DAE1; background:#fff; color:#1E2C44; font:600 12px/1 inherit; font-family:inherit; cursor:pointer; }
+.mpk-pg-n:hover:not(:disabled) { border-color:#E8772E; color:#E8772E; }
+.mpk-pg-n.on { background:#E8772E; border-color:#E8772E; color:#fff; }
+.mpk-pg-n:disabled { opacity:0.4; cursor:default; }
+.mpk-pg-n:focus-visible { outline:2px solid rgba(232,119,46,0.35); outline-offset:1px; }
+.mpk-pg-gap { color:#8A94A3; font-size:12px; padding:0 2px; }

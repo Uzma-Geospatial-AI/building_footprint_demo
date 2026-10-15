@@ -410,7 +410,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015m',
+  VERSION: '20261015n',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1295,17 +1295,20 @@ function mpkRender() {
   if (!s.count) {
     list.innerHTML = '<div class="mpk-empty">No suspected buildings in this area.</div>';
   } else {
-    list.innerHTML = s.suspects.slice(0, MPK.LIST_SIZE).map((f, i) => {
+    // pages of LIST_SIZE; back to the first page when the area changes, kept in range when the count changes
+    const size = MPK.LIST_SIZE, pages = Math.ceil(s.count / size);
+    if (MPK.listArea !== MPK.area) { MPK.listArea = MPK.area; MPK.listPage = 0; }
+    const pg = MPK.listPage = Math.min(Math.max(0, MPK.listPage || 0), pages - 1), from = pg * size;
+    list.innerHTML = s.suspects.slice(from, from + size).map((f, i) => {
       const p = f.properties, j = MPK_JENIS[mpkJenis(p, MPK.settings)];
       return `<div class="mpk-item" onclick="mpkZoomTo(${p.id})">
-        <span class="mpk-rank">${i + 1}</span>
+        <span class="mpk-rank">${from + i + 1}</span>
         <i class="mpk-dot" style="background:${MPK_STATUS.suspected.color}"></i>
         <div class="mpk-item-main"><div class="mpk-pc">${p.plus_code}</div>
           <div class="mpk-meta">${MPK_AREAS[p.kawasan].short}${p.lot ? ' · Lot ' + p.lot : ''} · ${j.label}</div></div>
         <div class="mpk-area">${mpkNum(p.area_m2)} m²</div>
       </div>`;
-    }).join('') + (s.count > MPK.LIST_SIZE
-      ? `<div class="mpk-more">+ ${mpkNum(s.count - MPK.LIST_SIZE)} more · see Export CSV</div>` : '');
+    }).join('') + (pages > 1 ? mpkListPager(pg, pages, from, Math.min(from + size, s.count), s.count) : '');
   }
   if (MPK.page === 'stats') mpkRenderStats();
 }
@@ -1643,6 +1646,30 @@ function mpkRekodRows(p, row) {
     p.rekod_id && !p.pelan_fail && p.rekod_status ? row('Status (register)', mpkEscHtml(p.rekod_status)
       + (p.rekod_tarikh ? ' · ' + mpkPlanDateLabel(p.rekod_tarikh) : '')) : '',
   ].join('');
+}
+
+// Pager under the list of suspected buildings: previous / page numbers (with gaps) / next
+function mpkListPager(pg, pages, from, to, count) {
+  const nums = [...new Set([0, pg - 1, pg, pg + 1, pages - 1])].filter(n => n >= 0 && n < pages).sort((a, b) => a - b);
+  let btns = '', prev = -1;
+  for (const n of nums) {
+    if (n - prev > 1) btns += '<span class="mpk-pg-gap">…</span>';
+    btns += `<button type="button" class="mpk-pg-n${n === pg ? ' on' : ''}" onclick="mpkListGo(${n})"${n === pg ? ' aria-current="page"' : ''}>${n + 1}</button>`;
+    prev = n;
+  }
+  return `<nav class="mpk-pager" aria-label="Pages of suspected buildings">
+    <div class="mpk-pg-info">${mpkNum(from + 1)}–${mpkNum(to)} of ${mpkNum(count)}</div>
+    <div class="mpk-pg-btns">
+      <button type="button" class="mpk-pg-n" onclick="mpkListGo(${pg - 1})" ${pg === 0 ? 'disabled' : ''} aria-label="Previous page">‹</button>
+      ${btns}
+      <button type="button" class="mpk-pg-n" onclick="mpkListGo(${pg + 1})" ${pg === pages - 1 ? 'disabled' : ''} aria-label="Next page">›</button>
+    </div></nav>`;
+}
+function mpkListGo(n) {
+  MPK.listPage = n;
+  mpkRender();
+  const list = document.getElementById('mpk-list');
+  if (list) list.scrollTop = 0;
 }
 
 function mpkZoomTo(id) {
