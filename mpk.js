@@ -410,7 +410,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015n',
+  VERSION: '20261015o',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -436,7 +436,8 @@ const MPK = {
   settings: { rizab: 10 },
   area: 'all',
   // land use starts off so the map shows the buildings first (switch it on in Analysis)
-  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'rekod'].includes(k)])),
+  // default view: the approved and pending buildings; illegal and outside buildings start off (switch on in Overview)
+  layerOn: Object.fromEntries(Object.keys(MPK_LAYER_GROUPS).map(k => [k, !['landuse', 'pelan', 'rekod', 'suspect', 'others', 'othersBbc'].includes(k)])),
   rates: null,
   boundMap: null,
   prevTitle: null,
@@ -920,11 +921,13 @@ async function mpkEnter() {
   try { if (currentPopup) { currentPopup.remove(); currentPopup = null; } } catch (e) {}
   const nav = document.getElementById('mode-navigate');
   if (nav && mapMode !== 'navigate') setMapMode('navigate', nav);
-  // UZMA-sat imagery only covers Seremban — use Google Satellite over Kemaman
-  if (currentBasemap === 'uzma-sat') {
-    const opt = document.querySelector('.basemap-option[onclick*="google-satellite"]');
-    switchBasemap('google-satellite', 'Google Satellite', opt);
+  // default view: the Esri 24 Sep 2026 aerial (the imagery the footprints were drawn on), the analysis panel closed
+  if (!(BASEMAPS[currentBasemap] && BASEMAPS[currentBasemap].mpk)) {
+    // the swap rebuilds the style and puts the camera back where it was: be over the study area first
+    if (MPK.bounds) map.fitBounds(MPK.bounds[MPK.area], { padding: 50, duration: 0 });
+    switchBasemap('mpk-esri-2026', '24 Sep 2026', document.querySelector(`.basemap-option[onclick*="'mpk-esri-2026'"]`));
   }
+  if (!MPK.viewSet) { MPK.viewSet = true; toggleSide('rp', true); }
 
   mpkSetSerembanVisible(false);
   mpkAddLayers();
