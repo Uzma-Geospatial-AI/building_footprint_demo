@@ -1157,3 +1157,12 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
   .mpk-top-row { grid-template-columns:24px 1fr 110px 44px; }
   .mpk-top-row .mpk-lg-bar { display:none; }
 }
+
+/* registration form: every box can be filled in by hand */
+.dpb-t .dpb-in.dpb-auto { text-align:right; font-weight:600; color:#123; background:transparent; }
+.dpb-t tr.sub .dpb-in.dpb-auto { font-weight:800; }
+.dpb-in.manual, .dpb-t .dpb-in.manual { background:#FFF3C4 !important; box-shadow:inset 0 -2px 0 #F9A825; }
+.dpb-rate { display:flex; align-items:center; justify-content:center; gap:2px; }
+.dpb-rate .dpb-in { width:64px !important; text-align:right; border-bottom:1px dashed #888 !important; }
+.dpb-rate small { font-size:9px; white-space:nowrap; }
+@media print { .dpb-in.manual, .dpb-t .dpb-in.manual { background:none !important; box-shadow:none; } }

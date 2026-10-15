@@ -49,33 +49,67 @@ function mpkDpbSeriesUnits(n) {
   let left = Math.floor(mpkDpbNum(n));
   return MPK_DPB_SERIES.map(([, , , cap]) => { const u = Math.min(left, cap); left -= u; return u; });
 }
-// Every subtotal and the grand total of a filled form (f as kept by the form, see mpkDpbBlank)
+// The rate of a row: as typed in the form (f.rate[key]), else the schedule's
+function mpkDpbRate(f, key, def) {
+  const v = f.rate && f.rate[key];
+  if (v === undefined || v === null || String(v).trim() === '') return def;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return isFinite(n) && n >= 0 ? n : def;
+}
+// Every figure, subtotal and the grand total of a filled form (f as kept by the form, see mpkDpbBlank).
+// Any figure typed by hand (f.ovr[id]) is kept and the totals below it follow it.
 function mpkDpbCalc(f) {
-  const floors = arr => MPK_DPB_FLOORS.map(([, rate, min], i) => mpkDpbArea((arr || [])[i], rate, min));
-  const sum = rows => rows.reduce((s, r) => s + r.jumlah, 0);
-  const p1 = floors(f.p1);
-  const k9 = mpkDpbNum(f.p9k), units = mpkDpbSeriesUnits(k9 ? f.unit : 0);
-  const p9 = MPK_DPB_SERIES.map(([, , share], i) => ({ unit: units[i], kadar: k9 * share, jumlah: k9 * share * units[i] }));
-  const p2 = mpkDpbArea(f.p2, 7, 0), p61 = mpkDpbArea(f.p61, 7, 0);
-  const p65 = { jumlah: 50 * Math.floor(mpkDpbNum(f.p65)) };
-  const khas = MPK_DPB_KHAS.map(([key, , , rate, kind]) => kind === 'area' ? mpkDpbArea((f.khas || {})[key], rate, 0)
-    : { kadar: 0, jumlah: rate * Math.floor(mpkDpbNum((f.khas || {})[key])) });
-  const p101 = { jumlah: 120 * Math.floor(mpkDpbNum(f.p101)) };
-  const p102a = { jumlah: 120 * Math.floor(mpkDpbNum(f.p102a)) }, p102b = floors(f.p102b);
-  const isTel = i => MPK_DPB_KHAS[i][0].startsWith('tel_');
-  const summary = {
-    baru: sum(p1) + sum(p9), sementara: p2.jumlah, tambahan: p61.jumlah, ubahsuai: p65.jumlah,
-    pindaan: p101.jumlah + p102a.jumlah + sum(p102b),
-    khas: khas.filter((_, i) => !isTel(i)).reduce((s, r) => s + r.jumlah, 0),
-    telko: khas.filter((_, i) => isTel(i)).reduce((s, r) => s + r.jumlah, 0),
+  const ovr = f.ovr || {};
+  const o = (id, auto) => {
+    const v = ovr[id];
+    if (v === undefined || v === null || String(v).trim() === '') return auto;
+    const n = parseFloat(String(v).replace(/,/g, ''));
+    return isFinite(n) ? n : auto;
   };
-  return { p1, p1Sub: sum(p1), p9, p9Sub: sum(p9), p2, p61, p65, khas, khasSub: summary.khas + summary.telko,
-    p101, p102a, p102b, p102bSub: sum(p102b), p102Total: p102a.jumlah + sum(p102b),
-    summary, total: Object.values(summary).reduce((s, v) => s + v, 0) };
+  const area = (id, luas, rate, min) => {
+    const l = mpkDpbNum(luas), kadar = o(id + '-k', l ? Math.ceil(l / 9) : 0);
+    return { kadar, rate, jumlah: o(id + '-j', kadar ? Math.max(min || 0, kadar * rate) : 0) };
+  };
+  const floors = key => MPK_DPB_FLOORS.map(([, rate, min], i) =>
+    area(key + '-' + i, (f[key] || [])[i], mpkDpbRate(f, key + '.' + i, rate), min));
+  const sum = rows => rows.reduce((s, r) => s + r.jumlah, 0);
+  const p1 = floors('p1'), p1Sub = o('p1-sub', sum(p1));
+  const k9 = mpkDpbNum(f.p9k), units = mpkDpbSeriesUnits(k9 ? f.unit : 0);
+  const p9 = MPK_DPB_SERIES.map(([, , share], i) => {
+    const pct = mpkDpbRate(f, 'p9.' + i, share * 100) / 100;
+    const kadar = o('p9-k' + i, k9 * pct), unit = o('p9-u' + i, units[i]);
+    return { pct, unit, kadar, jumlah: o('p9-j' + i, kadar * unit) };
+  });
+  const p9Sub = o('p9-sub', sum(p9));
+  const one = (key, def) => { const r = area(key, f[key], mpkDpbRate(f, key, def), 0); return { ...r, sub: o(key + '-sub', r.jumlah) }; };
+  const count = (key, def) => {
+    const rate = mpkDpbRate(f, key, def), j = o(key + '-j', rate * Math.floor(mpkDpbNum(f[key])));
+    return { rate, jumlah: j, sub: o(key + '-sub', j) };
+  };
+  const p2 = one('p2', 7), p61 = one('p61', 7), p65 = count('p65', 50), p101 = count('p101', 120), p102a = count('p102a', 120);
+  const khas = MPK_DPB_KHAS.map(([key, , , def, kind]) => {
+    const rate = mpkDpbRate(f, 'khas.' + key, def);
+    return kind === 'area' ? area('khas-' + key, (f.khas || {})[key], rate, 0)
+      : { kadar: 0, rate, jumlah: o('khas-' + key + '-j', rate * Math.floor(mpkDpbNum((f.khas || {})[key]))) };
+  });
+  const isTel = i => MPK_DPB_KHAS[i][0].startsWith('tel_');
+  const khasPart = khas.filter((_, i) => !isTel(i)).reduce((s, r) => s + r.jumlah, 0);
+  const telPart = khas.filter((_, i) => isTel(i)).reduce((s, r) => s + r.jumlah, 0);
+  const khasSub = o('khas-sub', khasPart + telPart);
+  const p102b = floors('p102b'), p102bSub = o('p102b-sub', sum(p102b));
+  const p102A = o('p102-a', p102a.sub), p102B = o('p102-b', p102bSub), p102Total = o('p102-t', p102A + p102B);
+  const summary = {
+    baru: o('sum-baru', p1Sub + p9Sub), sementara: o('sum-sementara', p2.sub), tambahan: o('sum-tambahan', p61.sub),
+    ubahsuai: o('sum-ubahsuai', p65.sub), pindaan: o('sum-pindaan', p101.sub + p102Total),
+    khas: o('sum-khas', khasPart), telko: o('sum-telko', telPart),
+  };
+  return { p1, p1Sub, p9, p9Sub, p2, p61, p65, khas, khasSub, p101, p102a, p102b, p102bSub, p102A, p102B, p102Total,
+    summary, total: o('sum-total', Object.values(summary).reduce((s, v) => s + v, 0)) };
 }
 function mpkDpbBlank() {
   return { projek: '', fail: '', jenis: '', unit: '', tajuk: ['', '', ''], helai: '',
-    p1: ['', '', '', '', ''], p9k: '', p2: '', p61: '', p65: '', khas: {}, p101: '', p102a: '', p102b: ['', '', '', '', ''] };
+    p1: ['', '', '', '', ''], p9k: '', p2: '', p61: '', p65: '', khas: {}, p101: '', p102a: '', p102b: ['', '', '', '', ''],
+    rate: {}, ovr: {} };
 }
 // Next registration number of a year: DPB/2026/0001, DPB/2026/0002, ...
 function mpkDpbNextNo(list, year) {
@@ -224,10 +258,11 @@ function mpkDpbShellHTML(p, r, f) {
         <div>${statusLine}</div>
         <div class="mpk-dpb-info-s">Map status before registering: <b>${MPK_STATUS[r ? r.asal : st].label}</b>.
           ${wasIllegal ? 'Built without approval: the fee in Part D of the Third Schedule (5 to 20 times the Part B fee) may also apply, see the guideline.' : ''}
-          The ground floor area starts as the building's footprint; change any figure. Every fee is worked out as you type.</div>
+          The ground floor area starts as the building's footprint. Every box can be filled in by hand: the rates, units, KADAR, JUMLAH and the totals.
+          Typed figures turn yellow and are kept (the totals below follow them); clear a box to let the form work it out again.</div>
         ${r && r.catatan ? `<div class="mpk-dpb-info-s">Decision note: ${mpkEscHtml(r.catatan)}</div>` : ''}
       </div>
-      <form class="dpb-paper" id="mpk-dpb-form" oninput="mpkDaftarRecalc()" onsubmit="return false" ${locked ? 'inert' : ''}>
+      <form class="dpb-paper" id="mpk-dpb-form" oninput="mpkDaftarRecalc(event)" onfocusout="setTimeout(mpkDaftarRecalc, 0)" onsubmit="return false" ${locked ? 'inert' : ''}>
         ${mpkDpbPaperHTML(f)}
       </form>
       ${r && r.status === 'menunggu' ? `<label class="mpk-dpb-note">Decision note (optional)
@@ -244,29 +279,37 @@ function mpkDpbShellHTML(p, r, f) {
 function mpkDpbPaperHTML(f) {
   const inp = (key, val, cls = '', ph = '') => `<input class="dpb-in ${cls}" data-k="${key}" value="${mpkDpbAttr(val)}"${ph ? ` placeholder="${ph}"` : ''} autocomplete="off">`;
   const num = (key, val, ph = '') => `<input class="dpb-in dpb-num" data-k="${key}" value="${mpkDpbAttr(val)}" inputmode="decimal"${ph ? ` placeholder="${ph}"` : ''} autocomplete="off">`;
-  const out = id => `<output class="dpb-out" id="dpb-${id}"></output>`;
+  // a worked-out figure, also typed by hand (yellow) when the officer wants another number; empty = worked out again
+  const ovr = f.ovr || {};
+  const out = id => { const v = ovr[id], man = v !== undefined && String(v).trim() !== '';
+    return `<input class="dpb-in dpb-auto${man ? ' manual' : ''}" id="dpb-${id}" data-o="${id}" data-manual="${man ? 1 : ''}" value="${man ? mpkDpbAttr(v) : ''}"
+      inputmode="decimal" autocomplete="off" title="Worked out by the form: type to use your own figure, clear it to work it out again">`; };
+  // a rate cell: the schedule's rate, ready to be changed
+  const rateIn = (key, def, unit, dec = 2) => { const v = (f.rate || {})[key];
+    return `<span class="dpb-rate"><input class="dpb-in dpb-num dpb-r${v !== undefined && String(v).trim() !== '' && parseFloat(v) !== def ? ' manual' : ''}" data-r="${key}"
+      value="${mpkDpbAttr(v !== undefined && String(v).trim() !== '' ? v : def.toFixed(dec))}" inputmode="decimal" autocomplete="off"><small>${unit}</small></span>`; };
   const bar = t => `<div class="dpb-bar">${t}</div>`;
   const floorRows = (key, vals) => MPK_DPB_FLOORS.map(([fl, rate, min], i) => `<tr>
-      <td class="c">${fl}<br><i>(MIN RM ${min})</i></td><td class="c">${rate.toFixed(2)}/M.PER</td>
-      <td>${num(key + '.' + i, (vals || [])[i])}</td><td class="r">${out(key + '-k' + i)}</td><td class="r">${out(key + '-j' + i)}</td></tr>`).join('');
+      <td class="c">${fl}<br><i>(MIN RM ${min})</i></td><td class="c">${rateIn(key + '.' + i, rate, '/M.PER')}</td>
+      <td>${num(key + '.' + i, (vals || [])[i])}</td><td class="r">${out(key + '-' + i + '-k')}</td><td class="r">${out(key + '-' + i + '-j')}</td></tr>`).join('');
   const areaHead = (first = 'TINGKAT') => `<tr><th>${first}</th><th>KADAR BAYARAN<br><i>( RM )</i></th><th>LUAS<br><i>( M.PER )</i></th>
       <th>KADAR<br><i>( 1/9 M.PER )</i></th><th>JUMLAH<br><i>( RM )</i></th></tr>`;
   const sub = (cols, id) => `<tr class="sub"><td colspan="${cols}">JUMLAH KECIL</td><td class="r">${out(id)}</td></tr>`;
-  const one = (key, val, rate) => `<table class="dpb-t narrow">
+  const one = (key, val, def, unit) => `<table class="dpb-t narrow">
       <tr><th>KADAR BAYARAN<br><i>( RM )</i></th><th>LUAS<br><i>( M.PER )</i></th><th>KADAR<br><i>( 1/9 M.PER )</i></th><th>JUMLAH<br><i>( RM )</i></th></tr>
-      <tr><td class="c">${rate}</td><td>${num(key, val)}</td><td class="r">${out(key + '-k')}</td><td class="r">${out(key + '-j')}</td></tr>
+      <tr><td class="c">${rateIn(key, def, unit)}</td><td>${num(key, val)}</td><td class="r">${out(key + '-k')}</td><td class="r">${out(key + '-j')}</td></tr>
       ${sub(3, key + '-sub')}</table>`;
-  const count = (key, val, rate, what) => `<table class="dpb-t small">
+  const count = (key, val, def, unit, what) => `<table class="dpb-t small">
       <tr><th>KADAR BAYARAN<br><i>( RM )</i></th><th>${what}</th><th>JUMLAH<br><i>( RM )</i></th></tr>
-      <tr><td class="c">${rate}</td><td>${num(key, val)}</td><td class="r">${out(key + '-j')}</td></tr>
+      <tr><td class="c">${rateIn(key, def, unit)}</td><td>${num(key, val)}</td><td class="r">${out(key + '-j')}</td></tr>
       ${sub(2, key + '-sub')}</table>`;
-  const khas = MPK_DPB_KHAS.map(([key, label, rateLabel, , kind, group]) => (group
+  const khas = MPK_DPB_KHAS.map(([key, label, , def, kind, group]) => (group
     ? `<tr class="grp"><td>${group}</td><td></td><td></td><td></td><td></td></tr>` : '') + `<tr>
-      <td class="c">${label}</td><td class="c">${rateLabel}</td>
+      <td class="c">${label}</td><td class="c">${rateIn('khas.' + key, def, kind === 'area' ? '/M.PER' : 'PER 1 STRUKTUR')}</td>
       <td>${num('khas.' + key, (f.khas || {})[key], kind === 'count' ? 'bil.' : '')}</td>
-      <td class="r">${kind === 'area' ? out('khas-k-' + key) : ''}</td><td class="r">${out('khas-j-' + key)}</td></tr>`).join('');
-  const p9 = MPK_DPB_SERIES.map(([label, rateLabel], i) => `<tr>
-      <td class="c">${label}</td><td class="c">${rateLabel}</td><td class="r">${out('p9-k' + i)}</td>
+      <td class="r">${kind === 'area' ? out('khas-' + key + '-k') : ''}</td><td class="r">${out('khas-' + key + '-j')}</td></tr>`).join('');
+  const p9 = MPK_DPB_SERIES.map(([label, , share], i) => `<tr>
+      <td class="c">${label}</td><td class="c">${i === 0 ? '<span class="dpb-rate"><b>PENUH</b></span>' : rateIn('p9.' + i, share * 100, '%')}</td><td class="r">${out('p9-k' + i)}</td>
       <td class="c">${out('p9-u' + i)}</td><td class="r">${out('p9-j' + i)}</td></tr>`).join('');
 
   return `
@@ -303,13 +346,13 @@ function mpkDpbPaperHTML(f) {
   <section class="dpb-page">
     ${bar('PELAN BANGUNAN SEMENTARA (UUKBS 1984 – JADUAL PERTAMA PARAGRAF 2):-')}
     <p class="dpb-desc">- Perkiraan bagi suatu bangunan untuk diluluskan atas asas sementara dari setahun ke setahun dan pelan-pelan lakar percubaan.</p>
-    ${one('p2', f.p2, '7.00/M.PER')}
+    ${one('p2', f.p2, 7, '/M.PER')}
     ${bar('PELAN BANGUNAN TAMBAHAN (UUKBS 1984 – JADUAL PERTAMA PARAGRAF 6-1):-')}
     <p class="dpb-desc">- Perkiraan bagi perubahan bangunan sedia ada.</p>
-    ${one('p61', f.p61, '7.00/M.PER')}
+    ${one('p61', f.p61, 7, '/M.PER')}
     ${bar('PELAN BANGUNAN PENGUBAHSUAIAN (UUKBS 1984 – JADUAL PERTAMA PARAGRAF 6-5):-')}
     <p class="dpb-desc">- Perkiraan bagi perubahan bangunan sedia ada yang melibatkan pecah bahagian bilik-bilik menjadi bilik-bilik yang lebih kecil.</p>
-    ${count('p65', f.p65, '50.00/UNIT', 'BIL. UNIT')}
+    ${count('p65', f.p65, 50, '/UNIT', 'BIL. UNIT')}
     ${bar('PELAN KHAS (UUKBS 1984 – JADUAL PERTAMA PARAGRAF 7 &amp; 8):-')}
     <table class="dpb-t">${areaHead('JENIS PELAN')}${khas}${sub(4, 'khas-sub')}</table>
     <div class="dpb-pno">2</div>
@@ -318,10 +361,10 @@ function mpkDpbPaperHTML(f) {
   <section class="dpb-page">
     ${bar('PELAN PINDAAN (UUKBS 1984 – JADUAL PERTAMA PARAGRAF 10-1):-')}
     <p class="dpb-desc">- Perkiraan bagi suatu pindaan daripada pelan yang diluluskan dan dikemukakan untuk diluluskan mengikut bilangan helaian pelan yang dipinda untuk diluluskan.</p>
-    ${count('p101', f.p101, '120.00/PELAN', 'BIL. PELAN')}
+    ${count('p101', f.p101, 120, '/PELAN', 'BIL. PELAN')}
     ${bar('PELAN PINDAAN (UUKBS 1984 – JADUAL PERTAMA PARAGRAF 10-2):-')}
     <p class="dpb-desc">- Perkiraan bagi suatu pindaan daripada pelan yang diluluskan dan dikemukakan untuk diluluskan melibatkan kawasan tambahan yang mempunyai keluasan berlebihan dari yang asal mengikut bilangan helaian pelan yang dipinda untuk diluluskan.</p>
-    <div class="dpb-ab"><b>A.</b>${count('p102a', f.p102a, '120.00/PELAN', 'BIL. PELAN')}</div>
+    <div class="dpb-ab"><b>A.</b>${count('p102a', f.p102a, 120, '/PELAN', 'BIL. PELAN')}</div>
     <div class="dpb-ab"><b>B.</b><table class="dpb-t">${areaHead()}${floorRows('p102b', f.p102b)}${sub(4, 'p102b-sub')}</table></div>
     <table class="dpb-t small"><tr><th>BAYARAN<br><i>( RM )</i></th><th>JUMLAH<br><i>( RM )</i></th></tr>
       <tr><td class="c">A</td><td class="r">${out('p102-a')}</td></tr><tr><td class="c">B</td><td class="r">${out('p102-b')}</td></tr>
@@ -337,7 +380,8 @@ function mpkDpbPaperHTML(f) {
     ${bar('<span class="dpb-c">NOTA:-</span>')}
     <p class="dpb-desc">- 'Bangunan' termasuklah sesebuah rumah, pondok, syed atau kepungan beratap, sama ada digunakan bagi maksud kediaman manusia atau selainnya, dan juga sesuatu tembok, pagar, pelantar, tangki bawah tanah, pementasan, get, tiang, pilar, paling, bingkai, papan dendeng, pelancar, limbungan, dermaga, tembok sambut, jeti, pentas-pengkalan, kolam renang, jambatan, landasan keretapi, talian penghantaran, kabel, talian, redifusyen, talian paip atas atau bawah tanah, atau apa-apa lain rangkabina, tupang atau asas. “Akta Kerajaan Tempatan 1976 (Akta 171)-Bahagian 1 paragraf 2”</p>
     <p class="dpb-desc">- Sila lampirkan jadual pengiraan lain, sekiranya ruang pada jadual pengiraan di atas tidak mencukupi.</p>
-    <p class="dpb-calc">Kiraan dalam borang ini: KADAR = luas ÷ 9 m², dibundarkan ke atas; JUMLAH = KADAR × kadar bayaran, tidak kurang daripada minimum tingkat.</p>
+    <p class="dpb-calc">Kiraan dalam borang ini: KADAR = luas ÷ 9 m², dibundarkan ke atas; JUMLAH = KADAR × kadar bayaran, tidak kurang daripada minimum tingkat.
+      Semua petak boleh diisi sendiri: angka yang ditaip (kuning) dikekalkan dan jumlah di bawahnya mengikutnya; kosongkan petak untuk dikira semula.</p>
     <div class="dpb-pno">4</div>
   </section>`;
 }
@@ -352,26 +396,35 @@ function mpkDpbRead() {
     else if (a === 'khas') { if (v) f.khas[b] = v; }
     else f[a][+b] = v;
   });
+  document.querySelectorAll('#mpk-dpb-form [data-r]').forEach(el => { f.rate[el.dataset.r] = el.value.trim(); });
+  document.querySelectorAll('#mpk-dpb-form [data-o]').forEach(el => { if (el.dataset.manual && el.value.trim()) f.ovr[el.dataset.o] = el.value.trim(); });
   return f;
 }
-function mpkDaftarRecalc() {
+function mpkDaftarRecalc(e) {
   if (!document.getElementById('mpk-dpb-form')) return;
+  const t = e && e.target;
+  if (t && t.dataset && t.dataset.o) {                 // a worked-out figure typed by hand, or cleared to be worked out again
+    t.dataset.manual = t.value.trim() ? '1' : '';
+    t.classList.toggle('manual', !!t.dataset.manual);
+  }
+  if (t && t.dataset && t.dataset.r) t.classList.toggle('manual', t.value.trim() !== '' && t.value.trim() !== t.defaultValue);
   const c = mpkDpbCalc(mpkDpbRead());
-  const set = (id, v) => { const el = document.getElementById('dpb-' + id); if (el) el.textContent = v; };
+  // a box being typed in is left alone; once left empty it is worked out again (focusout)
+  const set = (id, v) => { const el = document.getElementById('dpb-' + id); if (el && !el.dataset.manual && el !== document.activeElement) el.value = v; };
   const rm = mpkDpbRM, n = v => v ? String(v) : '';
-  ['p1', 'p102b'].forEach(key => c[key].forEach((r, i) => { set(key + '-k' + i, n(r.kadar)); set(key + '-j' + i, rm(r.jumlah)); }));
+  ['p1', 'p102b'].forEach(key => c[key].forEach((r, i) => { set(key + '-' + i + '-k', n(r.kadar)); set(key + '-' + i + '-j', rm(r.jumlah)); }));
   set('p1-sub', rm(c.p1Sub)); set('p102b-sub', rm(c.p102bSub));
-  c.p9.forEach((r, i) => { set('p9-k' + i, rm(r.kadar)); set('p9-u' + i, r.kadar ? String(r.unit) : ['1', '4', '5', '15', ''][i]); set('p9-j' + i, rm(r.jumlah)); });
+  c.p9.forEach((r, i) => { set('p9-k' + i, rm(r.kadar)); set('p9-u' + i, r.kadar || r.unit ? String(r.unit || '') : ''); set('p9-j' + i, rm(r.jumlah)); });
   set('p9-sub', rm(c.p9Sub));
-  for (const key of ['p2', 'p61']) { set(key + '-k', n(c[key].kadar)); set(key + '-j', rm(c[key].jumlah)); set(key + '-sub', rm(c[key].jumlah)); }
-  for (const key of ['p65', 'p101', 'p102a']) { set(key + '-j', rm(c[key].jumlah)); set(key + '-sub', rm(c[key].jumlah)); }
-  MPK_DPB_KHAS.forEach(([key], i) => { set('khas-k-' + key, n(c.khas[i].kadar)); set('khas-j-' + key, rm(c.khas[i].jumlah)); });
+  for (const key of ['p2', 'p61']) { set(key + '-k', n(c[key].kadar)); set(key + '-j', rm(c[key].jumlah)); set(key + '-sub', rm(c[key].sub)); }
+  for (const key of ['p65', 'p101', 'p102a']) { set(key + '-j', rm(c[key].jumlah)); set(key + '-sub', rm(c[key].sub)); }
+  MPK_DPB_KHAS.forEach(([key], i) => { set('khas-' + key + '-k', n(c.khas[i].kadar)); set('khas-' + key + '-j', rm(c.khas[i].jumlah)); });
   set('khas-sub', rm(c.khasSub));
-  set('p102-a', rm(c.p102a.jumlah)); set('p102-b', rm(c.p102bSub)); set('p102-t', rm(c.p102Total));
+  set('p102-a', rm(c.p102A)); set('p102-b', rm(c.p102B)); set('p102-t', rm(c.p102Total));
   MPK_DPB_SUMMARY.forEach(([k]) => set('sum-' + k, rm(c.summary[k])));
   set('sum-total', rm(c.total));
-  const t = document.getElementById('mpk-dpb-total');
-  if (t) t.textContent = 'RM ' + (mpkDpbRM(c.total) || '0.00');
+  const tot = document.getElementById('mpk-dpb-total');
+  if (tot) tot.textContent = 'RM ' + (mpkDpbRM(c.total) || '0.00');
   return c;
 }
 
@@ -680,5 +733,5 @@ function mpkDaftarGuide() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { mpkDpbArea, mpkDpbSeriesUnits, mpkDpbCalc, mpkDpbBlank, mpkDpbNextNo, MPK_DPB_FLOORS, MPK_DPB_KHAS };
+  module.exports = { mpkDpbArea, mpkDpbSeriesUnits, mpkDpbCalc, mpkDpbRate, mpkDpbBlank, mpkDpbNextNo, MPK_DPB_FLOORS, MPK_DPB_KHAS };
 }

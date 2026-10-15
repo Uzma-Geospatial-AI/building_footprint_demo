@@ -39,4 +39,26 @@ assert.strictEqual(D.mpkDpbCalc(D.mpkDpbBlank()).total, 0);
 assert.strictEqual(D.mpkDpbNextNo([], 2026), 'DPB/2026/0001');
 assert.strictEqual(D.mpkDpbNextNo([{ no: 'DPB/2026/0007' }, { no: 'DPB/2025/0040' }, { no: 'x' }], 2026), 'DPB/2026/0008');
 
+// Every box can be typed: a changed rate, a typed KADAR / JUMLAH / subtotal, and the totals follow
+const g = D.mpkDpbBlank();
+g.p1 = ['90', '', '', '', ''];                       // 10 units × 14 = 140
+assert.strictEqual(D.mpkDpbCalc(g).total, 140);
+g.rate['p1.0'] = '20';                              // ground floor at RM 20: 10 × 20 = 200
+assert.strictEqual(D.mpkDpbCalc(g).total, 200);
+g.ovr['p1-0-k'] = '12';                             // KADAR typed: 12 × 20 = 240
+assert.strictEqual(D.mpkDpbCalc(g).p1[0].jumlah, 240);
+g.ovr['p1-0-j'] = '300';                            // JUMLAH typed wins
+assert.strictEqual(D.mpkDpbCalc(g).p1Sub, 300);
+g.ovr['p1-sub'] = '350';                            // subtotal typed: the summary follows it
+assert.strictEqual(D.mpkDpbCalc(g).summary.baru, 350);
+g.ovr['sum-total'] = '1000';                        // and the grand total can be typed too
+assert.strictEqual(D.mpkDpbCalc(g).total, 1000);
+g.ovr = {}; g.rate = { 'p1.0': '' };                // cleared boxes: worked out again from the schedule
+assert.strictEqual(D.mpkDpbCalc(g).total, 140);
+// para 9 share as typed (%), and a count rate
+const h = D.mpkDpbBlank();
+h.unit = '2'; h.p9k = '1000'; h.rate['p9.1'] = '50';  // 1000 + 500
+h.p65 = '2'; h.rate.p65 = '80';                      // 160
+assert.strictEqual(D.mpkDpbCalc(h).total, 1660);
+
 console.log('mpk daftar: all tests passed');
