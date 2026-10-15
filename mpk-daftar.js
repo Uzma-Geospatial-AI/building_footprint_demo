@@ -666,10 +666,49 @@ const MPK_PU9_B = [
   ['8. Pindaan kepada Kelulusan Kebenaran Merancang', [['i. Tambahan dan pengurangan luas lantai/unit', 'Fi sebagaimana di ruang (2) Bahagian B'],
     ['ii. Rupa bangunan (fasad), tidak melibatkan tambahan atau pengurangan ruang lantai/unit', '500.00/permohonan']]],
 ];
+// '100.00/permohonan' → RM 100.00 in bold with its unit after it (every amount in a fee text)
+const mpkPu9Fee = v => String(v).replace(/(\d[\d,]*\.\d\d)(\/|\s(?=per|PER))?/g, (m, n, sl) => `<b>RM ${n}</b>${sl ? ' / ' : ' '}`)
+  .replace(/ \/ (\S)/g, ' / $1');
 function mpkPu9Rows(items, depth = 0) {
   return items.map(([label, v]) => Array.isArray(v)
     ? `<tr class="h${depth}"><td colspan="2">${label}</td></tr>${mpkPu9Rows(v, depth + 1)}`
-    : `<tr class="d${depth}"><td>${label}</td><td>${v}</td></tr>`).join('');
+    : `<tr class="d${depth}" data-q="${mpkEscHtml(String(label + ' ' + v).toLowerCase())}"><td>${label}</td><td class="fee">${mpkPu9Fee(v)}</td></tr>`).join('');
+}
+// Part B as one collapsible block per category; the first is open
+function mpkPu9Blocks() {
+  return MPK_PU9_B.map(([label, v], i) => Array.isArray(v)
+    ? `<details class="pu9-block"${i === 0 ? ' open' : ''}><summary><span>${label}</span><em>${v.length} jenis</em></summary>
+        <table class="pu9-t">${mpkPu9Rows(v)}</table></details>`
+    : `<div class="pu9-block flat" data-q="${mpkEscHtml(String(label + ' ' + v).toLowerCase())}"><span>${label}</span><div class="fee">${mpkPu9Fee(v)}</div></div>`).join('');
+}
+// Search over every fee row: rows that do not match hide, their blocks open when something inside matches
+function mpkPu9Search(q) {
+  q = q.trim().toLowerCase();
+  const el = document.getElementById('mpk-pu9');
+  el.querySelectorAll('[data-q]').forEach(r => { r.hidden = !!q && !r.dataset.q.includes(q); });
+  el.querySelectorAll('.pu9-t tr.h0, .pu9-t tr.h1').forEach(h => {
+    let n = h.nextElementSibling, any = false;
+    while (n && !n.classList.contains(h.classList.contains('h0') ? 'h0' : 'h1') && !(h.classList.contains('h1') && n.classList.contains('h0'))) {
+      if (n.dataset.q && !n.hidden) any = true;
+      n = n.nextElementSibling;
+    }
+    h.hidden = !!q && !any;
+  });
+  el.querySelectorAll('details.pu9-block').forEach(d => {
+    const any = [...d.querySelectorAll('tr[data-q]')].some(r => !r.hidden);
+    d.hidden = !!q && !any;
+    if (q && any) d.open = true;
+  });
+  el.querySelectorAll('.pu9-sec').forEach(sec => {
+    const rows = sec.querySelectorAll('[data-q]');
+    sec.hidden = !!q && rows.length > 0 && ![...rows].some(r => !r.hidden);
+  });
+  const none = document.getElementById('pu9-none');
+  if (none) none.hidden = !q || [...el.querySelectorAll('[data-q]')].some(r => !r.hidden);
+}
+function mpkPu9Go(id) {
+  const t = document.getElementById(id), box = document.querySelector('#mpk-pu9 .pu9');
+  if (t && box) box.scrollTo({ top: t.offsetTop - box.offsetTop - 8, behavior: 'smooth' });
 }
 function mpkDaftarGuide() {
   let el = document.getElementById('mpk-pu9');
@@ -681,48 +720,70 @@ function mpkDaftarGuide() {
     el.setAttribute('aria-modal', 'true');
     el.setAttribute('aria-labelledby', 'mpk-pu9-title');
     el.addEventListener('keydown', e => { if (e.key === 'Escape') { el.hidden = true; } });
+    const key = [['30%', 'Fi khidmat nasihat', 'daripada fi Bahagian A dan B (kaedah 5A, baharu)'],
+      ['+30%', 'Kebenaran merancang khas', 'tambahan atas fi Bahagian A dan B'],
+      ['5 – 20×', 'Pemajuan tanpa kebenaran', 'fi Bahagian B (Bahagian D)', 'warn'],
+      ['RM 1,000', 'Sumbangan tempat letak kenderaan', 'per m² petak, Majlis Perbandaran (Jadual Keenam)']];
+    const points = [
+      ['Kaedah 3(3)', 'Permohonan secara <i>kebenaran merancang biasa</i> atau <i>khas</i>; fi permohonan seperti Bahagian A. Tempoh kaedah 3(5) kini ditetapkan oleh pihak berkuasa perancang tempatan.'],
+      ['Kaedah 5A · baharu', 'Khidmat nasihat perancangan sebelum memohon, fi <b>30%</b> daripada fi Bahagian A dan Bahagian B.'],
+      ['Kaedah 22', '“Tempat letak kereta” kini “tempat letak kenderaan”.'],
+      ['Borang A diganti', 'Jenis pemajuan (a) hingga (h), perihal tanah, status pemajuan di tapak 30 hari sebelum permohonan, pihak berkepentingan, persetujuan pemunya tanah dan pemunya tanah berjiran.'],
+      ['Jadual Kedua diganti', 'Pelan berwarna berskala 1:100 – 1:1500, tanda utara dan kiblat, pelan kunci dan lokasi, topografi, saliran, anjakan, tempat letak kenderaan, pelan lantai, keratan, perspektif; hakmilik dan carian rasmi (≤ 6 bulan), foto tapak (≤ 30 hari) dan laporan sokongan.'],
+      ['Borang D diganti', 'Tuntutan kesusutan nilai tanah kerana mematuhi notis rekuisisi, dalam tempoh 6 bulan.'],
+    ];
+    const nav = [['pu9-ringkas', 'Ringkasan'], ['pu9-a', 'A · Fi memproses'], ['pu9-b', 'B · Fi kebenaran'], ['pu9-c', 'C · Lanjutan'], ['pu9-d', 'D · Tanpa kebenaran'], ['pu9-6', 'Tempat letak']];
     el.innerHTML = `<div class="mpk-dpb-shell guide">
-      <div class="mpk-dpb-bar">
-        <div class="mpk-dpb-bar-t"><div id="mpk-pu9-title">Guideline · Tr. P.U. 9/2026</div>
-          <small>Kaedah-Kaedah Pengawalan Perancangan (Am) (Terengganu) (Pindaan) 2026 · Warta Kerajaan Negeri Terengganu, Jil. 79 No. 37, Tambahan No. 5, 10 September 2026</small></div>
+      <div class="mpk-dpb-bar pu9-bar">
+        <div class="mpk-dpb-bar-t"><div id="mpk-pu9-title">Panduan fi kebenaran merancang · Tr. P.U. 9/2026</div>
+          <div class="pu9-chips"><span>Kaedah-Kaedah Pengawalan Perancangan (Am) (Terengganu) (Pindaan) 2026</span><span>Warta 10 Sep 2026</span>
+            <span>Jil. 79 No. 37 · Tambahan No. 5</span><span>Akta 172, s.58</span></div></div>
         <button type="button" class="mpk-dpb-x" onclick="document.getElementById('mpk-pu9').hidden = true" aria-label="Close">×</button>
       </div>
+      <div class="pu9-tools">
+        <nav class="pu9-nav" aria-label="Bahagian">${nav.map(([id, l]) => `<button type="button" onclick="mpkPu9Go('${id}')">${l}</button>`).join('')}</nav>
+        <input type="search" class="pu9-q" placeholder="Cari fi: cth. industri, hotel, pencawang, perobohan" oninput="mpkPu9Search(this.value)" aria-label="Cari fi">
+      </div>
       <div class="mpk-dpb-scroll pu9">
-        <p class="pu9-lead">Dibuat di bawah subseksyen 58(1) dan (2) Akta Perancangan Bandar dan Desa 1976 [Akta 172]; terpakai bagi semua kawasan
-          pihak berkuasa perancang tempatan dalam Negeri Terengganu, berkuat kuasa pada tarikh disiarkan dalam Warta. Dibuat 26 Julai 2026
-          [JPBD.Tr.09/0134; PUN.TR.26/2024/7].</p>
-        <h4>Perkara utama pindaan</h4>
-        <ul>
-          <li><b>Kaedah 3(3):</b> permohonan kebenaran merancang boleh dikemukakan secara <i>kebenaran merancang biasa</i> atau <i>kebenaran merancang khas</i>;
-            fi permohonan seperti Bahagian A Jadual Ketiga. Tempoh dalam kaedah 3(5) kini <i>suatu tempoh yang ditetapkan oleh pihak berkuasa perancang tempatan</i>.</li>
-          <li><b>Kaedah 5A (baharu):</b> khidmat nasihat perancangan sebelum memohon; fi <b>30%</b> daripada fi Bahagian A dan Bahagian B Jadual Ketiga.</li>
-          <li><b>Kaedah 22:</b> “tempat letak kereta” kini “tempat letak kenderaan”.</li>
-          <li><b>Jadual Pertama, Borang A</b> (Permohonan untuk Kebenaran Merancang, subkaedah 3(1)) diganti: jenis pemajuan (a) hingga (h), perihal tanah,
-            status pemajuan di tapak 30 hari sebelum permohonan, pihak berkepentingan, persetujuan pemunya tanah dan pemunya tanah berjiran.</li>
-          <li><b>Jadual Kedua</b> diganti: dokumen dan pelan bagi permohonan (pelan berwarna berskala 1:100 hingga 1:1500, tanda utara dan arah kiblat,
-            pelan kunci dan lokasi, jadual komponen, akses sah, topografi dan kontur, saliran, anjakan, tempat letak kenderaan, pelan lantai, keratan,
-            perspektif), salinan hakmilik dan carian rasmi (≤ 6 bulan), foto tapak (≤ 30 hari) dan laporan sokongan.</li>
-          <li><b>Jadual Kelima, Borang D</b> diganti: tuntutan kesusutan nilai tanah kerana mematuhi notis rekuisisi, dalam tempoh 6 bulan.</li>
-        </ul>
-        <h4>Jadual Ketiga · Bahagian A · Fi memproses permohonan kebenaran merancang <small>[subkaedah 5(1)]</small></h4>
-        <table class="pu9-t"><tr><th>Jenis proses</th><th>Fi (RM)</th></tr>
-          ${MPK_PU9_A.map(([no, label, v]) => Array.isArray(v) ? `<tr class="h0"><td colspan="2">${no}. ${label}</td></tr>${mpkPu9Rows(v, 1)}`
-            : `<tr class="d0"><td>${no}. ${label}</td><td>${v}</td></tr>`).join('')}</table>
-        <p class="pu9-n"><b>Kebenaran merancang khas</b> (ditentukan oleh pihak berkuasa perancang tempatan): fi seperti Bahagian A dan Bahagian B
-          dengan <b>tambahan 30%</b>.</p>
-        <h4>Jadual Ketiga · Bahagian B · Fi bagi kebenaran merancang <small>[subkaedah 5(2)]</small></h4>
-        <table class="pu9-t"><tr><th>Jenis pemajuan</th><th>Fi (RM)</th></tr>${mpkPu9Rows(MPK_PU9_B)}</table>
-        <p class="pu9-n">Nota: semua fi di ruang (2) Bahagian B tertakluk kepada mana-mana yang lebih tinggi.</p>
-        <h4>Bahagian C · Fi melanjutkan kebenaran merancang <small>[subkaedah 5(3)]</small></h4>
-        <p class="pu9-n">Kategori 1 hingga 8 Bahagian B: <b>RM 100.00</b> setiap permohonan atau <b>20%</b> daripada fi terdahulu, mana-mana lebih tinggi.</p>
-        <h4 class="pu9-warn">Bahagian D · Pemajuan tanpa kebenaran merancang <small>[subkaedah 5(5)]</small></h4>
-        <table class="pu9-t"><tr><th>Perkara</th><th>Fi</th></tr>
-          <tr class="d0"><td>Pemajuan dijalankan tanpa kebenaran merancang atau kelulusan pelan bangunan</td><td><b>5 kali ganda</b>, tidak melebihi <b>20 kali ganda</b> fi Bahagian B</td></tr>
-          <tr class="d0"><td>Perobohan bangunan dijalankan tanpa kebenaran merancang</td><td><b>5 kali ganda</b>, tidak melebihi <b>20 kali ganda</b> fi Bahagian B</td></tr></table>
-        <p class="pu9-n">Berkaitan bangunan yang disyaki tanpa kelulusan (<i>Illegal buildings</i>) di peta.</p>
-        <h4>Jadual Keenam · Kadar sumbangan tempat letak kenderaan <small>[kaedah 22]</small></h4>
-        <p class="pu9-n">Kadar sumbangan = nilai Y × saiz keluasan petak (m², ditentukan oleh PBPT ikut jenis kenderaan). Nilai Y: Majlis Bandaraya
-          RM 1,500.00 · <b>Majlis Perbandaran RM 1,000.00</b> (MPK) · Majlis Daerah RM 750.00.</p>
+        <section class="pu9-sec" id="pu9-ringkas">
+          <div class="pu9-key">${key.map(([v, t, d, c]) => `<div class="${c || ''}"><b>${v}</b><span>${t}</span><small>${d}</small></div>`).join('')}</div>
+          <h4>Perkara utama pindaan</h4>
+          <div class="pu9-points">${points.map(([t, d]) => `<div><b>${t}</b><p>${d}</p></div>`).join('')}</div>
+          <p class="pu9-lead">Dibuat di bawah subseksyen 58(1) dan (2) Akta Perancangan Bandar dan Desa 1976 [Akta 172]; terpakai bagi semua kawasan pihak
+            berkuasa perancang tempatan di Terengganu dan berkuat kuasa pada tarikh disiarkan dalam Warta. Dibuat 26 Julai 2026 [JPBD.Tr.09/0134; PUN.TR.26/2024/7].</p>
+        </section>
+        <section class="pu9-sec" id="pu9-a">
+          <h4><span class="pu9-tag">A</span> Fi memproses permohonan kebenaran merancang <small>Jadual Ketiga · subkaedah 5(1)</small></h4>
+          <table class="pu9-t">${MPK_PU9_A.map(([no, label, v]) => Array.isArray(v) ? `<tr class="h0"><td colspan="2">${no}. ${label}</td></tr>${mpkPu9Rows(v, 1)}`
+            : `<tr class="d0" data-q="${mpkEscHtml((label + ' ' + v).toLowerCase())}"><td>${no}. ${label}</td><td class="fee">${mpkPu9Fee(v)}</td></tr>`).join('')}</table>
+          <div class="pu9-note">Kebenaran merancang <b>khas</b> (ditentukan oleh PBPT): fi Bahagian A dan B dengan <b>tambahan 30%</b>.</div>
+        </section>
+        <section class="pu9-sec" id="pu9-b">
+          <h4><span class="pu9-tag">B</span> Fi bagi kebenaran merancang <small>Jadual Ketiga · subkaedah 5(2) · klik kategori untuk buka</small></h4>
+          ${mpkPu9Blocks()}
+          <div class="pu9-note">Semua fi Bahagian B tertakluk kepada mana-mana yang lebih tinggi.</div>
+        </section>
+        <section class="pu9-sec" id="pu9-c">
+          <h4><span class="pu9-tag">C</span> Fi melanjutkan kebenaran merancang <small>subkaedah 5(3)</small></h4>
+          <div class="pu9-block flat" data-q="lanjutan melanjutkan kebenaran merancang 100 20%"><span>Kategori 1 hingga 8 Bahagian B</span>
+            <div class="fee"><b>RM 100.00</b> setiap permohonan atau <b>20%</b> daripada fi terdahulu, mana-mana lebih tinggi</div></div>
+        </section>
+        <section class="pu9-sec" id="pu9-d">
+          <h4 class="pu9-warn"><span class="pu9-tag warn">D</span> Pemajuan tanpa kebenaran merancang <small>subkaedah 5(5)</small></h4>
+          <div class="pu9-alert">
+            <div data-q="pemajuan tanpa kebenaran merancang kelulusan pelan bangunan haram"><b>Pemajuan dijalankan tanpa kebenaran merancang atau kelulusan pelan bangunan</b>
+              <span><b>5×</b> hingga <b>20×</b> fi Bahagian B</span></div>
+            <div data-q="perobohan tanpa kebenaran merancang"><b>Perobohan bangunan dijalankan tanpa kebenaran merancang</b><span><b>5×</b> hingga <b>20×</b> fi Bahagian B</span></div>
+            <p>Terpakai kepada bangunan yang disyaki tanpa kelulusan (<i>Illegal buildings</i>) di peta.</p>
+          </div>
+        </section>
+        <section class="pu9-sec" id="pu9-6">
+          <h4><span class="pu9-tag">6</span> Kadar sumbangan tempat letak kenderaan <small>Jadual Keenam · kaedah 22</small></h4>
+          <p class="pu9-lead">Sumbangan = nilai Y × saiz petak (m², ditentukan oleh PBPT mengikut jenis kenderaan).</p>
+          <div class="pu9-y">${[['Majlis Bandaraya', '1,500.00'], ['Majlis Perbandaran', '1,000.00', 'MPK'], ['Majlis Daerah', '750.00']].map(([n, v, me]) =>
+            `<div class="${me ? 'me' : ''}"><span>${n}${me ? ' <em>MPK</em>' : ''}</span><b>RM ${v}</b><small>nilai Y / m²</small></div>`).join('')}</div>
+        </section>
+        <div class="mpk-reg-empty" id="pu9-none" hidden>Tiada fi yang sepadan dengan carian.</div>
         <p class="pu9-src">Ringkasan untuk rujukan; teks Warta yang sah terpakai.</p>
       </div>
     </div>`;
