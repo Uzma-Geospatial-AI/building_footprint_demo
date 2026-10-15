@@ -371,7 +371,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015h',
+  VERSION: '20261015i',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -996,8 +996,8 @@ function mpkBuildPanel() {
 
       <div class="mpk-kpis">
         <div class="mpk-kpi"><div class="v" id="mpk-k-total">—</div><div class="l">Total buildings<br><span id="mpk-k-m2">—</span></div></div>
-        <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Approved buildings</div></div>
-        <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Illegal buildings</div></div>
+        <div class="mpk-kpi legal"><div class="v" id="mpk-k-legal">—</div><div class="l">Approved buildings<br><span id="mpk-k-legal-n">—</span></div></div>
+        <div class="mpk-kpi danger"><div class="v" id="mpk-k-illegal">—</div><div class="l">Illegal buildings<br><span id="mpk-k-illegal-n">—</span></div></div>
       </div>
 
       <div class="mpk-card mpk-status">
@@ -1239,6 +1239,9 @@ function mpkRender() {
   mpkSyncOutsideRows();
   document.getElementById('mpk-k-legal').textContent = mpkPct(b.byStatus.legal.pct);
   document.getElementById('mpk-k-illegal').textContent = mpkPct(b.byStatus.suspected.pct);
+  const nb = n => mpkNum(n) + ' building' + (n === 1 ? '' : 's');
+  document.getElementById('mpk-k-legal-n').textContent = nb(b.byStatus.legal.n);
+  document.getElementById('mpk-k-illegal-n').textContent = nb(b.byStatus.suspected.n);
   mpkRenderFloatCard(b);
   document.getElementById('mpk-status-bar').innerHTML = Object.entries(MPK_STATUS)
     .map(([k, st]) => `<i style="width:${b.byStatus[k].pct}%;background:${st.color}" title="${st.label}: ${mpkNum(b.byStatus[k].n)}"></i>`).join('');
