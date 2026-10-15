@@ -1337,3 +1337,10 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 .mpk-sf-pill { padding:5px 12px; border-radius:999px; color:#fff; font-size:12px; }
 .mpk-sf-pill.s-legal { background:#00A152; } .mpk-sf-pill.s-suspected { background:#D50000; } .mpk-sf-pill.s-unverified { background:#2962FF; }
 .mpk-h-form label > span b, .popup-editform label b { color:#D50000; }
+
+/* the building plan form opened by a status change: the change sits on top */
+.mpk-sf-box { background:#FFF7F0; border:1px solid #F6C9A6; border-radius:10px; padding:12px 14px 4px; margin:0 0 12px; }
+.mpk-sf-h { font-weight:800; font-size:12.5px; color:#B4501A; margin:0 0 8px; }
+.mpk-sf-h small { font-weight:500; color:#8A6A55; margin-left:6px; }
+.mpk-sf-box .mpk-sf-h:last-child { margin:12px 0 8px; padding-top:10px; border-top:1px dashed #F6C9A6; }
+.mpk-sf-box .mpk-sf-change { justify-content:flex-start; margin:0 0 10px; }

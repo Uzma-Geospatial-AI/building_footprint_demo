@@ -199,12 +199,13 @@ function mpkDpbPrefill(p) {
   return f;
 }
 
-function mpkDaftarOpen(bid) {
+// change: { from, to } when the form comes from the status dropdown in the building's popup (mpk-edit.js)
+function mpkDaftarOpen(bid, change) {
   const feat = mpkDpbBuilding(bid);
   const r = mpkDpbFor(bid);
   if (!feat && !r) { showToast('⚠️ Building not found'); return; }
   const p = feat ? feat.properties : r.bangunan;
-  MPK_DPB.open = { bid: String(bid), reg: r || null, p };
+  MPK_DPB.open = { bid: String(bid), reg: r || null, p, change: change || null };
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   let el = document.getElementById('mpk-dpb');
   if (!el) {
@@ -217,10 +218,10 @@ function mpkDaftarOpen(bid) {
     el.addEventListener('keydown', e => { if (e.key === 'Escape') mpkDaftarClose(); });
     document.body.appendChild(el);
   }
-  el.innerHTML = mpkDpbShellHTML(p, r, r ? r.f : mpkDpbPrefill(p));
+  el.innerHTML = mpkDpbShellHTML(p, r, r ? r.f : mpkDpbPrefill(p), change);
   el.hidden = false;
   mpkDaftarRecalc();
-  const first = el.querySelector('.dpb-paper input');
+  const first = el.querySelector(change ? '#sf-reason' : '.dpb-paper input');
   if (first) first.focus();
 }
 function mpkDaftarClose() {
@@ -229,16 +230,20 @@ function mpkDaftarClose() {
   MPK_DPB.open = null;
 }
 
-function mpkDpbShellHTML(p, r, f) {
+function mpkDpbShellHTML(p, r, f, change) {
   const st = mpkStatus(p, MPK.settings);
   const wasIllegal = r ? r.asal === 'suspected' : st === 'suspected';
-  const locked = r && r.status !== 'menunggu';
+  const locked = r && r.status !== 'menunggu' && !change;
+  const toLabel = change ? MPK_EDIT_STATUS[change.to].label : '';
   const facts = [p.plus_code, (MPK_AREAS[p.kawasan] || {}).short, p.lot ? 'Lot ' + p.lot : 'no cadastral lot',
     p.area_m2 ? mpkNum(p.area_m2) + ' m² footprint' : ''].filter(Boolean).map(mpkEscHtml).join(' · ');
   const statusLine = r
     ? `<span class="mpk-dpb-badge ${r.status}">${MPK_DPB_STATUS[r.status].label}</span> <b>${mpkEscHtml(r.no)}</b> · submitted ${mpkPlanDateLabel(r.created.slice(0, 10))}${r.decided ? ' · decided ' + mpkPlanDateLabel(r.decided.slice(0, 10)) : ''}`
     : `<span class="mpk-dpb-badge new">New registration</span>`;
-  const foot = !r
+  const foot = change
+    ? `<span class="mpk-dpb-spacer"></span><button type="button" class="mpk-dpb-b ghost" onclick="mpkDaftarClose()">Cancel</button>
+       <button type="button" class="mpk-dpb-b primary" onclick="mpkEditStatusSubmit()">Submit form · change to ${toLabel}</button>`
+    : !r
     ? `<button type="button" class="mpk-dpb-b ghost" onclick="mpkDaftarClose()">Cancel</button>
        <button type="button" class="mpk-dpb-b primary" onclick="mpkDaftarSubmit()">Submit for approval</button>`
     : `<button type="button" class="mpk-dpb-b danger-ghost" onclick="mpkDaftarDelete('${mpkDpbAttr(r.no)}')">Delete</button>
@@ -250,13 +255,16 @@ function mpkDpbShellHTML(p, r, f) {
        : `<button type="button" class="mpk-dpb-b ghost" onclick="mpkDaftarDecide('menunggu')">Reopen</button>`}`;
   return `<div class="mpk-dpb-shell">
     <div class="mpk-dpb-bar">
-      <div class="mpk-dpb-bar-t"><div id="mpk-dpb-title">${r ? 'Building plan registration' : 'Register building plan'}</div>
+      <div class="mpk-dpb-bar-t"><div id="mpk-dpb-title">${change ? 'Change status · ' + MPK_EDIT_STATUS[change.from].label + ' → ' + toLabel : r ? 'Building plan registration' : 'Register building plan'}</div>
         <small>${facts}</small></div>
       <button type="button" class="mpk-dpb-b ghost sm" onclick="mpkDaftarGuide()">Guideline · Tr. P.U. 9/2026</button>
       <button type="button" class="mpk-dpb-b ghost sm" onclick="mpkDaftarPrint()">Print</button>
       <button type="button" class="mpk-dpb-x" onclick="mpkDaftarClose()" aria-label="Close">×</button>
     </div>
     <div class="mpk-dpb-scroll">
+      ${change ? `<section class="mpk-sf-box" aria-label="Status change"><div class="mpk-sf-h">1 · Status change <small>required</small></div>
+        ${mpkEditChangeHTML(change.from, change.to)}
+        <div class="mpk-sf-h">2 · Building plan form · JKB:(KP)1-03 <small>required: Projek, Bertajuk and at least one area or unit</small></div></section>` : ''}
       <div class="mpk-dpb-info">
         <div>${statusLine}</div>
         <div class="mpk-dpb-info-s">Map status before registering: <b>${MPK_STATUS[r ? r.asal : st].label}</b>.
@@ -432,12 +440,13 @@ function mpkDaftarRecalc(e) {
 }
 
 // ---------- Submit, decide, delete ----------
-function mpkDaftarSubmit() {
+// The open form kept as the building's registration (new or updated), or null when it is not filled in
+function mpkDpbUpsert() {
   const o = MPK_DPB.open;
-  if (!o) return;
+  if (!o) return null;
   const f = mpkDpbRead(), c = mpkDpbCalc(f);
-  if (!f.projek || !(f.tajuk || []).some(Boolean)) { showToast('⚠️ Fill in Projek and Bertajuk'); return; }
-  if (!c.total) { showToast('⚠️ Enter at least one area, unit or plan count so there is a fee'); return; }
+  if (!f.projek || !(f.tajuk || []).some(Boolean)) { showToast('⚠️ Fill in Projek and Bertajuk in the form'); return null; }
+  if (!c.total) { showToast('⚠️ Enter at least one area, unit or plan count in the form so there is a fee'); return null; }
   const now = new Date().toISOString();
   const p = o.p;
   if (o.reg) {
@@ -450,11 +459,27 @@ function mpkDaftarSubmit() {
     MPK_DPB.list.push(r);
     o.reg = r;
   }
+  return o.reg;
+}
+function mpkDaftarSubmit() {
+  const o = MPK_DPB.open;
+  if (!mpkDpbUpsert()) return;
+  const p = o.p;
   if (!mpkDpbSave()) return;
   showToast(`📝 ${o.reg.no} saved · ${MPK_DPB_STATUS[o.reg.status].label.toLowerCase()}`);
   addActivityLog('Building plan registration', o.reg.no + ' · ' + (p.plus_code || ''));
   mpkDaftarApply();
   mpkDaftarOpen(o.bid);
+}
+// From the status dropdown: the form saved and decided at once (lulus / tolak / menunggu); the registration or null
+function mpkDaftarSaveStatus(status, note) {
+  const reg = mpkDpbUpsert();
+  if (!reg) return null;
+  const now = new Date().toISOString();
+  Object.assign(reg, { status, catatan: note || reg.catatan, decided: status === 'menunggu' ? null : now, updated: now });
+  if (!mpkDpbSave()) return null;
+  addActivityLog('Building plan registration', reg.no + ' · ' + MPK_DPB_STATUS[status].label.toLowerCase());
+  return reg;
 }
 function mpkDaftarDecide(status) {
   const o = MPK_DPB.open;
