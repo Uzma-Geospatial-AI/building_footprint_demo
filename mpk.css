@@ -1102,15 +1102,15 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 /* Statistics, money first */
 .mpk-simple-cards { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:14px; }
 .mpk-simple-cards .mpk-stat .l small { font-weight:600; color:var(--charcoal-light); margin-left:4px; }
-.mpk-loss-hero { display:grid; grid-template-columns:1.4fr 1fr; gap:20px; align-items:center; padding:24px 26px; margin-bottom:14px; border-radius:16px;
+.mpk-loss-hero { display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; padding:24px 26px; margin-bottom:14px; border-radius:16px;
   background:linear-gradient(135deg, #B3261E, #D93025); color:#fff; box-shadow:0 6px 20px rgba(179,38,30,0.22); }
 .mpk-loss-hero.ok { background:linear-gradient(135deg, #17732F, #1E8E3E); }
 .mpk-loss-main small { font-size:13px; font-weight:600; opacity:0.9; letter-spacing:0.2px; }
 .mpk-loss-main b { display:block; font-size:44px; font-weight:800; line-height:1.1; margin:4px 0 6px; font-variant-numeric:tabular-nums; }
 .mpk-loss-main p { font-size:13px; opacity:0.92; margin:0; }
-.mpk-loss-split { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
-.mpk-loss-split div { background:rgba(255,255,255,0.14); border-radius:12px; padding:12px; text-align:center; }
-.mpk-loss-split b { display:block; font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+.mpk-loss-split { display:grid; grid-template-columns:minmax(170px, auto); gap:8px; justify-self:end; }
+.mpk-loss-split div { background:rgba(255,255,255,0.14); border-radius:12px; padding:14px 22px; text-align:center; }
+.mpk-loss-split b { display:block; font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
 .mpk-loss-split span { font-size:11px; opacity:0.88; }
 .mpk-lg { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
 .mpk-lg-card h3 { display:flex; align-items:center; gap:8px; }

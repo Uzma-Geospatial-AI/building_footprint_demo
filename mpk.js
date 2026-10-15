@@ -410,7 +410,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015o',
+  VERSION: '20261015p',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1398,8 +1398,6 @@ function mpkRenderStatsRevenue() {
       </div>
       <div class="mpk-loss-split">
         <div><b>${mpkRM(yr / 12)}</b><span>a month</span></div>
-        <div><b>${mpkRM(yr / 365)}</b><span>a day</span></div>
-        <div><b>${mpkRM(yr / sp.n)}</b><span>a building, a year</span></div>
       </div>
     </section>
 
