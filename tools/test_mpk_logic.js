@@ -31,7 +31,7 @@ assert.strictEqual(all.total, 8);
 assert.strictEqual(all.lulus, 1);
 assert.strictEqual(all.count, 3);
 assert.strictEqual(all.area, 140);
-assert.deepStrictEqual(all.byJenis, { mockup: 2, rizab: 1, tolak: 0 });
+assert.deepStrictEqual(all.byJenis, { mockup: 2, rizab: 1, tolak: 0, manual: 0 });
 assert.strictEqual(all.fee, 280);
 assert.strictEqual(all.cukai, 840);
 assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 8]);   // largest first
@@ -40,7 +40,7 @@ assert.deepStrictEqual(all.suspects.map(x => x.properties.id), [5, 2, 8]);   // 
 const bbc = mpkStats(feats, s, rates, 'bbc');
 assert.strictEqual(bbc.total, 3);
 assert.strictEqual(bbc.count, 1);
-assert.deepStrictEqual(bbc.byJenis, { mockup: 0, rizab: 1, tolak: 0 });
+assert.deepStrictEqual(bbc.byJenis, { mockup: 0, rizab: 1, tolak: 0, manual: 0 });
 
 // Three clear statuses: suspected (red), legal = an MPK-approved building plan covers it (green), not verified
 assert.deepStrictEqual(feats.map(x => mpkStatus(x.properties, s)),
@@ -52,6 +52,7 @@ assert.deepStrictEqual(bbc.byStatus, { suspected: 1, legal: 0, unverified: 2 });
 assert.deepStrictEqual(mpkSuspectFilter(s), ['any',
   ['==', ['get', 'kategori'], 'mockup'],
   ['==', ['get', 'kategori'], 'tolak'],
+['==', ['get', 'kategori'], 'manual_haram'],
   ['all', ['==', ['get', 'kategori'], 'koridor'],
     ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], 10]],
 ]);
@@ -197,6 +198,7 @@ assert.strictEqual(all2[1], '6,binjai_bandar_chukai,suspected_illegal,X6,103.4,4
 // a corridor building with an approved plan is legal and stays in scope
 const tolak = { kawasan: 'bbc', kategori: 'tolak', area_m2: 80 }, lulusBbc = { kawasan: 'bbc', kategori: 'lulus', jarak_jalan_m: 2 };
 assert.deepStrictEqual([mpkJenis(tolak, s), mpkStatus(tolak, s), mpkStatus(lulusBbc, s), mpkInScope(lulusBbc)], ['tolak', 'suspected', 'legal', true]);
+// an officer's status (mpk-edit.js): illegal counts as a suspect, pending stays pendingassert.deepStrictEqual([mpkJenis({ kategori: 'manual_haram' }, s), mpkStatus({ kategori: 'manual_haram' }, s), mpkStatus({ kategori: 'manual_pending' }, s)], ['manual', 'suspected', 'unverified']);
 assert.ok(JSON.stringify(mpkSuspectFilter(s)).includes('"tolak"'));
 
 // Revenue potential: suspected buildings × rates, by area and reason, plus the not-verified upper bound

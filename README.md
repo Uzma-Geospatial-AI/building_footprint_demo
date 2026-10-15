@@ -47,6 +47,7 @@ building_footprint_demo/
 ├── mpk-features2.js         # MPK Features: tools 12–15
 ├── mpk-features3.js         # MPK Features: Site Check, Developer Portfolio, Notice Drafter, Approval Timeline, Revenue Map
 ├── mpk-daftar.js            # MPK building plan registration form, Registrations tab, Tr. P.U. 9/2026 guideline
+├── mpk-edit.js              # building popup: pencil edit of the details, status dropdown with its required form
 ├── mpk-strata.js            # Strata mode: map → parcels & 3D → share units → strata title → tax & charges; cemeteries
 ├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
 ├── tools/                   # data builders (Python) and logic tests (Node)
@@ -286,6 +287,8 @@ applicant, building type, status, date), shown in the popup as *Register records
 building, an approved record on it makes it legal and a TOLAK record makes it rejected (SOKONG and SEDIA ADA are not
 decisions). In Teluk Kalong this moves two buildings to legal: 6PP57F57+9XQ (file 2990, status written *LUUS*, missing
 from the approved GeoJSON) and 6PP57F33+JG5 (TK/3020KLT34KMTT, approved 2 Mar 2025, before on the API suspect list).
+
+**Editing a building and its status** (`mpk-edit.js`): in a building's popup the ✏️ pencil edits its details (lot, UPI, area, height, floors, plan on record, note; the officer's name is required), and the status dropdown (Approved / Illegal / Pending) opens a required form (reason, reference no. — required for Approved —, date, officer, note) before the status changes. An officer's *Illegal* is the suspect type `manual` (kategori `manual_haram`), *Pending* is `manual_pending`, *Approved* is `lulus`; *Restore* returns the status from the records. Kept in this browser (`mpk_edit_v1`), applied over the data and the registrations at every load, with a change history in the popup.
 
 **Building plan registration** (`mpk-daftar.js`): click an *illegal* or *pending* building, then *Register building plan*.
 It opens MPK's *Borang Perkiraan Daftar Pelan Bangunan* (Jabatan Kawalan Bangunan, JKB:(KP)1-03, UUKBS 1984 First Schedule)

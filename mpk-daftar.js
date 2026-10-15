@@ -139,11 +139,13 @@ const mpkDpbBuilding = bid => MPK.data && MPK.data.buildings.features.find(f => 
 // Called once the MPK data is loaded (mpkEnter)
 function mpkDaftarInit() {
   mpkDpbLoad();
+  if (typeof mpkEditLoad === 'function') mpkEditLoad();
   mpkDaftarApply(false);
 }
 // Marks each building with its registration; an approved one is legal (its own class kept in daftar_asal)
 function mpkDaftarApply(redraw = true) {
   if (!MPK.data) return;
+  if (typeof mpkEditUndo === 'function') mpkEditUndo();       // officers' edits come off first, and back on last
   for (const f of MPK.data.buildings.features) {
     const p = f.properties;
     if ('daftar_asal' in p) { p.kategori = p.daftar_asal; delete p.daftar_asal; }
@@ -156,6 +158,7 @@ function mpkDaftarApply(redraw = true) {
     p.daftar_no = r.no; p.daftar_status = r.status;
     if (r.status === 'lulus') { p.daftar_asal = p.kategori; p.kategori = 'lulus'; }
   }
+  if (typeof mpkEditApply === 'function') mpkEditApply(true);
   if (!redraw) return;
   try { if (map && map.getSource('mpk-buildings')) map.getSource('mpk-buildings').setData(MPK.data.buildings); } catch (e) {}
   if (typeof mpkRender === 'function') mpkRender();

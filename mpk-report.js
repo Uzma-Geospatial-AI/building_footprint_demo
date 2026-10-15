@@ -45,6 +45,7 @@ const MPK_REPORT_TEXT = {
     no: 'No.', reason: 'Reason', none: 'No suspected buildings in this area',
     reasonList: 'On MPK suspect list',
     reasonTolak: 'Building plan rejected by MPK (TOLAK)',
+    reasonManual: 'Marked illegal by an MPK officer',
     reasonRoad: (d, r) => `Within ${d} m of road centreline (reserve ${r} m)`,
     notes: r => [
       'Building footprints: digitised by hand from Esri imagery of 24 Sep 2026. Teluk Kalong suspected buildings: the list in the Uzma/MPK building data (is_mockup) without an approved plan.',
@@ -84,6 +85,7 @@ const MPK_REPORT_TEXT = {
     no: 'Bil.', reason: 'Sebab', none: 'Tiada bangunan disyaki di kawasan ini',
     reasonList: 'Dalam senarai syak MPK',
     reasonTolak: 'Pelan bangunan ditolak MPK (TOLAK)',
+    reasonManual: 'Ditanda haram oleh pegawai MPK',
     reasonRoad: (d, r) => `Dalam ${d} m dari garis tengah jalan (rizab ${r} m)`,
     notes: r => [
       'Tapak bangunan: didigitkan secara manual daripada imej Esri 24 Sep 2026. Bangunan disyaki di Teluk Kalong: senarai dalam data bangunan Uzma/MPK (is_mockup) yang tiada pelan lulus.',
@@ -105,6 +107,7 @@ function mpkReportReason(p, s, lang) {
   const j = mpkJenis(p, s), T = mpkReportText(lang);
   if (j === 'mockup') return T.reasonList;
   if (j === 'tolak') return T.reasonTolak;
+  if (j === 'manual') return T.reasonManual;
   if (j === 'rizab') return T.reasonRoad(p.jarak_jalan_m, s.rizab);
   return '';
 }

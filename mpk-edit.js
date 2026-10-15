@@ -1,0 +1,240 @@
+// ============================================================
+// MPK KEMAMAN — EDIT A BUILDING AND CHANGE ITS STATUS
+// In a building's popup: the pencil edits its details (lot, UPI, area, height, floors, the plan on record,
+// a note); the status dropdown (Approved / Illegal / Pending) changes its status, and a change needs a short
+// form (reason, reference, officer, date). Edits and status changes are applied over the data every time
+// it loads, so the map, the counts and the lists follow them; every change is kept in the building's history.
+// Kept in this browser (localStorage), like the registrations.
+// ============================================================
+const MPK_EDIT = { KEY: 'mpk_edit_v1', s: {}, orig: new WeakMap(), editing: null, lngLat: null, pending: null };
+const MPK_EDIT_FIELDS = [
+  ['lot', 'Lot no.', 'text'], ['upi', 'UPI', 'text'], ['area_m2', 'Footprint area (m²)', 'number'],
+  ['tinggi_m', 'Height (m)', 'number'], ['tingkat_est', 'Floors', 'number'],
+  ['pelan_fail', 'Plan on record (file no.)', 'text'], ['pelan_tarikh', 'Approved on', 'date'], ['pelan_status', 'Plan status', 'text'],
+  ['pelan_jenis', 'Plan building type', 'text'], ['catatan', 'Note', 'textarea'],
+];
+const MPK_EDIT_STATUS = {
+  legal: { label: 'Approved', kategori: 'lulus' },
+  suspected: { label: 'Illegal', kategori: 'manual_haram' },
+  unverified: { label: 'Pending', kategori: 'manual_pending' },
+};
+const MPK_EDIT_REASONS = {
+  legal: ['Approved building plan found', 'Building plan registration approved', 'Site inspection: approved', 'Other'],
+  suspected: ['Site inspection: no approval', 'Building plan rejected', 'Built beyond the approved plan', 'Encroaches a reserve', 'Other'],
+  unverified: ['Records being checked', 'Awaiting site inspection', 'Wrongly classified', 'Other'],
+};
+
+function mpkEditLoad() {
+  try { const v = JSON.parse(localStorage.getItem(MPK_EDIT.KEY) || '{}'); MPK_EDIT.s = v && typeof v === 'object' ? v : {}; } catch (e) { MPK_EDIT.s = {}; }
+}
+function mpkEditSave() {
+  try { localStorage.setItem(MPK_EDIT.KEY, JSON.stringify(MPK_EDIT.s)); return true; }
+  catch (e) { showToast('⚠️ Could not save in this browser: ' + e.message, 5000); return false; }
+}
+const mpkEditAll = () => MPK.data ? [...MPK.data.buildings.features, ...(MPK.data.others ? MPK.data.others.features : [])] : [];
+const mpkEditFeature = id => mpkEditAll().find(f => String(f.properties.id) === String(id));
+const mpkEditIsStudy = f => !!(f && f.properties.kawasan);
+
+// Takes every edit off again (the data as built, plus registrations)
+function mpkEditUndo() {
+  if (!MPK.data) return;
+  for (const f of mpkEditAll()) {
+    const o = MPK_EDIT.orig.get(f.properties);
+    if (!o) continue;
+    const p = f.properties;
+    for (const [k, v] of Object.entries(o.fields)) { if (v === undefined) delete p[k]; else p[k] = v; }
+    if ('kat' in o) p.kategori = o.kat;
+    delete p.edit_status; delete p.edited;
+  }
+  MPK_EDIT.orig = new WeakMap();
+}
+// Puts the saved edits on the data; skipUndo when the caller has just reset it (mpkDaftarApply)
+function mpkEditApply(skipUndo) {
+  if (!MPK.data) return;
+  if (!skipUndo) mpkEditUndo();
+  for (const [id, rec] of Object.entries(MPK_EDIT.s)) {
+    const f = mpkEditFeature(id);
+    if (!f) continue;
+    const p = f.properties, o = { fields: {} };
+    for (const [k, v] of Object.entries(rec.fields || {})) {
+      o.fields[k] = p[k];
+      const type = (MPK_EDIT_FIELDS.find(x => x[0] === k) || [])[2];
+      p[k] = type === 'number' && v !== '' ? parseFloat(v) : v;
+    }
+    if (rec.status && mpkEditIsStudy(f)) {
+      o.kat = p.kategori;
+      p.kategori = MPK_EDIT_STATUS[rec.status.to].kategori;
+      p.edit_status = rec.status.to;
+    }
+    if (Object.keys(rec.fields || {}).length || rec.status) p.edited = 1;
+    MPK_EDIT.orig.set(p, o);
+  }
+}
+function mpkEditRedraw(id) {
+  try {
+    if (map.getSource('mpk-buildings')) map.getSource('mpk-buildings').setData(MPK.data.buildings);
+    if (map.getSource('mpk-other') && MPK.data.others) map.getSource('mpk-other').setData(MPK.data.others);
+  } catch (e) {}
+  if (typeof mpkRender === 'function') mpkRender();
+  if (id != null) mpkEditReopen(id);
+}
+function mpkEditReopen(id) {
+  const f = mpkEditFeature(id);
+  if (!f) return;
+  const at = MPK_EDIT.lngLat || [f.properties.lng, f.properties.lat];
+  if (mpkEditIsStudy(f)) mpkShowPopup(f.properties, at); else mpkShowOtherPopup(f.properties, at);
+}
+
+// ---------- Popup: status dropdown, pencil, edit form, history ----------
+function mpkEditHeader(p, withStatus) {
+  const id = JSON.stringify(String(p.id));
+  const st = withStatus ? mpkStatus(p, MPK.settings) : null;
+  const jenis = withStatus ? mpkJenis(p, MPK.settings) : null;
+  const sub = withStatus ? mpkStatusText(p, jenis).replace(/^(Illegal building|Legal|Pending) · /, '') : '';
+  return `<div class="popup-tools">
+      ${withStatus ? `<label class="popup-status-wrap" title="Change the status (a short form follows)">
+        <select class="popup-status" onchange='mpkEditStatusPick(${id}, this.value, this)' aria-label="Building status">
+          ${Object.entries(MPK_EDIT_STATUS).map(([k, v]) => `<option value="${k}"${k === st ? ' selected' : ''}>${v.label}</option>`).join('')}
+          ${p.edit_status ? '<option value="restore">↺ Restore status from the records</option>' : ''}
+        </select></label>` : ''}
+      <button type="button" class="popup-edit${MPK_EDIT.editing === String(p.id) ? ' on' : ''}" title="Edit the details" aria-label="Edit the details"
+        onclick='mpkEditStart(${id})'>✏️</button>
+    </div>
+    ${sub ? `<div class="popup-fc">${sub}</div>` : ''}`;
+}
+const mpkEditing = id => MPK_EDIT.editing === String(id);
+function mpkEditStart(id) {
+  MPK_EDIT.editing = MPK_EDIT.editing === String(id) ? null : String(id);
+  mpkEditReopen(id);
+}
+function mpkEditFormHTML(p) {
+  const rec = MPK_EDIT.s[p.id] || {};
+  const v = k => { const x = p[k]; return x == null ? '' : mpkEscHtml(String(x)); };
+  return `<form class="popup-editform" onsubmit="return false">
+      ${MPK_EDIT_FIELDS.map(([k, l, type]) => `<label><span>${l}${(rec.fields || {})[k] !== undefined ? ' <em>edited</em>' : ''}</span>
+        ${type === 'textarea' ? `<textarea data-f="${k}" rows="2">${v(k)}</textarea>`
+          : `<input data-f="${k}" type="${type === 'date' ? 'date' : 'text'}" ${type === 'number' ? 'inputmode="decimal"' : ''} value="${type === 'date' ? v(k).slice(0, 10) : v(k)}">`}</label>`).join('')}
+      <label><span>Edited by <b>*</b></span><input data-f="_by" placeholder="Officer's name" value="${mpkEscHtml(MPK_EDIT.lastBy || '')}"></label>
+      <div class="popup-editbtns">
+        <button type="button" class="mpk-btn ghost" onclick='mpkEditStart(${JSON.stringify(String(p.id))})'>Cancel</button>
+        <button type="button" class="mpk-btn" onclick='mpkEditSaveFields(${JSON.stringify(String(p.id))})'>Save</button>
+      </div>
+    </form>`;
+}
+function mpkEditSaveFields(id) {
+  const f = mpkEditFeature(id);
+  if (!f) return;
+  const form = document.querySelector('.popup-editform');
+  const by = form.querySelector('[data-f="_by"]').value.trim();
+  if (!by) { showToast('⚠️ Enter who is making the change'); form.querySelector('[data-f="_by"]').focus(); return; }
+  const p = f.properties, o = MPK_EDIT.orig.get(p) || { fields: {} };
+  const rec = MPK_EDIT.s[id] = MPK_EDIT.s[id] || { fields: {}, history: [] };
+  rec.fields = rec.fields || {}; rec.history = rec.history || [];
+  const changes = [];
+  form.querySelectorAll('[data-f]').forEach(el => {
+    const k = el.dataset.f;
+    if (k === '_by') return;
+    const val = el.value.trim(), now = p[k] == null ? '' : String(p[k]);
+    const base = k in o.fields ? (o.fields[k] == null ? '' : String(o.fields[k])) : now;
+    const cmp = (MPK_EDIT_FIELDS.find(x => x[0] === k) || [])[2] === 'date' ? now.slice(0, 10) : now;
+    if (val === cmp) return;
+    changes.push([(MPK_EDIT_FIELDS.find(x => x[0] === k) || [k, k])[1], cmp, val]);
+    if (val === base) delete rec.fields[k]; else rec.fields[k] = val;
+  });
+  MPK_EDIT.editing = null;
+  if (!changes.length) { mpkEditReopen(id); return; }
+  MPK_EDIT.lastBy = by;
+  rec.history.unshift({ type: 'fields', at: new Date().toISOString(), by, changes });
+  if (!Object.keys(rec.fields).length && !rec.status && !rec.history.length) delete MPK_EDIT.s[id];
+  if (!mpkEditSave()) return;
+  mpkEditApply();
+  showToast(`✏️ ${p.plus_code}: ${changes.length} detail${changes.length === 1 ? '' : 's'} saved`);
+  addActivityLog('Building edited', p.plus_code + ' · ' + by);
+  mpkEditRedraw(id);
+}
+function mpkEditHistoryHTML(p) {
+  const h = (MPK_EDIT.s[p.id] || {}).history || [];
+  if (!h.length) return '';
+  const esc = mpkEscHtml;
+  return `<div class="popup-sec">Change history</div><div class="popup-hist">${h.slice(0, 6).map(e => `<div>
+      <b>${mpkPlanDateLabel(e.at.slice(0, 10))} · ${esc(e.by)}</b>
+      ${e.type === 'status' ? `<span>Status ${esc(e.fromLabel)} → <b>${esc(e.toLabel)}</b> · ${esc(e.reason)}${e.ref ? ' · ref ' + esc(e.ref) : ''}${e.note ? ' · ' + esc(e.note) : ''}</span>`
+        : `<span>${e.changes.map(([l, a, b]) => `${esc(l)}: ${esc(a || '—')} → <b>${esc(b || '—')}</b>`).join('; ')}</span>`}
+    </div>`).join('')}</div>`;
+}
+
+// ---------- Status change, with its form ----------
+function mpkEditStatusPick(id, to, sel) {
+  const f = mpkEditFeature(id);
+  if (!f) return;
+  const from = mpkStatus(f.properties, MPK.settings);
+  if (sel) sel.value = from;                          // the dropdown changes only once the form is sent
+  if (to === from) return;
+  MPK_EDIT.pending = { id: String(id), to, from };
+  let el = document.getElementById('mpk-status-form');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'mpk-status-form';
+    el.className = 'mpk-dpb-overlay';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'mpk-sf-t');
+    el.addEventListener('keydown', e => { if (e.key === 'Escape') el.hidden = true; });
+    document.body.appendChild(el);
+  }
+  const p = f.properties, restore = to === 'restore';
+  const orig = MPK_EDIT.orig.get(p), origSt = orig && 'kat' in orig ? mpkStatus({ ...p, kategori: orig.kat }, MPK.settings) : from;
+  const target = restore ? origSt : to;
+  const lab = k => (MPK_EDIT_STATUS[k] || {}).label || k;
+  const today = new Date().toISOString().slice(0, 10);
+  el.innerHTML = `<div class="mpk-dpb-shell small">
+    <div class="mpk-dpb-bar"><div class="mpk-dpb-bar-t"><div id="mpk-sf-t">${restore ? 'Restore the status from the records' : 'Change building status'}</div>
+      <small>${mpkEscHtml(p.plus_code)} · ${mpkEscHtml((MPK_AREAS[p.kawasan] || {}).short || '')} · ${mpkNum(p.area_m2)} m²${p.lot ? ' · Lot ' + mpkEscHtml(p.lot) : ''}</small></div>
+      <button type="button" class="mpk-dpb-x" onclick="document.getElementById('mpk-status-form').hidden = true" aria-label="Close">×</button></div>
+    <div class="mpk-dpb-scroll">
+      <div class="mpk-sf-change"><span class="mpk-sf-pill s-${from}">${lab(from)}</span><i aria-hidden="true">→</i><span class="mpk-sf-pill s-${target}">${lab(target)}</span></div>
+      <form class="mpk-h-form" onsubmit="return false">
+        <label class="wide"><span>Reason <b>*</b></span><select id="sf-reason">${(MPK_EDIT_REASONS[target] || ['Other']).map(r => `<option>${r}</option>`).join('')}</select></label>
+        <label><span>Reference no. ${target === 'legal' ? '<b>*</b>' : ''}</span><input id="sf-ref" placeholder="e.g. plan file no., letter, inspection no."></label>
+        <label><span>Date <b>*</b></span><input id="sf-date" type="date" value="${today}"></label>
+        <label class="wide"><span>Officer <b>*</b></span><input id="sf-by" placeholder="Name and post" value="${mpkEscHtml(MPK_EDIT.lastBy || '')}"></label>
+        <label class="wide">Note<textarea id="sf-note" rows="2" placeholder="What was found, conditions, follow-up"></textarea></label>
+      </form>
+      <div class="mpk-h-hint">The map, the counts and the lists follow the new status at once. The change is kept in the building's history.</div>
+    </div>
+    <div class="mpk-dpb-foot"><span class="mpk-dpb-spacer"></span>
+      <button type="button" class="mpk-dpb-b ghost" onclick="document.getElementById('mpk-status-form').hidden = true">Cancel</button>
+      <button type="button" class="mpk-dpb-b primary" onclick="mpkEditStatusSubmit()">${restore ? 'Restore' : 'Change to ' + lab(target)}</button>
+    </div></div>`;
+  el.hidden = false;
+  document.getElementById('sf-reason').focus();
+}
+function mpkEditStatusSubmit() {
+  const pend = MPK_EDIT.pending;
+  if (!pend) return;
+  const g = id => document.getElementById(id).value.trim();
+  const reason = g('sf-reason'), ref = g('sf-ref'), date = g('sf-date'), by = g('sf-by'), note = g('sf-note');
+  const restore = pend.to === 'restore';
+  if (!by || !date || (!restore && pend.to === 'legal' && !ref)) {
+    showToast('⚠️ Fill in the officer, the date' + (!restore && pend.to === 'legal' ? ' and the reference no.' : ''));
+    return;
+  }
+  const f = mpkEditFeature(pend.id), p = f.properties;
+  const rec = MPK_EDIT.s[pend.id] = MPK_EDIT.s[pend.id] || { fields: {}, history: [] };
+  rec.history = rec.history || [];
+  const lab = k => (MPK_EDIT_STATUS[k] || {}).label || k;
+  let toLabel;
+  if (restore) { delete rec.status; toLabel = 'as in the records'; }
+  else { rec.status = { to: pend.to, from: pend.from, reason, ref, date, by, note, at: new Date().toISOString() }; toLabel = lab(pend.to); }
+  rec.history.unshift({ type: 'status', at: new Date(date + 'T12:00:00').toISOString(), by, reason, ref, note, fromLabel: lab(pend.from), toLabel });
+  MPK_EDIT.lastBy = by;
+  if (!mpkEditSave()) return;
+  document.getElementById('mpk-status-form').hidden = true;
+  MPK_EDIT.pending = null;
+  mpkEditApply();
+  showToast(`🏷️ ${p.plus_code}: ${lab(pend.from)} → ${toLabel}`);
+  addActivityLog('Status changed', `${p.plus_code} · ${lab(pend.from)} → ${toLabel} · ${by}`);
+  mpkEditRedraw(pend.id);
+}
+
+if (typeof module !== 'undefined') module.exports = { MPK_EDIT_STATUS, MPK_EDIT_FIELDS };

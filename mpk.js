@@ -16,6 +16,7 @@
 function mpkJenis(p, s) {
   if (p.kategori === 'mockup') return 'mockup';
   if (p.kategori === 'tolak') return 'tolak';            // only a rejected building plan covers it
+  if (p.kategori === 'manual_haram') return 'manual';    // marked illegal by an officer (mpk-edit.js)
   if (p.kategori === 'koridor' && p.jarak_jalan_m != null && p.jarak_jalan_m <= s.rizab) return 'rizab';
   return null;
 }
@@ -74,6 +75,7 @@ function mpkSuspectFilter(s) {
   return ['any',
     ['==', ['get', 'kategori'], 'mockup'],
     ['==', ['get', 'kategori'], 'tolak'],
+    ['==', ['get', 'kategori'], 'manual_haram'],
     ['all', ['==', ['get', 'kategori'], 'koridor'],
       ['<=', ['to-number', ['coalesce', ['get', 'jarak_jalan_m'], 1e9]], s.rizab]],
   ];
@@ -81,7 +83,7 @@ function mpkSuspectFilter(s) {
 
 function mpkStats(features, s, rates, kawasan) {
   const feats = kawasan === 'all' ? features : features.filter(f => f.properties.kawasan === kawasan);
-  const byJenis = { mockup: 0, rizab: 0, tolak: 0 };
+  const byJenis = { mockup: 0, rizab: 0, tolak: 0, manual: 0 };
   const byStatus = { suspected: 0, legal: 0, unverified: 0 };
   const suspects = [];
   let lulus = 0;
@@ -319,6 +321,7 @@ const MPK_JENIS = {
   mockup:        { label: 'Suspected building (Teluk Kalong list)', color: MPK_SUSPECT_COLOR, areas: ['tk'] },
   rizab:         { label: 'Encroaching road reserve', color: MPK_SUSPECT_COLOR, areas: ['bbc'] },
   tolak:         { label: 'Building plan rejected by MPK (TOLAK)', color: MPK_SUSPECT_COLOR, areas: ['tk', 'bbc'] },
+  manual:        { label: 'Marked illegal by an MPK officer', color: MPK_SUSPECT_COLOR, areas: ['tk', 'bbc'] },
 };
 
 // Land-use classes of mpk/landuse.geojson (OpenStreetMap, grouped by tools/build_landuse.py)
@@ -371,7 +374,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015j',
+  VERSION: '20261015k',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1409,7 +1412,8 @@ function mpkRenderStatsRevenue() {
 // ---------- Map interaction ----------
 function mpkStatusText(p, jenis) {
   if (jenis) return 'Illegal building · ' + MPK_JENIS[jenis].label;
-  if (p.kategori === 'lulus') return 'Legal · MPK-approved building plan';
+  if (p.kategori === 'lulus') return p.edit_status ? 'Legal · approved by an MPK officer' : 'Legal · MPK-approved building plan';
+  if (p.kategori === 'manual_pending') return 'Pending · set by an MPK officer';
   if (p.kategori === 'tiada_pelan') return 'Pending · no approved building plan on record';
   if (p.kategori === 'luar') return 'Pending · outside the planning boundary';
   if (p.kawasan === 'tk') return 'Pending · inside the boundary, no approved building plan on record';
@@ -1438,15 +1442,18 @@ function mpkShowZonePopup(zone, lngLat) {
 }
 
 function mpkShowPopup(p, lngLat) {
+  if (typeof MPK_EDIT !== 'undefined') { MPK_EDIT.lngLat = lngLat; p = (mpkEditFeature(p.id) || { properties: p }).properties; }
   const jenis = mpkJenis(p, MPK.settings);
+  const tools = typeof mpkEditHeader === 'function';
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
   const html = `
     <div class="popup-header" style="background:${MPK_STATUS[mpkStatus(p, MPK.settings)].color}">
-      <div class="popup-fc">${mpkStatusText(p, jenis)}</div>
+      ${tools ? mpkEditHeader(p, true) : `<div class="popup-fc">${mpkStatusText(p, jenis)}</div>`}
       <div class="popup-name">${p.plus_code}</div>
     </div>
     <div class="popup-body">
-      ${mpkPopupFull(p, { area: MPK_AREAS[p.kawasan].short, money: true, jenis })}
+      ${tools && mpkEditing(p.id) ? mpkEditFormHTML(p) : mpkPopupFull(p, { area: MPK_AREAS[p.kawasan].short, money: true, jenis })}
+      ${tools ? mpkEditHistoryHTML(p) : ''}
       ${typeof mpkDaftarPopupHTML === 'function' ? mpkDaftarPopupHTML(p) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
@@ -1515,15 +1522,19 @@ function mpkShowRekodPopup(p, lngLat) {
 
 // A hand-drawn footprint outside the study areas: facts only, no legal status
 function mpkShowOtherPopup(p, lngLat) {
+  if (typeof MPK_EDIT !== 'undefined') { MPK_EDIT.lngLat = lngLat; p = (mpkEditFeature(p.id) || { properties: p }).properties; }
+  const tools = typeof mpkEditHeader === 'function';
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
   const zone = MPK.data.landuse ? mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features)) : null;
   const html = `
     <div class="popup-header" style="background:${(MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).outline}">
+      ${tools ? mpkEditHeader(p, false) : ''}
       <div class="popup-fc">${(MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).label} · no status</div>
       <div class="popup-name">${mpkEscHtml(p.plus_code)}</div>
     </div>
     <div class="popup-body">
-      ${mpkPopupFull(p, { area: (MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).label, zone, money: false })}
+      ${tools && mpkEditing(p.id) ? mpkEditFormHTML(p) : mpkPopupFull(p, { area: (MPK_DEKAT[p.dekat] || MPK_DEKAT.tk).label, zone, money: false })}
+      ${tools ? mpkEditHistoryHTML(p) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
@@ -1563,6 +1574,7 @@ function mpkPopupFull(p, o) {
     row('Record', regShown ? `#${esc(p.rekod_id)} · ` + ([p.rekod_fail, p.rekod_pemohon].filter(Boolean).map(esc).join(' · ') || '—') : na(p.rekod_id ? 'Shown under Building plan' : 'None')),
     row('Building (register)', regShown && p.rekod_jenis ? esc(p.rekod_jenis) : na()),
     row('Status (register)', regShown && p.rekod_status ? esc(p.rekod_status) + (p.rekod_tarikh ? ' · ' + mpkPlanDateLabel(p.rekod_tarikh) : '') : na()),
+    row('Note', p.catatan ? esc(p.catatan) : na('None')),
     ...(o.money ? [sec('Estimated revenue'),
       row('Est. processing fee', money(p.area_m2 * MPK.rates.fee)),
       row('Est. assessment tax', o.jenis ? mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr' : money(0))] : []),
