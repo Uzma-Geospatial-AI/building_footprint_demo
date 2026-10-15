@@ -118,12 +118,88 @@ const MPK_NOTICE_AREA = { en: { tk: 'Teluk Kalong Industrial Area', bbc: 'Binjai
 function mpkNoticeReason(lang, p, jenis, rizab) {
   const ms = lang === 'ms';
   if (jenis === 'tolak') return ms ? 'Pelan bangunan bagi tapak ini ditolak oleh Majlis (TOLAK)' : 'The building plan for this site was rejected by the Council (TOLAK)';
+  if (jenis === 'manual') return ms ? 'Ditanda sebagai bangunan haram oleh pegawai Majlis selepas semakan' : 'Marked as an illegal building by a Council officer after review';
   if (jenis === 'mockup') return ms ? 'Tiada pelan bangunan yang diluluskan; tersenarai dalam senarai bangunan disyaki Majlis'
     : 'No approved building plan; on the Council\'s list of suspected buildings';
   return ms ? `Bangunan dalam rizab jalan: ${p.jarak_jalan_m} m dari garis tengah jalan (rizab ${rizab} m)`
     : `Building inside the road reserve: ${p.jarak_jalan_m} m from the road centreline (reserve ${rizab} m)`;
 }
 const mpkNoticeRef = (p, date) => `MPK/KB/${date.slice(0, 4)}/${p.plus_code.replace('+', '')}`;
+
+// ---------- Pure: the notice as an MPK letter (the layout of MPK's letters, e.g. MPK/BP/67/55) ----------
+// '**' marks bold words inside a paragraph
+const MPK_NOTICE_MONTHS = {
+  ms: ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Julai', 'Ogos', 'Sept', 'Okt', 'Nov', 'Dis'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
+const MPK_HIJRI_MONTHS = ['Muharram', 'Safar', 'Rabiulawal', 'Rabiulakhir', 'Jamadilawal', 'Jamadilakhir',
+  'Rejab', 'Syaaban', 'Ramadhan', 'Syawal', 'Zulkaedah', 'Zulhijjah'];
+// '2026-10-15' -> '15 Okt, 2026' (as MPK writes it)
+function mpkNoticeDate(date, lang) {
+  const [y, m, d] = date.split('-');
+  return `${d} ${MPK_NOTICE_MONTHS[lang][+m - 1]}, ${y}`;
+}
+// '2026-10-15' -> '3 Jamadilakhir, 1448' (Umm al-Qura calendar), or '' where the browser cannot say
+function mpkNoticeHijri(date) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
+      .formatToParts(new Date(date + 'T00:00:00Z'));
+    const g = t => +(parts.find(x => x.type === t) || {}).value;
+    const d = g('day'), m = g('month'), y = parseInt((parts.find(x => x.type === 'year') || {}).value, 10);
+    return d && m && y ? `${String(d).padStart(2, '0')} ${MPK_HIJRI_MONTHS[m - 1]}, ${y}` : '';
+  } catch (e) { return ''; }
+}
+const MPK_NOTICE_LETTER = {
+  ms: {
+    hand: 'DAFTAR/TANGAN', dear: 'Tuan/Puan,', dateLabel: 'Tarikh',
+    to: 'Pemilik / Penghuni Premis',
+    title: ['NOTIS BANGUNAN DIDIRIKAN TANPA PELAN BANGUNAN YANG DILULUSKAN', '( AKTA JALAN, PARIT DAN BANGUNAN 1974 [AKTA 133], SEKSYEN 70 )'],
+    paras: (x, days) => [
+      `Dengan hormatnya perkara di atas adalah dirujuk. Semakan rekod Majlis mendapati bangunan di **Plus Code ${x.code}** (koordinat ${x.coords})${x.lot ? `, **Lot ${x.lot}**` : ''}${x.upi ? ` (UPI ${x.upi})` : ''}, dengan keluasan tapak **${x.m2}** di **${x.area}**, tidak mempunyai pelan bangunan yang diluluskan. Penemuan: ${x.reason}.`,
+      `Adalah dimaklumkan, tuan/puan dikehendaki dalam tempoh **${days} hari** dari tarikh notis ini sama ada **mengemukakan salinan pelan bangunan yang diluluskan** bagi bangunan tersebut, jika ada, atau **menghentikan semua kerja dan mengemukakan permohonan kelulusan** kepada Pusat Setempat (OSC) Majlis Perbandaran Kemaman.`,
+      'Sekiranya tuan/puan gagal mematuhi notis ini, tindakan penguatkuasaan atau perundangan akan diambil mengikut Akta Jalan, Parit dan Bangunan 1974 (Akta 133) dan undang-undang yang diterima pakai oleh pihak Majlis Perbandaran Kemaman.',
+    ],
+    thanks: 'Sekian, terima kasih.',
+    motto: ['“TERENGGANU MAJU, BERKAT, SEJAHTERA”', '“BERKHIDMAT UNTUK NEGARA”'],
+    trust: 'Saya yang menjalankan amanah,',
+    sign: ['( ............................................................ )', 'Yang Dipertua', 'Majlis Perbandaran Kemaman.'],
+    cc: [['Jabatan Kawalan Bangunan', 'Untuk tindakan'], ['Bahagian Penguatkuasaan', 'Untuk tindakan'], ['Jabatan Perancangan Bandar', 'Untuk makluman']],
+    ccOf: 'Majlis Perbandaran Kemaman', file: 'Fail Timbul (Kawalan Bangunan)', code: 'BuildVision/Notis 2026',
+    draft: 'DRAF · Dijana oleh BuildVision daripada data pemetaan. Penemuan mesti disahkan di tapak dan disemak Unit Undang-undang MPK sebelum notis ini dikeluarkan.',
+    annex: 'LAMPIRAN A', annexSub: 'Pelan lokasi dan butiran bangunan',
+  },
+  en: {
+    hand: 'BY HAND / REGISTERED POST', dear: 'Sir/Madam,', dateLabel: 'Date',
+    to: 'The Owner / Occupier of the Premises',
+    title: ['NOTICE OF A BUILDING ERECTED WITHOUT AN APPROVED BUILDING PLAN', '( STREET, DRAINAGE AND BUILDING ACT 1974 [ACT 133], SECTION 70 )'],
+    paras: (x, days) => [
+      `The above matter refers. A review of the Council's records found that the building at **Plus Code ${x.code}** (coordinates ${x.coords})${x.lot ? `, **Lot ${x.lot}**` : ''}${x.upi ? ` (UPI ${x.upi})` : ''}, with a footprint of **${x.m2}** in the **${x.area}**, has no approved building plan. Finding: ${x.reason}.`,
+      `You are hereby informed that, within **${days} days** of the date of this notice, you are required either to **submit a copy of the approved building plan** for the building, if there is one, or to **stop all works and submit an application for approval** to the One Stop Centre (OSC) of Majlis Perbandaran Kemaman.`,
+      'Should you fail to comply with this notice, enforcement or legal action will be taken under the Street, Drainage and Building Act 1974 (Act 133) and the laws adopted by Majlis Perbandaran Kemaman.',
+    ],
+    thanks: 'Thank you.',
+    motto: ['“TERENGGANU MAJU, BERKAT, SEJAHTERA”', '“BERKHIDMAT UNTUK NEGARA”'],
+    trust: 'Yours faithfully,',
+    sign: ['( ............................................................ )', 'President', 'Majlis Perbandaran Kemaman.'],
+    cc: [['Building Control Department', 'For action'], ['Enforcement Division', 'For action'], ['Town Planning Department', 'For information']],
+    ccOf: 'Majlis Perbandaran Kemaman', file: 'File (Building Control)', code: 'BuildVision/Notice 2026',
+    draft: 'DRAFT · Generated by BuildVision from mapped data. The finding must be verified on site and reviewed by MPK\'s Legal Unit before this notice is issued.',
+    annex: 'APPENDIX A', annexSub: 'Location plan and building details',
+  },
+};
+// Everything the letter says for one building
+function mpkNoticeLetter(lang, p, area, reason, days, date) {
+  const L = MPK_NOTICE_LETTER[lang];
+  const x = { code: p.plus_code, coords: `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`, lot: p.lot || '', upi: p.upi || '',
+    m2: `${Math.round(p.area_m2).toLocaleString('en-MY')} m²`, area, reason: reason.replace(/\.$/, '') };
+  return {
+    L, ref: mpkNoticeRef(p, date), date: mpkNoticeDate(date, lang), hijri: mpkNoticeHijri(date),
+    to: [L.to, (x.lot ? `Lot ${x.lot}` : `Plus Code ${x.code}`) + ',', area + ',', '24000 Kemaman', 'Terengganu.'],
+    paras: L.paras(x, days),
+  };
+}
+// '**bold** text' -> [{ t, b }]
+const mpkRichSegs = s => String(s).split('**').map((t, i) => ({ t, b: i % 2 === 1 })).filter(x => x.t);
 // The notice's words for one building: { lines: [[label, value]], body: [...] } (the PDF lays them out)
 function mpkNoticeContent(lang, p, area, reason, days, date) {
   const T = MPK_NOTICE_TEXT[lang];
@@ -205,6 +281,7 @@ function mpkRecoverable(m2, rates, years) {
 
 if (typeof module !== 'undefined') {
   module.exports = { mpkInRing, mpkInGeom, mpkDistToLines, mpkGeomCentre, mpkSiteChecks, mpkNoticeRef, mpkNoticeContent, mpkNoticeReason, MPK_NOTICE_TEXT,
+    mpkNoticeLetter, mpkNoticeDate, mpkNoticeHijri, mpkRichSegs,
     mpkApplicantKey, mpkPortfolios, mpkApprovalYears, mpkRecoverable };
 }
 
@@ -333,50 +410,162 @@ function mpkNoticeOpts() {
   try { localStorage.setItem('mpk_report_lang', lang); } catch (e) {}
   return { lang, days, date: mpkYMD(new Date()) };
 }
-// One notice page; `img` is a map snapshot { url, aspect } or null
-function mpkNoticePage(pdf, p, o, img) {
-  const s = MPK.settings, area = MPK_NOTICE_AREA[o.lang][p.kawasan] || 'Kemaman';
-  const c = mpkNoticeContent(o.lang, p, area, mpkNoticeReason(o.lang, p, mpkJenis(p, s), s.rizab), o.days, o.date), T = c.T;
-  const W = 210, M = 18;
-  pdf.setFillColor(198, 40, 40); pdf.rect(0, 0, W, 9, 'F');
-  pdf.setTextColor(255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5);
-  pdf.text(T.draft, W / 2, 6, { align: 'center' });
-  pdf.setTextColor(30, 44, 68); pdf.setFontSize(13); pdf.text(T.council, M, 21);
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.text(T.dept, M, 26.5);
-  pdf.setFontSize(9); pdf.text(`${T.ref}: ${c.ref}`, W - M, 21, { align: 'right' }); pdf.text(`${T.date}: ${o.date}`, W - M, 26.5, { align: 'right' });
-  pdf.setDrawColor(232, 119, 46); pdf.setLineWidth(0.8); pdf.line(M, 30, W - M, 30);
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
-  let y = 39;
-  pdf.splitTextToSize(T.title, W - 2 * M).forEach(l => { pdf.text(l, M, y); y += 6; });
-  pdf.setFont('helvetica', 'italic'); pdf.setFontSize(9.5); pdf.text(T.act, M, y); y += 8;
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.text(T.to, M, y); y += 6;
-  const imgW = img ? 62 : 0;
-  const tableW = W - 2 * M - (img ? imgW + 6 : 0), y0 = y;
-  c.lines.forEach(([k, v]) => {
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(107, 118, 133); pdf.text(k, M, y + 4);
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor(30, 44, 68);
-    const lines = pdf.splitTextToSize(String(v), tableW - 48);
-    pdf.text(lines, M + 48, y + 4);
-    y += Math.max(7, lines.length * 4.6 + 2.4);
-    pdf.setDrawColor(230); pdf.setLineWidth(0.2); pdf.line(M, y, M + tableW, y);
-  });
-  if (img) {
-    const h = Math.min(imgW * img.aspect, 62);
-    pdf.addImage(img.url, 'JPEG', W - M - imgW, y0, imgW, h);
-    pdf.setDrawColor(200); pdf.rect(W - M - imgW, y0, imgW, h);
-    y = Math.max(y, y0 + h);
+// The notice laid out as MPK's letters: the letterhead, the reference and dates on the right, DAFTAR/TANGAN,
+// the addressee, the underlined title, numbered justified paragraphs, the mottos, the signature block and the
+// s.k. list, in URW Gothic (a free Century Gothic look-alike) at the letter's size. Positions in mm on A4,
+// measured from MPK's letter MPK/BP/67/55 Jld 3 - (32).
+const MPK_NOTICE_FILES = { book: 'mpk/notis/URWGothic-Book.ttf', demi: 'mpk/notis/URWGothic-Demi.ttf',
+  head: 'mpk/notis/kepala.png', foot: 'mpk/notis/kaki.png', mark: 'mpk/notis/tera.png' };
+let mpkNoticeAssetsP = null;
+function mpkNoticeAssets() {
+  if (mpkNoticeAssetsP) return mpkNoticeAssetsP;
+  const b64 = buf => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  const get = async (url, kind) => {
+    const r = await fetch(url + '?v=' + MPK.VERSION);
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' · ' + url);
+    const buf = await r.arrayBuffer();
+    return kind === 'font' ? b64(buf) : 'data:image/png;base64,' + b64(buf);
+  };
+  mpkNoticeAssetsP = Promise.all(Object.entries(MPK_NOTICE_FILES).map(async ([k, url]) => [k, await get(url, /\.ttf$/.test(url) ? 'font' : 'img')]))
+    .then(Object.fromEntries)
+    .catch(e => { mpkNoticeAssetsP = null; throw e; });
+  return mpkNoticeAssetsP;
+}
+function mpkNoticeFonts(pdf, a) {
+  pdf.addFileToVFS('URWGothic-Book.ttf', a.book); pdf.addFont('URWGothic-Book.ttf', 'URWGothic', 'normal');
+  pdf.addFileToVFS('URWGothic-Demi.ttf', a.demi); pdf.addFont('URWGothic-Demi.ttf', 'URWGothic', 'bold');
+}
+const MPK_LT = { pt: 9.6, lead: 4.19, x: 19.9, indent: 31.8, right: 179.2, gap: 2.9 };
+const mpkLtFont = (pdf, bold) => pdf.setFont('URWGothic', bold ? 'bold' : 'normal');
+// text with an underline the width of the text
+function mpkLtUnder(pdf, t, x, y) {
+  pdf.text(t, x, y);
+  pdf.setLineWidth(0.25); pdf.setDrawColor(0); pdf.line(x, y + 0.75, x + pdf.getTextWidth(t), y + 0.75);
+}
+// A justified paragraph of '**bold**' segments: the first line starts at xFirst, the rest at x0; returns the last baseline
+function mpkLtPara(pdf, text, x0, xFirst, xR, y, justify = true) {
+  // a word is glued to the one before when no space parts them (a bold run ending mid-word: "**Lot 3351**,")
+  const words = [];
+  let prevEnd = true;
+  for (const sg of mpkRichSegs(text)) {
+    sg.t.split(/\s+/).forEach((w, i) => { if (w) words.push({ w, b: sg.b, glue: i === 0 && !prevEnd && words.length > 0 }); });
+    prevEnd = /\s$/.test(sg.t);
   }
-  y += 8;
-  pdf.setFontSize(10.5);
-  c.body.forEach((para, i) => {
-    const lines = pdf.splitTextToSize(para, W - 2 * M - (i === 2 || i === 3 ? 6 : 0));
-    pdf.text(lines, M + (i === 2 || i === 3 ? 6 : 0), y); y += lines.length * 5.2 + 2.5;
+  const width = wd => { mpkLtFont(pdf, wd.b); return pdf.getTextWidth(wd.w); };
+  mpkLtFont(pdf, false);
+  const space = pdf.getTextWidth(' ');
+  const units = [];
+  for (const wd of words) {
+    if (wd.glue && units.length) units[units.length - 1].push(wd); else units.push([wd]);
+  }
+  const uw = u => u.reduce((a, wd) => a + width(wd), 0);
+  const lines = [];
+  let cur = [], curW = 0;
+  for (const u of units) {
+    const w = uw(u), avail = xR - (lines.length ? x0 : xFirst);
+    if (cur.length && curW + space + w > avail) { lines.push(cur); cur = []; curW = 0; }
+    curW += (cur.length ? space : 0) + w;
+    cur.push(u);
+  }
+  if (cur.length) lines.push(cur);
+  lines.forEach((ln, i) => {
+    const start = i ? x0 : xFirst, avail = xR - start, total = ln.reduce((a, u) => a + uw(u), 0);
+    const gap = justify && i < lines.length - 1 && ln.length > 1 ? (avail - total) / (ln.length - 1) : space;
+    let x = start;
+    for (const u of ln) {
+      for (const wd of u) { mpkLtFont(pdf, wd.b); pdf.text(wd.w, x, y); x += pdf.getTextWidth(wd.w); }
+      x += gap;
+    }
+    if (i < lines.length - 1) y += MPK_LT.lead;
   });
-  y = Math.max(y + 18, 228);
-  pdf.setDrawColor(30, 44, 68); pdf.setLineWidth(0.3); pdf.line(M, y, M + 70, y);
-  pdf.setFontSize(9); pdf.text(T.sign, M, y + 5); pdf.text(T.role, M, y + 10);
-  pdf.setFontSize(7.5); pdf.setTextColor(120);
-  pdf.text(pdf.splitTextToSize(T.foot, W - 2 * M), M, 285);
+  return y;
+}
+// The letterhead, its rule, the faint crest behind the text and the Beautiful Terengganu mark
+function mpkLtFrame(pdf, a) {
+  pdf.addImage(a.mark, 'PNG', 36, 136, 131.6, 80);
+  pdf.addImage(a.head, 'PNG', 13.6, 6.8, 175.4, 39.5);
+  pdf.setDrawColor(0); pdf.setLineWidth(0.37); pdf.line(0, 47.6, 202.6, 47.6);
+  pdf.addImage(a.foot, 'PNG', 164.3, 262.5, 29.6, 16.7);
+}
+function mpkNoticeLetterPage(pdf, c, a) {
+  const T = MPK_LT, L = c.L;
+  pdf.setTextColor(0);
+  mpkLtFrame(pdf, a);
+  pdf.setFontSize(T.pt);
+  // reference and dates, right
+  mpkLtFont(pdf, true); pdf.text(c.ref, 133.8, 56.2);
+  mpkLtFont(pdf, false);
+  const lab = `${L.dateLabel} : `;
+  pdf.text(lab + c.date, 133.8, 60.3);
+  if (c.hijri) pdf.text(c.hijri, 133.8 + pdf.getTextWidth(lab), 64.6);
+  // DAFTAR/TANGAN and the addressee; below it everything follows on from the address
+  mpkLtFont(pdf, true); mpkLtUnder(pdf, L.hand, 20.4, 68.1);
+  let y = 75;
+  c.to.forEach((t, i) => {
+    mpkLtFont(pdf, i === 0);
+    if (i === c.to.length - 1) mpkLtUnder(pdf, t, 20.4, y); else pdf.text(t, 20.4, y);
+    if (i < c.to.length - 1) y += 4.15;
+  });
+  mpkLtFont(pdf, false); pdf.text(L.dear, 20.4, y += 8.4);
+  // title: bold, underlined, wrapped
+  mpkLtFont(pdf, true);
+  y += 8.9;
+  L.title.forEach(t => pdf.splitTextToSize(t, T.right - 20.1).forEach(l => { mpkLtUnder(pdf, l, 20.1, y); y += 4.4; }));
+  // numbered paragraphs (the first unnumbered, as in MPK's letters)
+  y += 6.6 - 4.4;
+  c.paras.forEach((para, i) => {
+    if (i) { mpkLtFont(pdf, false); pdf.text(`${i + 1}.`, T.x, y); }
+    y = mpkLtPara(pdf, para, T.x, i ? T.indent : T.x, T.right, y) + T.lead + T.gap;
+  });
+  mpkLtFont(pdf, false); pdf.text(L.thanks, T.x - 0.3, y += 2.0);
+  mpkLtFont(pdf, true); pdf.text(L.motto[0], T.x - 0.5, y += 11.1); pdf.text(L.motto[1], T.x - 0.5, y += 4.2);
+  mpkLtFont(pdf, false); pdf.text(L.trust, T.x - 0.6, y += 8.4);
+  mpkLtFont(pdf, true); pdf.text(L.sign[0], T.x - 0.6, y += 19.2);
+  mpkLtFont(pdf, false); pdf.text(L.sign[1], T.x - 0.6, y += 3.9); pdf.text(L.sign[2], T.x - 0.6, y += 4.2);
+  // s.k.
+  y += 8.2;
+  pdf.text('s.k.', 18.8, y);
+  L.cc.forEach(([dept, act], i) => {
+    pdf.text(`${i + 1}.`, 31.1, y); pdf.text(dept, 42.6, y);
+    pdf.text(L.ccOf, 42.6, y + 4.2); pdf.text('-', 128.6, y + 4.2); pdf.text(act, 131.5, y + 4.2);
+    y += 10.4;
+  });
+  pdf.text(`${L.cc.length + 1}.`, 31.1, y); pdf.text(L.file, 42.6, y);
+  pdf.setFontSize(5.9); pdf.text(L.code, 18.5, Math.max(y + 9, 258));
+  // the draft note, small at the foot
+  pdf.setFontSize(6.2); pdf.setTextColor(150, 40, 40);
+  pdf.text(pdf.splitTextToSize(L.draft, 140), 18.5, 287);
+  pdf.setTextColor(0);
+}
+// Appendix (single notices): the map snapshot and the building's details, on the same letterhead
+function mpkNoticeAnnex(pdf, c, t, img, a) {
+  const T = MPK_LT;
+  mpkLtFrame(pdf, a);
+  pdf.setFontSize(T.pt); pdf.setTextColor(0);
+  mpkLtFont(pdf, true); pdf.text(c.ref, 133.8, 56.2);
+  mpkLtUnder(pdf, c.L.annex, 20.4, 68.1);
+  mpkLtFont(pdf, false); pdf.text(c.L.annexSub, 20.4, 72.6);
+  let y = 78;
+  if (img) {
+    const w = T.right - 20.4, h = Math.min(w * img.aspect, 110);
+    pdf.addImage(img.url, 'JPEG', 20.4, y, w, h);
+    pdf.setDrawColor(0); pdf.setLineWidth(0.25); pdf.rect(20.4, y, w, h);
+    y += h + 8;
+  }
+  t.lines.forEach(([k, v]) => {
+    mpkLtFont(pdf, true); pdf.text(k, 20.4, y);
+    mpkLtFont(pdf, false);
+    const lines = pdf.splitTextToSize(String(v), T.right - 72);
+    pdf.text(':', 66, y); pdf.text(lines, 70, y);
+    y += Math.max(1, lines.length) * T.lead + 1.2;
+  });
+}
+// One notice: the letter, plus the appendix when there is a map snapshot
+function mpkNoticePage(pdf, p, o, img, a) {
+  const s = MPK.settings, area = MPK_NOTICE_AREA[o.lang][p.kawasan] || 'Kemaman';
+  const reason = mpkNoticeReason(o.lang, p, mpkJenis(p, s), s.rizab);
+  mpkNoticeLetterPage(pdf, mpkNoticeLetter(o.lang, p, area, reason, o.days, o.date), a);
+  if (img) { pdf.addPage(); mpkNoticeAnnex(pdf, mpkNoticeLetter(o.lang, p, area, reason, o.days, o.date), mpkNoticeContent(o.lang, p, area, reason, o.days, o.date), img, a); }
 }
 async function mpkNoticeOne(id) {
   const f = MPK.data.buildings.features.find(x => x.properties.id === id);
@@ -385,6 +574,7 @@ async function mpkNoticeOne(id) {
   try { map.getSource('mpk-highlight').setData(f); } catch (e) {}
   showLoading('Drafting notice…', p.plus_code);
   try {
+    const a = await mpkNoticeAssets();
     const prev = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
     map.jumpTo({ center: [p.lng, p.lat], zoom: 18.6, pitch: 0, bearing: 0 });
     await new Promise(r => { const t = setTimeout(r, 8000); map.once('idle', () => { clearTimeout(t); r(); }); });
@@ -392,20 +582,28 @@ async function mpkNoticeOne(id) {
     const c = map.getCanvas(), img = url ? { url, aspect: c.height / c.width } : null;
     map.jumpTo(prev);
     const { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    mpkNoticePage(pdf, p, o, img);
-    pdf.save(`notice_${o.lang}_${p.plus_code.replace('+', '')}.pdf`);
+    mpkNoticeFonts(pdf, a);
+    mpkNoticePage(pdf, p, o, img, a);
+    pdf.save(`notis_${o.lang}_${p.plus_code.replace('+', '')}.pdf`);
     addActivityLog('Notice drafted', p.plus_code);
   } catch (e) {
     showToast('⚠️ Could not draft the notice: ' + e.message);
   } finally { hideLoading(); }
 }
-function mpkNoticeBatch() {
+async function mpkNoticeBatch() {
   const list = MPK_FEAT.notice || [];
   if (!list.length || !window.jspdf) return;
-  const o = mpkNoticeOpts(), { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-  list.forEach((p, i) => { if (i) pdf.addPage(); mpkNoticePage(pdf, p, o, null); });
-  pdf.save(`notices_${o.lang}_${MPK.area}_${list.length}.pdf`);
-  addActivityLog('Notices drafted', list.length + ' buildings');
+  showLoading('Drafting notices…', list.length + ' buildings');
+  try {
+    const a = await mpkNoticeAssets();
+    const o = mpkNoticeOpts(), { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    mpkNoticeFonts(pdf, a);
+    list.forEach((p, i) => { if (i) pdf.addPage(); mpkNoticePage(pdf, p, o, null, a); });
+    pdf.save(`notis_${o.lang}_${MPK.area}_${list.length}.pdf`);
+    addActivityLog('Notices drafted', list.length + ' buildings');
+  } catch (e) {
+    showToast('⚠️ Could not draft the notices: ' + e.message);
+  } finally { hideLoading(); }
 }
 
 // ---------- Developer Portfolio ----------

@@ -41,10 +41,24 @@ for (const lang of ['en', 'ms']) {
   assert.ok(/DRAF/.test(c.T.draft));
 }
 
+// Notice as an MPK letter: dates as MPK writes them, the addressee, bold words marked, the days named
+assert.strictEqual(F.mpkNoticeDate('2026-10-05', 'ms'), '05 Okt, 2026');
+assert.strictEqual(F.mpkNoticeDate('2019-06-03', 'en'), '03 Jun, 2019');
+assert.strictEqual(F.mpkNoticeHijri('2019-06-03'), '29 Ramadhan, 1440');                // MPK's own letter of that day
+for (const lang of ['en', 'ms']) {
+  const L = F.mpkNoticeLetter(lang, { ...p, lot: '3351' }, 'Teluk Kalong', 'Finding.', 21, '2026-10-13');
+  assert.deepStrictEqual(L.to.slice(1), ['Lot 3351,', 'Teluk Kalong,', '24000 Kemaman', 'Terengganu.']);
+  assert.strictEqual(L.paras.length, 3);
+  assert.ok(L.paras[1].includes('**21 ') && L.paras[0].includes('**Plus Code 6PP56CGH+C3R**') && !L.paras[0].includes('..'));
+}
+assert.strictEqual(F.mpkNoticeLetter('ms', p, 'X', 'Y', 30, '2026-10-13').to[1], 'Plus Code 6PP56CGH+C3R,');   // no lot
+assert.deepStrictEqual(F.mpkRichSegs('a **b** c'), [{ t: 'a ', b: false }, { t: 'b', b: true }, { t: ' c', b: false }]);
+
 // Notice finding in the notice's language
 assert.ok(F.mpkNoticeReason('ms', { jarak_jalan_m: 4.2 }, 'rizab', 10).startsWith('Bangunan dalam rizab jalan: 4.2 m'));
 assert.ok(F.mpkNoticeReason('en', {}, 'tolak', 10).includes('rejected'));
 assert.ok(F.mpkNoticeReason('ms', {}, 'mockup', 10).startsWith('Tiada pelan'));
+assert.ok(F.mpkNoticeReason('ms', {}, 'manual', 10).startsWith('Ditanda'));
 
 // Portfolio: one applicant whatever the spelling; records counted once; shop records without a drawing
 assert.strictEqual(F.mpkApplicantKey('Rayhar Properties Sdn. Bhd.'), F.mpkApplicantKey('RAYHAR PROPERTIES'));
