@@ -1369,84 +1369,81 @@ function mpkOnStatsRate() {
   mpkRenderStatsRevenue();
 }
 
-// Statistics page, money first: what the illegal buildings cost the council every year (assessment tax not
-// collected) and what it would gain by regularising them (processing fees once, then the tax every year)
+// Keep the user's expanded sections when rates, areas or projections refresh.
+function mpkRememberStatsSections() {
+  const page = document.getElementById('mpk-stats-page');
+  if (!page) return;
+  MPK.statsSections = MPK.statsSections || {};
+  page.querySelectorAll('details[data-stats-section]').forEach(d => { MPK.statsSections[d.dataset.statsSection] = d.open; });
+}
+const mpkStatsSectionAttrs = key => `id="mpk-stats-${key}" data-stats-section="${key}"${MPK.statsSections && MPK.statsSections[key] ? ' open' : ''}`;
+function mpkSetStatsYears(years) {
+  if (![1, 3, 5, 10].includes(years)) return;
+  MPK.statsYears = years;
+  mpkRenderStatsRevenue();
+  const button = document.getElementById('mpk-stats-year-' + years);
+  if (button) button.focus({ preventScroll: true });
+}
+
+// Short financial overview; detailed figures stay available on demand.
 function mpkRenderStatsRevenue() {
   const el = document.getElementById('mpk-rev-body');
   if (!el || MPK.page !== 'stats') return;
-  const r = mpkRevenue(mpkAreaFeatures(), MPK.settings, MPK.rates), sp = r.suspected, yr = sp.tax;
-  const where = MPK.area === 'all' ? 'Teluk Kalong and Binjai – Chukai' : MPK_AREAS[MPK.area].short;
-  if (!sp.n) {
-    el.innerHTML = `<section class="mpk-loss-hero ok"><div><small>Money lost every year</small><b>RM 0</b>
-      <p>No illegal buildings in ${where}.</p></div></section>`;
-    return;
-  }
-  const years = [1, 3, 5, 10];
-  const maxLoss = yr * 10;
-  const bar = (v, max, cls) => `<i class="${cls}" style="width:${max ? Math.max(v / max * 100, 1.5) : 0}%"></i>`;
+  mpkRememberStatsSections();
+  const years = [1, 3, 5, 10].includes(MPK.statsYears) ? MPK.statsYears : 5;
+  const r = mpkRevenue(mpkAreaFeatures(), MPK.settings, MPK.rates, years), sp = r.suspected, yr = sp.tax;
+  const loss = yr * years, maxProjection = Math.max(loss, sp.multi, 1);
+  const bar = (v, max, cls) => `<i class="${cls}" style="width:${max ? Math.max(0, Math.min(v / max * 100, 100)) : 0}%"></i>`;
   const areas = Object.entries(r.byArea).filter(([, x]) => x.n), maxA = Math.max(...areas.map(([, x]) => x.tax), 1);
   const types = Object.entries(r.byType).filter(([, x]) => x.n), maxT = Math.max(...types.map(([, x]) => x.tax), 1);
   const top = mpkAreaFeatures().filter(f => mpkJenis(f.properties, MPK.settings))
     .sort((a, b) => b.properties.area_m2 - a.properties.area_m2).slice(0, 10);
   const maxTop = top.length ? top[0].properties.area_m2 * MPK.rates.cukai : 1;
   el.innerHTML = `
-    <section class="mpk-loss-hero">
-      <div class="mpk-loss-main">
-        <small>Money MPK loses every year</small>
-        <b>${mpkRM(yr)}</b>
-        <p>Assessment tax not collected from <strong>${mpkNum(sp.n)} illegal buildings</strong> (${mpkNum(sp.m2)} m²) in ${where}.</p>
+    <section class="mpk-impact" aria-labelledby="mpk-impact-title">
+      <div class="mpk-impact-heading"><h3 id="mpk-impact-title">Revenue impact <span class="mpk-estimate">Estimate</span></h3><span>${mpkNum(sp.n)} illegal buildings · ${mpkNum(sp.m2)} m²</span></div>
+      <div class="mpk-impact-metrics">
+        <div class="mpk-impact-metric loss"><span>Uncollected tax / year</span><strong>${mpkRM(yr)}</strong><small>${mpkRM(yr / 12)} / month</small></div>
+        <div class="mpk-impact-metric gain"><span>Potential first-year revenue</span><strong>${mpkRM(sp.year1)}</strong><small>Tax + one-off fees, if approved</small></div>
       </div>
-      <div class="mpk-loss-split">
-        <div><b>${mpkRM(yr / 12)}</b><span>a month</span></div>
-      </div>
+      ${sp.n ? `<div class="mpk-projection">
+        <div class="mpk-projection-head"><h4>Over ${years} year${years === 1 ? '' : 's'}</h4>
+          <div class="mpk-year-options" role="group" aria-label="Projection period">${[1, 3, 5, 10].map(y => `<button type="button" id="mpk-stats-year-${y}" aria-pressed="${years === y}" onclick="mpkSetStatsYears(${y})">${y} yr${y === 1 ? '' : 's'}</button>`).join('')}</div>
+        </div>
+        <div class="mpk-projection-chart" aria-live="polite">
+          <div class="mpk-projection-row loss"><div><span>Uncollected tax</span><b>${mpkRM(loss)}</b></div><div class="mpk-projection-track" aria-hidden="true">${bar(loss, maxProjection, 'loss')}</div></div>
+          <div class="mpk-projection-row gain"><div><span>Revenue if approved</span><b>${mpkRM(sp.multi)}</b></div><div class="mpk-projection-track" aria-hidden="true">${bar(sp.multi, maxProjection, 'gain')}</div></div>
+        </div>
+      </div>` : '<div class="mpk-stats-empty">No illegal buildings in this area.</div>'}
     </section>
 
-    <div class="mpk-lg">
-      <section class="mpk-stats-card mpk-lg-card loss">
-        <h3><span class="mpk-lg-ic" aria-hidden="true">▼</span> If nothing is done</h3>
-        <p class="mpk-lg-sub">The loss keeps adding up, year after year.</p>
-        ${years.map(y => `<div class="mpk-lg-row"><span>After ${y} year${y > 1 ? 's' : ''}</span>
-          <div class="mpk-lg-bar">${bar(yr * y, maxLoss, 'loss')}</div><b>${mpkRM(yr * y)}</b></div>`).join('')}
-      </section>
-      <section class="mpk-stats-card mpk-lg-card gain">
-        <h3><span class="mpk-lg-ic" aria-hidden="true">▲</span> If they are regularised</h3>
-        <p class="mpk-lg-sub">Approve the buildings and put them on the assessment roll.</p>
-        <div class="mpk-lg-steps">
-          <div><small>Collected once</small><b>${mpkRM(sp.fee)}</b><span>processing fees</span></div>
-          <div class="plus" aria-hidden="true">+</div>
-          <div><small>Then every year</small><b>${mpkRM(yr)}</b><span>assessment tax</span></div>
-        </div>
-        <div class="mpk-lg-total"><span>First year</span><b>${mpkRM(sp.year1)}</b></div>
-        <div class="mpk-lg-total soft"><span>Over ${r.years} years</span><b>${mpkRM(sp.multi)}</b></div>
-      </section>
-    </div>
-
-    <div class="mpk-stats-grid">
+    <details class="mpk-stats-disclosure" ${mpkStatsSectionAttrs('breakdown')}>
+      <summary>Revenue breakdown</summary>
+      <div class="mpk-disclosure-body"><div class="mpk-stats-grid">
       <section class="mpk-stats-card">
-        <h3>Where the money is lost</h3>
-        ${areas.map(([k, x]) => `<div class="mpk-lg-row wide"><span>${MPK_AREAS[k].short}<small>${mpkNum(x.n)} building${x.n === 1 ? '' : 's'}</small></span>
-          <div class="mpk-lg-bar">${bar(x.tax, maxA, 'loss')}</div><b>${mpkRM(x.tax)}<small>/ year</small></b></div>`).join('')}
+        <h3>By area <small>tax / year</small></h3>
+        ${areas.length ? areas.map(([k, x]) => `<div class="mpk-lg-row wide"><span>${MPK_AREAS[k].short}<small>${mpkNum(x.n)} building${x.n === 1 ? '' : 's'}</small></span>
+          <div class="mpk-lg-bar">${bar(x.tax, maxA, 'loss')}</div><b>${mpkRM(x.tax)}</b></div>`).join('') : '<p class="mpk-stats-empty">No flagged buildings.</p>'}
       </section>
       <section class="mpk-stats-card">
-        <h3>Why they are illegal</h3>
-        ${types.map(([k, x]) => `<div class="mpk-lg-row wide"><span>${MPK_JENIS[k].label}<small>${mpkNum(x.n)} building${x.n === 1 ? '' : 's'}</small></span>
-          <div class="mpk-lg-bar">${bar(x.tax, maxT, 'loss')}</div><b>${mpkRM(x.tax)}<small>/ year</small></b></div>`).join('')}
-      </section>
-    </div>
+        <h3>By reason <small>tax / year</small></h3>
+        ${types.length ? types.map(([k, x]) => `<div class="mpk-lg-row wide"><span>${MPK_JENIS[k].label}<small>${mpkNum(x.n)} building${x.n === 1 ? '' : 's'}</small></span>
+          <div class="mpk-lg-bar">${bar(x.tax, maxT, 'loss')}</div><b>${mpkRM(x.tax)}</b></div>`).join('') : '<p class="mpk-stats-empty">No flagged buildings.</p>'}
+      </section></div>
+      <div class="mpk-stats-fee"><span>One-off processing fees</span><b>${mpkRM(sp.fee)}</b></div>
+      ${r.unverified.n ? `<p class="mpk-lg-note">${mpkNum(r.unverified.n)} pending buildings are excluded. Potential additional tax if all lack approval: <b>${mpkRM(r.unverified.tax)} / year</b>.</p>` : ''}
+      </div>
+    </details>
 
-    <section class="mpk-stats-card">
-      <h3>The 10 buildings that cost the most</h3>
-      <p class="mpk-lg-sub">Start enforcement here: the biggest buildings lose the most tax.</p>
-      <div class="mpk-top">${top.map((f, i) => { const p = f.properties, loss = p.area_m2 * MPK.rates.cukai;
+    <details class="mpk-stats-disclosure" ${mpkStatsSectionAttrs('priority')}>
+      <summary>Priority buildings <span>Top ${top.length}</span></summary>
+      <div class="mpk-disclosure-body"><div class="mpk-top">${top.length ? top.map((f, i) => { const p = f.properties, loss = p.area_m2 * MPK.rates.cukai;
         return `<div class="mpk-top-row"><span class="mpk-top-n">${i + 1}</span>
-          <div class="mpk-top-t"><b>${p.plus_code}</b><small>${MPK_AREAS[p.kawasan].short} · ${mpkNum(p.area_m2)} m² · ${MPK_JENIS[mpkJenis(p, MPK.settings)].label}</small></div>
+          <div class="mpk-top-t"><b>${mpkEscHtml(p.plus_code)}</b><small>${MPK_AREAS[p.kawasan].short} · ${mpkNum(p.area_m2)} m²</small></div>
           <div class="mpk-lg-bar">${bar(loss, maxTop, 'loss')}</div>
           <b class="mpk-top-v">${mpkRM(loss)}<small>/ year</small></b>
-          <button class="mpk-link" onclick="mpkShowPage('dashboard');mpkZoomTo(${p.id})">View</button></div>`; }).join('')}</div>
-    </section>
-
-    <p class="mpk-lg-note">If the ${mpkNum(r.unverified.n)} pending buildings (${mpkNum(r.unverified.m2)} m², not yet checked) also turn out to lack approval,
-      the loss could reach a further <b>${mpkRM(r.unverified.tax)}</b> a year.</p>`;
+          <button type="button" class="mpk-link" aria-label="View ${mpkEscHtml(p.plus_code)} on map" onclick="mpkShowPage('dashboard');mpkZoomTo(${p.id})">View map</button></div>`; }).join('') : '<p class="mpk-stats-empty">No priority buildings.</p>'}</div></div>
+    </details>`;
 }
 
 // ---------- Map interaction ----------
@@ -1787,10 +1784,11 @@ const mpkStatCount = (v, total) => `<b>${mpkNum(v.n)}</b> of ${mpkNum(total)} bu
 
 function mpkRenderStats() {
   const el = document.getElementById('mpk-stats-page');
+  mpkRememberStatsSections();
   const area = MPK.area, s = MPK.settings;
   const all = mpkBreakdown(MPK.data.buildings.features, s), b = all[area === 'all' ? 'all' : area];
   const chips = [['all', 'All areas'], ...Object.entries(MPK_AREAS).map(([k, a]) => [k, a.short])]
-    .map(([k, label]) => `<button class="mpk-chip${k === area ? ' active' : ''}" onclick="mpkSelectArea('${k}')">${label}</button>`).join('');
+    .map(([k, label]) => `<button type="button" class="mpk-chip${k === area ? ' active' : ''}" aria-pressed="${k === area}" onclick="mpkSelectArea('${k}')">${label}</button>`).join('');
   const st = MPK_STATUS;
   // donut: status shares as conic-gradient segments with a 2px surface gap between them
   let at = 0;
@@ -1831,39 +1829,39 @@ function mpkRenderStats() {
   el.innerHTML = `
     <div class="mpk-stats-inner">
       <header class="mpk-stats-head">
-        <div><h2>Statistics</h2>
-          <p>What illegal buildings cost the council, and what it gains by regularising them. Teluk Kalong inside the planning boundary and the Binjai – Bandar Chukai corridor.</p></div>
+        <div><h2>Statistics</h2></div>
         <div class="mpk-stats-actions">
-          <button class="mpk-btn" onclick="mpkExportReport()">Export PDF report</button>
+          <button class="mpk-btn" onclick="mpkExportReport()">Export PDF</button>
           <button class="mpk-wb-btn" onclick="mpkExportAllCSV()">Export CSV</button>
         </div>
       </header>
-      <div class="mpk-chips">${chips}</div>
+      <div class="mpk-chips" role="group" aria-label="Statistics area">${chips}</div>
 
       <div class="mpk-simple-cards">
-        <div class="mpk-stat"><div class="v">${mpkNum(b.total)}</div><div class="l">Buildings checked</div></div>
-        <div class="mpk-stat legal"><div class="v">${mpkNum(b.byStatus.legal.n)}</div><div class="l">Approved <small>${mpkStatPct(b.byStatus.legal, b.total)}</small></div></div>
-        <div class="mpk-stat danger"><div class="v">${mpkNum(b.byStatus.suspected.n)}</div><div class="l">Illegal <small>${mpkStatPct(b.byStatus.suspected, b.total)}</small></div></div>
-        <div class="mpk-stat"><div class="v">${mpkNum(b.byStatus.unverified.n)}</div><div class="l">Pending check <small>${mpkStatPct(b.byStatus.unverified, b.total)}</small></div></div>
+        <div class="mpk-stat"><div class="l">Total buildings</div><div class="v">${mpkNum(b.total)}</div><div class="mpk-stat-track" aria-hidden="true">${Object.entries(st).map(([k, v]) => `<i style="width:${b.byStatus[k].pct}%;background:${v.color}"></i>`).join('')}</div></div>
+        ${[['legal', 'Approved', 'legal'], ['suspected', 'Illegal', 'danger'], ['unverified', 'Pending', 'pending']].map(([k, label, cls]) => `<div class="mpk-stat ${cls}"><div class="l">${label}</div><div class="mpk-stat-number"><div class="v">${mpkNum(b.byStatus[k].n)}</div><span>${mpkStatPct(b.byStatus[k], b.total)}</span></div><div class="mpk-stat-track" aria-hidden="true"><i style="width:${b.byStatus[k].pct}%;background:${st[k].color}"></i></div></div>`).join('')}
       </div>
 
       <div id="mpk-rev-body"></div>
 
-      <details class="mpk-stats-card mpk-how">
-        <summary>How we work it out <span class="mpk-tag">estimate</span></summary>
-        <p>Money lost a year = floor area of the illegal buildings × assessment tax rate. Gain = the same tax every year, plus a one-off
-          processing fee when each building is approved. Set the rates to MPK's schedule: every number on this page follows them.</p>
+      <details class="mpk-stats-disclosure mpk-how" ${mpkStatsSectionAttrs('rates')}>
+        <summary>Rates &amp; calculation</summary>
+        <div class="mpk-disclosure-body">
         <div class="mpk-rev-rates">
           <label>Processing fee<small>RM / m², one-off</small><input type="number" id="mpk-srate-fee" min="0" step="0.1" value="${MPK.rates.fee}" oninput="mpkOnStatsRate()"></label>
           <label>Assessment tax<small>RM / m² / year</small><input type="number" id="mpk-srate-cukai" min="0" step="0.1" value="${MPK.rates.cukai}" oninput="mpkOnStatsRate()"></label>
         </div>
+        <p>Uncollected tax / year = flagged footprint area × tax rate. Potential revenue = tax × selected years + one-off fees.</p>
+        <p>Estimates assume all flagged buildings can be approved. Pending buildings are excluded; rates stay constant.</p>
+        </div>
       </details>
 
-      <details class="mpk-more-details">
-        <summary>More details: status, building size, areas and the largest buildings</summary>
+      <details class="mpk-stats-disclosure" ${mpkStatsSectionAttrs('buildings')}>
+        <summary>Building details</summary>
+      <div class="mpk-disclosure-body">
       <div class="mpk-stats-grid">
         <section class="mpk-stats-card">
-          <h3>Legal vs illegal</h3>
+          <h3>Building status</h3>
           <div class="mpk-donut-wrap">
             <div class="mpk-donut" role="img" aria-label="Share of buildings by status"
               style="background:conic-gradient(${segs || '#eee 0 100%'})"><span>${mpkNum(b.total)}<small>buildings</small></span></div>
@@ -1890,6 +1888,7 @@ function mpkRenderStats() {
         <table class="mpk-table"><thead><tr><th class="num">#</th><th>Plus Code</th><th>Area</th><th>Status</th><th>Lot</th>
           <th class="num">m²</th><th></th></tr></thead><tbody>${largest}</tbody></table>
       </section>
+      </div>
       </details>
     </div>`;
   mpkRenderStatsRevenue();
