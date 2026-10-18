@@ -410,7 +410,7 @@ const MPK_LAYER_GROUPS = {
 const MPK = {
   // Bump with the ?v= on mpk.js / mpk.css in index.html whenever MPK code or data changes,
   // so browsers never mix a cached old file with a new one (GitHub Pages caches 10 min).
-  VERSION: '20261015v',
+  VERSION: '20261015w',
   FILES: {
     buildings: 'mpk/mpk_buildings.geojson',
     boundary: 'mpk/tk_sempadan.geojson',
@@ -1491,12 +1491,12 @@ function mpkShowPopup(p, lngLat) {
     <div class="popup-body">
       ${tools && mpkEditing(p.id) ? mpkEditFormHTML(p) : mpkPopupFull(p, { area: MPK_AREAS[p.kawasan].short, money: true, jenis })}
       ${tools ? mpkEditHistoryHTML(p) : ''}
-      ${typeof mpkDaftarPopupHTML === 'function' ? mpkDaftarPopupHTML(p) : ''}
-    </div>`;
+    </div>
+    ${tools && mpkEditing(p.id) ? '' : mpkPopupActions(p, jenis)}`;
   if (MPK.popup) MPK.popup.remove();
   // focusAfterOpen off: otherwise the Enter that picked a search result also "presses" the
   // popup's freshly focused close button and shuts it straight away
-  MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+  MPK.popup = new maplibregl.Popup({ maxWidth: '330px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
 // Where a footprint comes from: drawn by hand on Esri imagery, or detected by Google's model
@@ -1574,7 +1574,7 @@ function mpkShowOtherPopup(p, lngLat) {
       ${tools ? mpkEditHistoryHTML(p) : ''}
     </div>`;
   if (MPK.popup) MPK.popup.remove();
-  MPK.popup = new maplibregl.Popup({ maxWidth: '290px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
+  MPK.popup = new maplibregl.Popup({ maxWidth: '330px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
 // Every building's popup lists the same details, grouped; a detail the records do not have says so
@@ -1582,7 +1582,6 @@ function mpkShowOtherPopup(p, lngLat) {
 function mpkPopupFull(p, o) {
   const na = t => `<span class="popup-na">${t || 'No record'}</span>`;
   const row = (k, v) => `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>`;
-  const sec = t => `<div class="popup-sec">${t}</div>`;
   const esc = mpkEscHtml;
   const zone = o.zone !== undefined ? o.zone : (MPK.data.landuse ? mpkZoneLabel(mpkZoneAt(p.lng, p.lat, MPK.data.landuse.features)) : null);
   const rejected = /TOLAK/i.test(p.pelan_status || '');
@@ -1590,32 +1589,50 @@ function mpkPopupFull(p, o) {
   const regShown = p.rekod_id && !p.pelan_fail;
   const st = p.kawasan ? mpkStatus(p, MPK.settings) : null;
   const money = v => o.jenis ? mpkRM(v) : na(st === 'legal' ? 'Not applicable · approved' : st ? 'Only for illegal buildings' : 'Not applicable · no status');
-  return [
-    sec('Location'),
-    row('Area', esc(o.area)),
-    row('Land use (OSM)', zone && zone !== 'not mapped' ? zone : na('Not mapped')),
-    row('Lot no.', p.lot ? esc(p.lot) : na('No cadastral lot')),
-    row('UPI', p.upi ? esc(p.upi) : na()),
-    row('Distance from road centreline', p.kawasan === 'bbc' ? (p.jarak_jalan_m == null ? na('No road data') : p.jarak_jalan_m + ' m') : na('Not in the corridor')),
-    sec('Building'),
-    row('Footprint area', mpkNum(p.area_m2) + ' m²'),
-    row('Height · floors', p.tinggi_m ? `${p.tinggi_m} m · ${p.tingkat_est} floor${p.tingkat_est > 1 ? 's' : ''}` : na()),
-    row('Footprint source', mpkSourceLabel(p)),
-    sec('Building plan'),
-    row(rejected ? 'Rejected plan' : 'Plan on record', hasPlan ? esc(p.pelan_fail || '—') + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '') : na('No plan on record')),
-    row(rejected ? 'Decided on' : 'Approved on', p.pelan_tarikh ? mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + esc(p.pelan_status) : '') : na()),
-    row('Plan building type', p.pelan_jenis ? esc(p.pelan_jenis) : na()),
-    row('Register', p.pelan_sumber ? esc(MPK_PLAN_REGISTER[p.pelan_sumber] || 'Teluk Kalong') : na()),
-    sec('Register records'),
-    row('Records on this building', p.rekod_n ? mpkNum(p.rekod_n) + (p.rekod_sah ? ` · ${mpkNum(p.rekod_sah)} with a status` : ' · none with a status') : na('None')),
-    row('Record', regShown ? `#${esc(p.rekod_id)} · ` + ([p.rekod_fail, p.rekod_pemohon].filter(Boolean).map(esc).join(' · ') || '—') : na(p.rekod_id ? 'Shown under Building plan' : 'None')),
-    row('Building (register)', regShown && p.rekod_jenis ? esc(p.rekod_jenis) : na()),
-    row('Status (register)', regShown && p.rekod_status ? esc(p.rekod_status) + (p.rekod_tarikh ? ' · ' + mpkPlanDateLabel(p.rekod_tarikh) : '') : na()),
-    row('Note', p.catatan ? esc(p.catatan) : na('None')),
-    ...(o.money ? [sec('Estimated revenue'),
-      row('Est. processing fee', money(p.area_m2 * MPK.rates.fee)),
-      row('Est. assessment tax', o.jenis ? mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr' : money(0))] : []),
-  ].join('');
+  const floors = p.tinggi_m ? `${p.tinggi_m} m · ${p.tingkat_est} floor${p.tingkat_est > 1 ? 's' : ''}` : '';
+  // [key, title, what the folded section still says, rows]
+  const groups = [
+    ['loc', 'Location', [o.area, p.lot ? 'Lot ' + p.lot : ''].filter(Boolean).join(' · '), [
+      row('Area', esc(o.area)),
+      row('Land use (OSM)', zone && zone !== 'not mapped' ? zone : na('Not mapped')),
+      row('Lot no.', p.lot ? esc(p.lot) : na('No cadastral lot')),
+      row('UPI', p.upi ? esc(p.upi) : na()),
+      row('From road centreline', p.kawasan === 'bbc' ? (p.jarak_jalan_m == null ? na('No road data') : p.jarak_jalan_m + ' m') : na('Not in the corridor'))]],
+    ['bld', 'Building', [mpkNum(p.area_m2) + ' m²', floors].filter(Boolean).join(' · '), [
+      row('Footprint area', mpkNum(p.area_m2) + ' m²'),
+      row('Height · floors', floors || na()),
+      row('Footprint source', mpkSourceLabel(p)),
+      row('Note', p.catatan ? esc(p.catatan) : na('None'))]],
+    ['plan', 'Building plan', hasPlan ? `${rejected ? 'Rejected' : 'Approved'} · ${p.pelan_fail || '—'}` : 'No plan on record', [
+      row(rejected ? 'Rejected plan' : 'Plan on record', hasPlan ? esc(p.pelan_fail || '—') + (p.pelan_n > 1 ? ` (+${p.pelan_n - 1} more)` : '') : na('No plan on record')),
+      row(rejected ? 'Decided on' : 'Approved on', p.pelan_tarikh ? mpkPlanDateLabel(p.pelan_tarikh) + (p.pelan_status ? ' · ' + esc(p.pelan_status) : '') : na()),
+      row('Plan building type', p.pelan_jenis ? esc(p.pelan_jenis) : na()),
+      row('Register', p.pelan_sumber ? esc(MPK_PLAN_REGISTER[p.pelan_sumber] || 'Teluk Kalong') : na())]],
+    ['rec', 'Register records', p.rekod_n ? `${mpkNum(p.rekod_n)} record${p.rekod_n > 1 ? 's' : ''}` : 'None', [
+      row('Records here', p.rekod_n ? mpkNum(p.rekod_n) + (p.rekod_sah ? ` · ${mpkNum(p.rekod_sah)} with a status` : ' · none with a status') : na('None')),
+      row('Record', regShown ? `#${esc(p.rekod_id)} · ` + ([p.rekod_fail, p.rekod_pemohon].filter(Boolean).map(esc).join(' · ') || '—') : na(p.rekod_id ? 'Shown under Building plan' : 'None')),
+      row('Building (register)', regShown && p.rekod_jenis ? esc(p.rekod_jenis) : na()),
+      row('Status (register)', regShown && p.rekod_status ? esc(p.rekod_status) + (p.rekod_tarikh ? ' · ' + mpkPlanDateLabel(p.rekod_tarikh) : '') : na())]],
+    ...(o.money ? [['rev', 'Estimated revenue', o.jenis ? `${mpkRM(p.area_m2 * MPK.rates.cukai)}/yr` : 'Not applicable', [
+      row('Processing fee', money(p.area_m2 * MPK.rates.fee)),
+      row('Assessment tax', o.jenis ? mpkRM(p.area_m2 * MPK.rates.cukai) + '/yr' : money(0))]]] : []),
+  ];
+  // sections fold; which are open is remembered from one building to the next
+  const open = MPK.popOpen || (MPK.popOpen = { loc: true, bld: true, plan: false, rec: false, rev: true });
+  return groups.map(([k, title, hint, rows]) => `<details class="popup-grp"${open[k] ? ' open' : ''} ontoggle="MPK.popOpen.${k} = this.open">
+      <summary><span class="popup-grp-t">${title}</span><span class="popup-grp-h">${esc(hint)}</span></summary>
+      ${rows.join('')}</details>`).join('');
+}
+
+// The fixed bar under a building's popup: draft a notice (illegal buildings) and register the building plan
+function mpkPopupActions(p, jenis) {
+  const id = JSON.stringify(p.id);
+  const notice = jenis && typeof mpkNoticeFromPopup === 'function'
+    ? `<button type="button" class="popup-act notice" onclick='mpkNoticeFromPopup(${id})'>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+        Draft notice</button>` : '';
+  const daftar = typeof mpkDaftarPopupHTML === 'function' ? mpkDaftarPopupHTML(p) : '';
+  return notice || daftar ? `<div class="popup-actions">${notice}${daftar}</div>` : '';
 }
 
 // Popup rows for the building plan on record (approved or rejected), if any

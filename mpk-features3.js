@@ -407,8 +407,12 @@ function mpkNoticeRun() {
 }
 function mpkNoticePick(i) { const p = (MPK_FEAT.notice || [])[i]; if (p) mpkNoticeOne(p.id); }
 function mpkNoticeOpts() {
-  const lang = document.getElementById('mpk-nt-lang').value;
-  const days = Math.max(7, Math.min(90, +document.getElementById('mpk-nt-days').value || 30));
+  // from the Notice Drafter panel when it is open; otherwise the last language used and 30 days
+  const langEl = document.getElementById('mpk-nt-lang'), daysEl = document.getElementById('mpk-nt-days');
+  let lang = langEl ? langEl.value : null;
+  if (!lang) { try { lang = localStorage.getItem('mpk_report_lang'); } catch (e) {} }
+  lang = lang === 'en' ? 'en' : 'ms';
+  const days = Math.max(7, Math.min(90, +(daysEl && daysEl.value) || 30));
   try { localStorage.setItem('mpk_report_lang', lang); } catch (e) {}
   return { lang, days, date: mpkYMD(new Date()) };
 }
@@ -617,6 +621,11 @@ async function mpkNoticeOne(id) {
   } finally { hideLoading(); }
 }
 
+// From a building's popup: straight to its notice (zoom, preview, PDF or Word)
+function mpkNoticeFromPopup(id) {
+  if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
+  mpkNoticeOne(id);
+}
 // The notice's map: the imagery alone with only this building marked; every other layer is hidden for the
 // picture and put back after it
 async function mpkNoticeSnapshot(f) {

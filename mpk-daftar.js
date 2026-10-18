@@ -178,7 +178,7 @@ function mpkDaftarPopupHTML(p) {
   }
   if (mpkStatus(p, MPK.settings) === 'legal') return '';
   return `<div class="mpk-dpb-pop"><button type="button" class="mpk-btn mpk-dpb-pop-btn"
-    onclick='mpkDaftarOpen(${JSON.stringify(String(p.id))})'>Register building plan</button></div>`;
+    onclick='mpkDaftarOpen(${JSON.stringify(String(p.id))})'>Register plan</button></div>`;
 }
 
 // ---------- The form ----------

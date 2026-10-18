@@ -1453,3 +1453,24 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
 .mpk-np-view iframe { width:100%; height:100%; border:0; display:block; }
 .mpk-np-note { font-size:11.5px; color:#B4501A; font-weight:600; }
 @media (max-width: 640px) { .mpk-np-note { display:none; } .mpk-np-shell .mpk-dpb-foot { flex-wrap:wrap; } }
+
+/* building popup: folding sections, and a fixed action bar */
+.popup-grp { border-top:1px solid rgba(30,44,68,0.08); }
+.popup-body .popup-grp:first-child { border-top:none; }
+.popup-grp > summary { list-style:none; display:flex; align-items:center; gap:8px; padding:8px 0; cursor:pointer; user-select:none; }
+.popup-grp > summary::-webkit-details-marker { display:none; }
+.popup-grp > summary::before { content:''; flex:none; width:6px; height:6px; border-right:2px solid #E8772E; border-bottom:2px solid #E8772E; transform:rotate(-45deg); transition:transform .15s; margin:0 2px 0 1px; }
+.popup-grp[open] > summary::before { transform:rotate(45deg); }
+.popup-grp-t { font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; color:#E8772E; flex:none; }
+.popup-grp-h { margin-left:auto; font-size:11px; color:#5B6573; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.popup-grp[open] .popup-grp-h { visibility:hidden; }
+.popup-grp > summary:focus-visible { outline:2px solid rgba(232,119,46,0.4); outline-offset:2px; border-radius:4px; }
+.popup-grp[open] { padding-bottom:6px; }
+.popup-actions { display:flex; gap:8px; padding:10px 12px 12px; border-top:1px solid rgba(30,44,68,0.1); background:#fff; border-radius:0 0 12px 12px; }
+.popup-actions .mpk-dpb-pop { flex:1; min-width:0; margin:0; padding:0; border:none; }
+.popup-actions .mpk-dpb-pop-btn, .popup-actions .mpk-dpb-pop .mpk-btn { height:34px; }
+.popup-act { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; padding:0 10px; border-radius:8px;
+  font-weight:700; font-size:12.5px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+.popup-act.notice { background:#fff; color:#B2102F; border:1.5px solid #B2102F; }
+.popup-act.notice:hover, .popup-act.notice:focus-visible { background:#B2102F; color:#fff; outline:none; }
+.popup-actions .mpk-dpb-pop-btn { white-space:nowrap; }
