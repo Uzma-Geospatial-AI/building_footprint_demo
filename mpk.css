@@ -1446,3 +1446,10 @@ body:not(.strata-mode) #tab-strata, body:not(.strata-mode) .strata-ws { display:
   color:#1E2C44; font:600 12px/1 inherit; font-family:inherit; cursor:pointer; }
 .mpk-port-back:hover, .mpk-port-back:focus-visible { border-color:#E8772E; color:#E8772E; outline:none; }
 .mpk-port-n { font-style:normal; font-weight:700; color:#8A6D00; background:#FFF6B3; border-radius:4px; padding:0 4px; margin-left:4px; }
+
+/* notice preview: the letter as it prints, then PDF or Word */
+.mpk-np-shell { width:min(900px, 100%); height:min(96vh, 1180px); }
+.mpk-np-view { flex:1; min-height:0; background:#525659; }
+.mpk-np-view iframe { width:100%; height:100%; border:0; display:block; }
+.mpk-np-note { font-size:11.5px; color:#B4501A; font-weight:600; }
+@media (max-width: 640px) { .mpk-np-note { display:none; } .mpk-np-shell .mpk-dpb-foot { flex-wrap:wrap; } }

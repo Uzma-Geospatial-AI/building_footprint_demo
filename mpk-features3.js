@@ -590,28 +590,202 @@ function mpkNoticePage(pdf, p, o, img, a) {
   mpkNoticeLetterPage(pdf, mpkNoticeLetter(o.lang, p, area, reason, o.days, o.date), a);
   if (img) { pdf.addPage(); mpkNoticeAnnex(pdf, mpkNoticeLetter(o.lang, p, area, reason, o.days, o.date), mpkNoticeContent(o.lang, p, area, reason, o.days, o.date), img, a); }
 }
+// One notice: the map flies to the building first, then a preview of the letter opens with PDF and Word downloads
 async function mpkNoticeOne(id) {
   const f = MPK.data.buildings.features.find(x => x.properties.id === id);
   if (!f || !window.jspdf) { if (!window.jspdf) showToast('⚠️ PDF library not loaded'); return; }
   const p = f.properties, o = mpkNoticeOpts();
   try { map.getSource('mpk-highlight').setData(f); } catch (e) {}
-  showLoading('Drafting notice…', p.plus_code);
   try {
-    const a = await mpkNoticeAssets();
-    const prev = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
-    map.jumpTo({ center: [p.lng, p.lat], zoom: 18.6, pitch: 0, bearing: 0 });
-    await new Promise(r => { const t = setTimeout(r, 8000); map.once('idle', () => { clearTimeout(t); r(); }); });
+    const assets = mpkNoticeAssets();                         // fetched while the map flies
+    await new Promise(r => {
+      const t = setTimeout(r, 4000);
+      map.once('moveend', () => { clearTimeout(t); r(); });
+      map.flyTo({ center: [p.lng, p.lat], zoom: 18.6, pitch: 0, bearing: 0, duration: 1400, essential: true });
+    });
+    showLoading('Preparing the notice…', p.plus_code);
+    await new Promise(r => { const t = setTimeout(r, 8000); if (map.loaded() && map.areTilesLoaded()) { clearTimeout(t); r(); } else map.once('idle', () => { clearTimeout(t); r(); }); });
     const url = typeof snapshotMapCanvas === 'function' ? await snapshotMapCanvas() : null;
     const c = map.getCanvas(), img = url ? { url, aspect: c.height / c.width } : null;
-    map.jumpTo(prev);
+    const a = await assets;
     const { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     mpkNoticeFonts(pdf, a);
     mpkNoticePage(pdf, p, o, img, a);
-    pdf.save(`notis_${o.lang}_${p.plus_code.replace('+', '')}.pdf`);
+    mpkNoticePreview({ p, o, img, a, blob: pdf.output('blob') });
     addActivityLog('Notice drafted', p.plus_code);
   } catch (e) {
     showToast('⚠️ Could not draft the notice: ' + e.message);
   } finally { hideLoading(); }
+}
+
+// ---------- Preview: the PDF as it prints, then download as PDF or Word ----------
+function mpkNoticePreview(n) {
+  MPK_FEAT.noticePrev = n;
+  let el = document.getElementById('mpk-notice-prev');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'mpk-notice-prev';
+    el.className = 'mpk-dpb-overlay';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'mpk-np-title');
+    el.addEventListener('keydown', e => { if (e.key === 'Escape') mpkNoticePreviewClose(); });
+    document.body.appendChild(el);
+  }
+  if (n.url) URL.revokeObjectURL(n.url);
+  n.url = URL.createObjectURL(n.blob);
+  const p = n.p, area = (MPK_AREAS[p.kawasan] || {}).short || '';
+  el.innerHTML = `<div class="mpk-dpb-shell mpk-np-shell">
+    <div class="mpk-dpb-bar"><div class="mpk-dpb-bar-t"><div id="mpk-np-title">Notice preview · ${mpkEsc(p.plus_code)}</div>
+      <small>${[area, p.lot ? 'Lot ' + p.lot : '', mpkFmtM2(p.area_m2), n.o.lang === 'ms' ? 'Bahasa Melayu' : 'English', n.o.days + ' days to comply'].filter(Boolean).map(mpkEsc).join(' · ')}</small></div>
+      <button type="button" class="mpk-dpb-x" onclick="mpkNoticePreviewClose()" aria-label="Close">×</button></div>
+    <div class="mpk-np-view"><iframe src="${n.url}#toolbar=0&navpanes=0&view=FitH" title="Notice preview"></iframe></div>
+    <div class="mpk-dpb-foot">
+      <span class="mpk-np-note">Sample notice (CONTOH): check on site before it is issued.</span>
+      <span class="mpk-dpb-spacer"></span>
+      <button type="button" class="mpk-dpb-b ghost" onclick="mpkNoticePreviewClose()">Close</button>
+      <button type="button" class="mpk-dpb-b ghost" onclick="mpkNoticeWord()">Download Word (.docx)</button>
+      <button type="button" class="mpk-dpb-b primary" onclick="mpkNoticeSavePdf()">Download PDF</button>
+    </div></div>`;
+  el.hidden = false;
+  el.querySelector('.primary').focus();
+}
+function mpkNoticePreviewClose() {
+  const el = document.getElementById('mpk-notice-prev'), n = MPK_FEAT.noticePrev;
+  if (el) { el.hidden = true; el.innerHTML = ''; }
+  if (n && n.url) { URL.revokeObjectURL(n.url); n.url = null; }
+}
+const mpkNoticeName = (n, ext) => `notis_${n.o.lang}_${n.p.plus_code.replace('+', '')}.${ext}`;
+function mpkSaveBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+function mpkNoticeSavePdf() {
+  const n = MPK_FEAT.noticePrev;
+  if (n) { mpkSaveBlob(n.blob, mpkNoticeName(n, 'pdf')); showToast('📄 ' + mpkNoticeName(n, 'pdf')); }
+}
+
+// ---------- Word: the same letter as an editable .docx (Century Gothic 9.5 pt, the letter's spacing) ----------
+let mpkDocxLibP = null;
+function mpkDocxLib() {
+  if (window.docx) return Promise.resolve(window.docx);
+  if (!mpkDocxLibP) mpkDocxLibP = new Promise((ok, no) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js';
+    s.onload = () => window.docx ? ok(window.docx) : no(new Error('Word library did not load'));
+    s.onerror = () => { mpkDocxLibP = null; no(new Error('Word library did not load')); };
+    document.head.appendChild(s);
+  });
+  return mpkDocxLibP;
+}
+const mpkB64Bytes = s => { const b = atob(s.split(',').pop()), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+// The big diagonal CONTOH (and BUKAN SURAT RASMI) as a see-through PNG, 180 mm square, for Word
+async function mpkNoticeStampPng(L, a) {
+  try { const ff = new FontFace('MpkUrwDemi', mpkB64Bytes(a.demi)); await ff.load(); document.fonts.add(ff); } catch (e) {}
+  const S = 1700, k = S / 180, cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const g = cv.getContext('2d');
+  g.translate(S / 2, S / 2); g.rotate(-35 * Math.PI / 180);
+  g.fillStyle = 'rgba(213, 0, 0, 0.2)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `${Math.round(120 * 0.3528 * k)}px MpkUrwDemi, 'Century Gothic', sans-serif`; g.fillText(L.stamp[0], 0, -7 * k);
+  g.font = `${Math.round(26 * 0.3528 * k)}px MpkUrwDemi, 'Century Gothic', sans-serif`; g.fillText(L.stamp[1], 0, 20 * k);
+  return mpkB64Bytes(cv.toDataURL('image/png'));
+}
+function mpkLinePng() {
+  const cv = document.createElement('canvas'); cv.width = 400; cv.height = 2;
+  const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 400, 2);
+  return mpkB64Bytes(cv.toDataURL('image/png'));
+}
+async function mpkNoticeWord() {
+  const n = MPK_FEAT.noticePrev;
+  if (!n) return;
+  showLoading('Preparing the Word file…', n.p.plus_code);
+  try {
+    const D = await mpkDocxLib();
+    const blob = await D.Packer.toBlob(await mpkNoticeDocx(D, n));
+    mpkSaveBlob(blob, mpkNoticeName(n, 'docx'));
+    showToast('📝 ' + mpkNoticeName(n, 'docx'));
+  } catch (e) {
+    showToast('⚠️ Could not make the Word file: ' + e.message, 5000);
+  } finally { hideLoading(); }
+}
+async function mpkNoticeDocx(D, n) {
+  const { p, o, img, a } = n, s = MPK.settings;
+  const area = MPK_NOTICE_AREA[o.lang][p.kawasan] || 'Kemaman';
+  const reason = mpkNoticeReason(o.lang, p, mpkJenis(p, s), s.rizab);
+  const c = mpkNoticeLetter(o.lang, p, area, reason, o.days, o.date), t = mpkNoticeContent(o.lang, p, area, reason, o.days, o.date), L = c.L;
+  const FONT = 'Century Gothic', SIZE = 19, M = 19.9;          // 9.5 pt; left margin as the letter
+  const tw = mm => Math.round(mm * 56.693), emu = mm => Math.round(mm * 36000), px = mm => mm * 3.7795;
+  const run = (text, x = {}) => new D.TextRun({ text, font: FONT, size: x.size || SIZE, bold: !!x.b, color: x.color,
+    underline: x.u ? { type: D.UnderlineType.SINGLE } : undefined });
+  const para = (children, x = {}) => new D.Paragraph({ children, alignment: x.align, tabStops: x.tabs,
+    indent: x.indent, spacing: { line: 238, lineRule: D.LineRuleType.EXACT, before: tw(x.before || 0), after: 0 }, pageBreakBefore: x.pageBreak });
+  const rich = (text, first) => [...(first ? [run(first), new D.TextRun({ text: '\t', font: FONT, size: SIZE })] : []),
+    ...mpkRichSegs(text).map(sg => run(sg.t, { b: sg.b }))];
+  const float = (data, x, y, w, h, behind) => new D.ImageRun({ data, transformation: { width: px(w), height: px(h) },
+    floating: { horizontalPosition: { relative: D.HorizontalPositionRelativeFrom.PAGE, offset: emu(x) },
+      verticalPosition: { relative: D.VerticalPositionRelativeFrom.PAGE, offset: emu(y) },
+      behindDocument: !!behind, allowOverlap: true, wrap: { type: D.TextWrappingType.NONE } } });
+  // the width of "Tarikh : " in mm, to line the Hijri date up under the date
+  const cv = document.createElement('canvas').getContext('2d');
+  cv.font = `${9.5 * 96 / 72}px 'Century Gothic', MpkUrwDemi, sans-serif`;
+  const labW = cv.measureText(`${L.dateLabel} : `).width * 25.4 / 96;
+  const right = { indent: { left: tw(133.8 - M), right: tw(-22) } };          // may run into the right margin, as on the letter
+  const hd = new D.Header({ children: [new D.Paragraph({ children: [
+    float(mpkB64Bytes(a.mark), 36, 136, 131.6, 80, true),
+    float(mpkB64Bytes(a.head), 13.6, 6.8, 175.4, 39.5),
+    float(mpkLinePng(), 0, 47.4, 202.6, 0.37),
+    float(mpkB64Bytes(a.foot), 164.3, 262.5, 29.6, 16.7),
+    float(await mpkNoticeStampPng(L, a), 15, 62, 180, 180),
+  ] })] });
+  const ft = new D.Footer({ children: [new D.Paragraph({ children: [run(L.draft, { size: 12, color: '962828' })] })] });
+  const sk = { tabs: [11.2, 22.7, 108.7, 111.6].map(x => ({ type: D.TabStopType.LEFT, position: tw(x) })), indent: { left: tw(-1.1) } };
+  const body = [
+    para([run(c.ref, { b: true })], right),
+    para([run(`${L.dateLabel} : ${c.date}`)], right),
+    ...(c.hijri ? [para([run(c.hijri)], { indent: { left: tw(133.8 - M + labW), right: tw(-22) } })] : []),
+    para([run(L.hand, { b: true, u: true })], { indent: { left: tw(0.5) }, before: 0 }),
+    ...c.to.map((x, i) => para([run(x, { b: i === 0, u: i === c.to.length - 1 })], { indent: { left: tw(0.5) }, before: i ? 0 : 2.7 })),
+    para([run(L.dear)], { indent: { left: tw(0.5) }, before: 4.2 }),
+    ...L.title.map((x, i) => para([run(x, { b: true, u: true })], { indent: { left: tw(0.2) }, before: i ? 0.2 : 4.7 })),
+    ...c.paras.map((x, i) => para(rich(x, i ? `${i + 1}.` : null), { align: D.AlignmentType.JUSTIFIED, before: i ? 2.9 : 2.4,
+      tabs: [{ type: D.TabStopType.LEFT, position: tw(11.9) }] })),
+    para([run(L.thanks)], { before: 4.9 }),
+    para([run(L.motto[0], { b: true })], { before: 6.9 }), para([run(L.motto[1], { b: true })]),
+    para([run(L.trust)], { before: 4.2 }),
+    para([run(L.sign[0], { b: true })], { before: 15 }), para([run(L.sign[1])]), para([run(L.sign[2])]),
+    ...L.cc.flatMap(([dept, act], i) => [
+      para([run(i ? '' : 's.k.'), run('\t' + (i + 1) + '.\t' + dept)], { ...sk, before: i ? 2.0 : 4.0 }),
+      para([run('\t\t' + L.ccOf + '\t-\t' + act)], sk)]),
+    para([run(`\t${L.cc.length + 1}.\t${L.file}`)], { ...sk, before: 2.0 }),
+    para([run(L.code, { size: 12 })], { before: 4.8, indent: { left: tw(-1.4) } }),
+  ];
+  // Appendix A: the map snapshot and the details, on the same letterhead
+  const annex = [
+    para([run(c.ref, { b: true })], { ...right, pageBreak: true }),
+    para([run(L.annex, { b: true, u: true })], { indent: { left: tw(0.5) }, before: 7.7 }),
+    para([run(L.annexSub)], { indent: { left: tw(0.5) } }),
+    ...(img ? [new D.Paragraph({ spacing: { before: tw(3), after: tw(3) }, indent: { left: tw(0.5) }, children: [
+      new D.ImageRun({ data: mpkB64Bytes(img.url), transformation: { width: px(158.8), height: px(Math.min(158.8 * img.aspect, 110)) } })] })] : []),
+    ...t.lines.map(([k, v]) => new D.Paragraph({ children: [run(k, { b: true }), run('\t:\t' + v)],
+      tabStops: [{ type: D.TabStopType.LEFT, position: tw(46.1) }, { type: D.TabStopType.LEFT, position: tw(50.1) }],
+      indent: { left: tw(50.1), hanging: tw(49.6) }, spacing: { line: 238, lineRule: D.LineRuleType.EXACT, after: tw(1.2) } })),
+  ];
+  return new D.Document({
+    creator: 'BuildVision', title: `${L.title[0]} · ${p.plus_code}`,
+    styles: { default: { document: { run: { font: FONT, size: SIZE } } } },
+    sections: [{
+      properties: { page: { size: { width: tw(210), height: tw(297) },
+        margin: { top: tw(52.8), left: tw(M), right: tw(210 - 179.2), bottom: tw(13), header: tw(5), footer: tw(4) } } },
+      headers: { default: hd }, footers: { default: ft },
+      children: [...body, ...annex],
+    }],
+  });
 }
 async function mpkNoticeBatch() {
   const list = MPK_FEAT.notice || [];
