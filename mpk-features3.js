@@ -604,8 +604,7 @@ async function mpkNoticeOne(id) {
       map.flyTo({ center: [p.lng, p.lat], zoom: 18.6, pitch: 0, bearing: 0, duration: 1400, essential: true });
     });
     showLoading('Preparing the notice…', p.plus_code);
-    await new Promise(r => { const t = setTimeout(r, 8000); if (map.loaded() && map.areTilesLoaded()) { clearTimeout(t); r(); } else map.once('idle', () => { clearTimeout(t); r(); }); });
-    const url = typeof snapshotMapCanvas === 'function' ? await snapshotMapCanvas() : null;
+    const url = await mpkNoticeSnapshot(f);
     const c = map.getCanvas(), img = url ? { url, aspect: c.height / c.width } : null;
     const a = await assets;
     const { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -616,6 +615,30 @@ async function mpkNoticeOne(id) {
   } catch (e) {
     showToast('⚠️ Could not draft the notice: ' + e.message);
   } finally { hideLoading(); }
+}
+
+// The notice's map: the imagery alone with only this building marked; every other layer is hidden for the
+// picture and put back after it
+async function mpkNoticeSnapshot(f) {
+  const hidden = [];
+  for (const l of map.getStyle().layers) {
+    if (l.type === 'raster' || l.type === 'background') continue;
+    if (map.getLayoutProperty(l.id, 'visibility') === 'none') continue;
+    map.setLayoutProperty(l.id, 'visibility', 'none');
+    hidden.push(l.id);
+  }
+  map.addSource('mpk-snap', { type: 'geojson', data: f });
+  map.addLayer({ id: 'mpk-snap-fill', type: 'fill', source: 'mpk-snap', paint: { 'fill-color': '#FF1744', 'fill-opacity': 0.22 } });
+  map.addLayer({ id: 'mpk-snap-case', type: 'line', source: 'mpk-snap', paint: { 'line-color': '#111', 'line-width': 6, 'line-opacity': 0.8 } });
+  map.addLayer({ id: 'mpk-snap-line', type: 'line', source: 'mpk-snap', paint: { 'line-color': '#FFEA00', 'line-width': 3 } });
+  try {
+    await new Promise(r => { const t = setTimeout(r, 8000); map.once('idle', () => { clearTimeout(t); r(); }); map.triggerRepaint(); });
+    return typeof snapshotMapCanvas === 'function' ? await snapshotMapCanvas() : null;
+  } finally {
+    ['mpk-snap-line', 'mpk-snap-case', 'mpk-snap-fill'].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
+    if (map.getSource('mpk-snap')) map.removeSource('mpk-snap');
+    hidden.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible'); });
+  }
 }
 
 // ---------- Preview: the PDF as it prints, then download as PDF or Word ----------
