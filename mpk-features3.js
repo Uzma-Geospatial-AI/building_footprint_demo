@@ -637,9 +637,10 @@ async function mpkNoticeSnapshot(f) {
     hidden.push(l.id);
   }
   map.addSource('mpk-snap', { type: 'geojson', data: f });
-  map.addLayer({ id: 'mpk-snap-fill', type: 'fill', source: 'mpk-snap', paint: { 'fill-color': '#FF1744', 'fill-opacity': 0.22 } });
-  map.addLayer({ id: 'mpk-snap-case', type: 'line', source: 'mpk-snap', paint: { 'line-color': '#111', 'line-width': 6, 'line-opacity': 0.8 } });
-  map.addLayer({ id: 'mpk-snap-line', type: 'line', source: 'mpk-snap', paint: { 'line-color': '#FFEA00', 'line-width': 3 } });
+  // strong red with a white halo, so the building stands out on any imagery
+  map.addLayer({ id: 'mpk-snap-fill', type: 'fill', source: 'mpk-snap', paint: { 'fill-color': '#FF1744', 'fill-opacity': 0.5 } });
+  map.addLayer({ id: 'mpk-snap-case', type: 'line', source: 'mpk-snap', paint: { 'line-color': '#FFFFFF', 'line-width': 8 } });
+  map.addLayer({ id: 'mpk-snap-line', type: 'line', source: 'mpk-snap', paint: { 'line-color': '#D50000', 'line-width': 4 } });
   try {
     await new Promise(r => { const t = setTimeout(r, 8000); map.once('idle', () => { clearTimeout(t); r(); }); map.triggerRepaint(); });
     return typeof snapshotMapCanvas === 'function' ? await snapshotMapCanvas() : null;
