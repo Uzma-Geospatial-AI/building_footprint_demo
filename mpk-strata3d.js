@@ -19,12 +19,12 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261024d';
+const S3D_VERSION = '20261024f';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
-  { id: 'mpk-all', name: 'Semua kawasan kajian', sub: 'Teluk Kalong + Binjai – Chukai' },
-  { id: 'tk', name: 'Teluk Kalong', sub: 'Kawasan Perindustrian Teluk Kalong' },
-  { id: 'bbc', name: 'Binjai – Bandar Chukai', sub: 'Koridor jalan Binjai – Chukai' },
+  { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },
+  { id: 'tk', name: 'Teluk Kalong', sub: 'Teluk Kalong Industrial Area' },
+  { id: 'bbc', name: 'Binjai – Bandar Chukai', sub: 'Binjai – Chukai road corridor' },
 ];
 const S3D_COLOR_BY = [['type', 'Parcel type'], ['su', 'Share units'], ['owner', 'Owner'], ['vote', 'AGM vote'], ['bill', 'Tax bill']];
 const S3D = { cat: null, fc: null, byId: new Map(), loading: null, area: 'mpk-all', group: 'mpk', gltf: new Map(), pending: new Map(),
@@ -50,6 +50,8 @@ function s3dLoad() {
   S3D.loading = Promise.all([fetch(s3dAssetUrl('catalog.json')).then(r => r.json()), fetch(s3dAssetUrl('buildings.geojson')).then(r => r.json())])
     .then(([cat, fc]) => {
       S3D.cat = cat;
+      // the regional overviews are named in Malay inside the GLBs ("Seluruh …")
+      for (const a of cat.areas) a.name = a.name.replace(/^Seluruh\s+/i, 'All of ');
       for (const f of fc.features) {
         const p = f.properties;
         p.plus_code = typeof mpkPlusCode === 'function' ? mpkPlusCode(p.lat, p.lng) : p.lat.toFixed(5) + ',' + p.lng.toFixed(5);
@@ -106,6 +108,7 @@ function strata3dSync() {
   s3dXrayHide();
 }
 function strata3dRemove() {
+  strata3dClearSearch();
   ++S3D.mapRequest;
   S3D.onMap = null;
   S3D.mapEntries = [];
@@ -287,6 +290,146 @@ function strata3dFilter(q) {
   const t = q.trim().toLowerCase();
   document.querySelectorAll('#tab-strata .s3d-area[data-name]').forEach(b => { b.hidden = !!t && !b.dataset.name.includes(t); });
 }
+
+// ---------- Search: areas, buildings, schemes, owners, interior plans, places and addresses ----------
+// Local first (both regions, instant), then OpenStreetMap: the places index (strata3d/places.json, stations,
+// malls, schools, roads…; tools/build_strata3d_places.mjs) and a live Nominatim lookup for other addresses.
+const S3D_REGION_BOX = { dp: [101.575, 3.125, 101.655, 3.205], mpk: [103.38, 4.205, 103.485, 4.315] };  // w, s, e, n
+const s3dNorm = s => String(s == null ? '' : s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  .replace(/[’'`]/g, '').replace(/[^a-z0-9+/]+/g, ' ').trim();
+const SR = { q: '', res: [], places: null, placesP: null, timer: 0, seq: 0, cache: new Map(), marker: null, online: false };
+function s3dPlaces() {
+  if (SR.places) return Promise.resolve(SR.places);
+  return SR.placesP || (SR.placesP = fetch(s3dAssetUrl('places.json')).then(r => (r.ok ? r.json() : [])).catch(() => [])
+    .then(p => (SR.places = p.map(x => ({ ...x, t: s3dNorm(x.n + ' ' + x.k + ' ' + (x.a || '')) })))));
+}
+// all words must appear; a name that starts with the query ranks first
+function s3dScore(t, label, terms, weight) {
+  if (!terms.every(w => t.includes(w))) return 0;
+  const l = s3dNorm(label), q = terms.join(' ');
+  return weight + (l === q ? 8 : l.startsWith(q) ? 5 : (' ' + l).includes(' ' + terms[0]) ? 3 : 1) - Math.min(1, l.length / 200);
+}
+function s3dLocalSearch(q) {
+  const terms = s3dNorm(q).split(' ').filter(Boolean), out = [];
+  if (!terms.length) return out;
+  const add = (kind, label, sub, text, weight, go) => { const s = s3dScore(s3dNorm(text), label, terms, weight); if (s) out.push({ kind, label, sub, s, go }); };
+  for (const k of S3D_KEMAMAN) add('Area', k.name, 'MPK Kemaman · ' + k.sub, k.name + ' ' + k.sub + ' kemaman mpk chukai', 6, { area: k.id });
+  if (S3D.cat) {
+    for (const a of S3D.cat.areas) add('Area', a.name, s3dRegion(a) + ' · ' + fmt(a.buildings) + (a.buildings === 1 ? ' building' : ' buildings'), a.name + ' ' + s3dRegion(a) + ' ' + a.id, 6, { area: a.id });
+    for (const p of S3D.cat.plans) add('Interior plan', p.label, p.development, p.label + ' ' + p.development + ' floor plan interior unit', 4, { plan: p.id });
+  }
+  if (S3D.fc) for (const f of S3D.fc.features) {
+    const p = f.properties, a = dpArea(p.dp_area);
+    add('Building', s3dShort(p.nama), [a && a.name, p.tingkat_est + (p.tingkat_est === 1 ? ' floor' : ' floors')].filter(Boolean).join(' · '),
+      [p.nama, p.plus_code, a && a.name, s3dRegion(a), p.kind].join(' '), 3, { dp: p.id });
+  }
+  if (MPK.data) for (const f of [...MPK.data.buildings.features, ...((MPK.data.others || {}).features || [])]) {
+    const p = f.properties;
+    add('Building', p.plus_code || 'Building ' + p.id, ['Kemaman', (MPK_AREAS[p.kawasan] || {}).short, p.lot ? 'Lot ' + p.lot : '', p.tingkat_est ? p.tingkat_est + (p.tingkat_est === 1 ? ' floor' : ' floors') : ''].filter(Boolean).join(' · '),
+      [p.plus_code, p.lot && 'lot ' + p.lot, p.upi, p.id, (MPK_AREAS[p.kawasan] || {}).name].filter(Boolean).join(' '), 2, { mpk: p.id, c: [p.lng, p.lat] });
+  }
+  for (const sc of Object.values((STRATA.s && STRATA.s.schemes) || {})) {
+    add('Strata scheme', sc.no + ' · ' + sc.nama, [sc.bld.plus_code, sc.bld.lot && 'Lot ' + sc.bld.lot, strataAreaName(sc.bld.kawasan)].filter(Boolean).join(' · '),
+      [sc.no, sc.nama, sc.pemaju, sc.hakmilik_induk, sc.alamat, sc.bld.plus_code, sc.bld.lot].join(' '), 7, { scheme: sc.bid });
+    for (const x of sc.parcels) if (x.pemilik) add('Owner', x.pemilik, 'Parcel ' + x.petak + ' · ' + sc.no, x.pemilik + ' ' + x.petak, 5, { scheme: sc.bid, step: 2 });
+  }
+  for (const p of SR.places || []) add(p.k, p.n, (p.r === 'mpk' ? 'Kemaman' : 'Damansara') + ' · OpenStreetMap', p.t, /station|terminal/.test(p.k) ? 8 : 2, { c: p.c, label: p.n });
+  return out.sort((x, y) => y.s - x.s).slice(0, 14);
+}
+// Nominatim (OpenStreetMap) for addresses not in the index: one request per pause in typing, cached
+function s3dAddressSearch(q, seq) {
+  const key = s3dNorm(q);
+  if (SR.cache.has(key)) return Promise.resolve(SR.cache.get(key));
+  const look = box => fetch('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ format: 'jsonv2', q, limit: '6', countrycodes: 'my',
+    bounded: '1', viewbox: box.join(','), 'accept-language': 'en' })).then(r => (r.ok ? r.json() : []));
+  const first = S3D.group === 'mpk' ? 'mpk' : 'dp', second = first === 'mpk' ? 'dp' : 'mpk';
+  return look(S3D_REGION_BOX[first]).then(r => (r.length || seq !== SR.seq ? r : look(S3D_REGION_BOX[second]))).catch(() => [])
+    .then(r => {
+      const res = r.map(x => ({ kind: 'Address', label: x.name || x.display_name.split(',')[0], sub: x.display_name.split(',').slice(1, 4).join(',').trim(),
+        s: 0, go: { c: [+x.lon, +x.lat], label: x.name || x.display_name.split(',')[0] } }));
+      SR.cache.set(key, res);
+      return res;
+    });
+}
+function strata3dSearch(q) {
+  SR.q = q;
+  strata3dFilter(q);
+  const seq = ++SR.seq;
+  clearTimeout(SR.timer);
+  const show = extra => {
+    if (seq !== SR.seq) return;
+    const local = s3dLocalSearch(q), seen = new Set(local.map(r => s3dNorm(r.label)));
+    // an address repeated by several OSM ways (or already found locally) shows once
+    SR.res = [...local, ...(extra || []).filter(r => { const k = s3dNorm(r.label); if (seen.has(k)) return false; seen.add(k); return true; })];
+    s3dResultsUi();
+  };
+  if (!q.trim()) { SR.res = []; SR.online = false; s3dResultsUi(); return; }
+  show();
+  Promise.all([s3dPlaces(), S3D.cat ? null : s3dLoad().catch(() => {})]).then(() => show());
+  if (q.trim().length >= 3) {
+    SR.online = true;
+    SR.timer = setTimeout(() => s3dAddressSearch(q.trim(), seq).then(extra => { SR.online = false; show(extra); }), 650);
+  } else SR.online = false;
+}
+function s3dResultsHtml() {
+  if (!SR.q.trim()) return '';
+  if (!SR.res.length) return `<div class="s3d-res-empty">${SR.online ? 'Searching addresses…' : 'Nothing found. Try a building, road, station, lot or Plus Code.'}</div>`;
+  return SR.res.map((r, i) => `<button type="button" class="s3d-res" role="option" onclick="strata3dPick(${i})">
+      <b>${esc(r.label)}</b><small><span class="s3d-res-k">${esc(r.kind)}</span>${r.sub ? ' · ' + esc(r.sub) : ''}</small></button>`).join('')
+    + (SR.online ? '<div class="s3d-res-empty">Searching addresses…</div>' : '');
+}
+function s3dResultsUi() {
+  const el = document.getElementById('s3d-results');
+  if (el) { el.innerHTML = s3dResultsHtml(); el.hidden = !SR.q.trim(); }
+}
+function strata3dSearchKey(e) {
+  if (e.key === 'Enter' && SR.res.length) { e.preventDefault(); strata3dPick(0); }
+  if (e.key === 'Escape') { e.target.value = ''; strata3dSearch(''); }
+}
+// The area that holds a point: the smallest Damansara area whose bounds contain it, else the region overview
+function s3dAreaAt(c) {
+  if (!S3D.cat) return null;
+  const inside = a => a.bounds && c[0] >= a.bounds[0][0] && c[0] <= a.bounds[1][0] && c[1] >= a.bounds[0][1] && c[1] <= a.bounds[1][1];
+  const size = a => (a.bounds[1][0] - a.bounds[0][0]) * (a.bounds[1][1] - a.bounds[0][1]);
+  return S3D.cat.areas.filter(a => !a.overview && inside(a)).sort((x, y) => size(x) - size(y))[0] || S3D.cat.areas.find(a => a.overview && inside(a)) || null;
+}
+function s3dGoTo(c, label) {
+  const inKemaman = c[0] > 103;
+  const a = inKemaman ? null : s3dAreaAt(c);
+  if (inKemaman && S3D.group !== 'mpk') strata3dSelectArea('mpk-all', { fly: false });
+  else if (a && S3D.area !== a.id) strata3dSelectArea(a.id, { fly: false });
+  map.flyTo({ center: c, zoom: 17.6, pitch: 55, duration: 1300 });
+  if (SR.marker) SR.marker.remove();
+  SR.marker = new maplibregl.Marker({ color: '#5E35B1' }).setLngLat(c).setPopup(new maplibregl.Popup({ offset: 24 }).setText(label)).addTo(map);
+  SR.marker.togglePopup();
+}
+function strata3dPick(i) {
+  const r = SR.res[i];
+  if (!r) return;
+  const g = r.go;
+  if (SR.marker && !g.c) { SR.marker.remove(); SR.marker = null; }
+  if (g.area) strata3dSelectArea(g.area);
+  else if (g.plan) strata3dOpen({ planId: g.plan, mode: 'plan' });
+  else if (g.scheme) { strataGo(g.scheme); if (g.step) strataStep(g.step); }
+  else if (g.dp) {
+    const f = S3D.byId.get(g.dp);
+    if (f && S3D.area !== f.properties.dp_area) strata3dSelectArea(f.properties.dp_area, { fly: false });
+    strata3dFocus(g.dp);
+  } else if (g.mpk) {
+    if (S3D.group !== 'mpk') strata3dSelectArea('mpk-all', { fly: false });
+    map.flyTo({ center: g.c, zoom: 18.2, pitch: 50, duration: 1200 });
+    map.once('moveend', () => strataPopup(g.mpk, g.c));
+  } else if (g.c) s3dGoTo(g.c, g.label);
+  if (!g.area) { SR.q = ''; SR.res = []; }
+  strataRenderPanel();
+}
+function strata3dClearSearch() { if (SR.marker) { SR.marker.remove(); SR.marker = null; } SR.q = ''; SR.res = []; }
+function s3dSearchHtml() {
+  return `<div class="s3d-searchbox"><input type="search" class="s3d-search" id="s3d-search" value="${esc(SR.q)}" autocomplete="off"
+      placeholder="Search a place, address, station, building, lot, owner…" aria-label="Search places, addresses, buildings, schemes and owners"
+      aria-controls="s3d-results" oninput="strata3dSearch(this.value)" onkeydown="strata3dSearchKey(event)">
+    <div class="s3d-results" id="s3d-results" role="listbox"${SR.q.trim() ? '' : ' hidden'}>${s3dResultsHtml()}</div></div>`;
+}
 function strata3dPanelHtml() {
   const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {};
   const seg = `<div class="strata-seg" role="radiogroup" aria-label="Region">${[['mpk', 'MPK Kemaman'], ['dp', 'Damansara Perdana + Mutiara 3D']].map(([k, l]) =>
@@ -301,13 +444,14 @@ function strata3dPanelHtml() {
     list = '<div class="mpk-reg-empty">Loading the Damansara Perdana and Mutiara Damansara areas…</div>';
   } else {
     const areas = S3D.cat.areas;
-    list = `<input type="search" class="s3d-search" placeholder="Search an area or building…" aria-label="Search Damansara Perdana and Mutiara Damansara areas" oninput="strata3dFilter(this.value)">
-      <div class="s3d-areas">${areas.map(a => {
+    const filt = SR.q.trim().toLowerCase();
+    list = `<div class="s3d-areas">${areas.map(a => {
         const names = S3D.fc.features.filter(f => s3dIncludesArea(a, f.properties.dp_area)).map(f => f.properties.nama).join(' ');
         const n = Object.values(schemes).filter(x => x.bld && String(x.bld.kawasan).startsWith('dp:') && s3dIncludesArea(a, String(x.bld.kawasan).slice(3))).length;
-        return `<button type="button" class="s3d-area${S3D.area === a.id ? ' on' : ''}" data-name="${esc((a.name + ' ' + names).toLowerCase())}" onclick="strata3dSelectArea('${esc(a.id)}')">
+        const key = (a.name + ' ' + names).toLowerCase();
+        return `<button type="button" class="s3d-area${S3D.area === a.id ? ' on' : ''}" data-name="${esc(key)}"${filt && !key.includes(filt) ? ' hidden' : ''} onclick="strata3dSelectArea('${esc(a.id)}')">
           <b>${esc(a.name)}${a.uzma ? ' <span class="s3d-tag">UZMA</span>' : ''}</b>
-          <small>${fmt(a.buildings)} buildings · ${a.mb} MB model${n ? ` · ${n} scheme${n > 1 ? 's' : ''}` : ''}</small></button>`; }).join('')}</div>`;
+          <small>${fmt(a.buildings)} building${a.buildings === 1 ? '' : 's'} · ${a.mb} MB model${n ? ` · ${n} scheme${n > 1 ? 's' : ''}` : ''}</small></button>`; }).join('')}</div>`;
     const a = dpArea(S3D.area);
     if (a) {
       const inArea = S3D.fc.features.filter(f => s3dIncludesArea(a, f.properties.dp_area));
@@ -323,7 +467,7 @@ function strata3dPanelHtml() {
         <div class="mpk-note">${esc(S3D.cat.note)}<br>${esc(S3D.cat.attribution)}</div></div>`;
     }
   }
-  return `<div class="mpk-card s3d-card"><div class="mpk-card-title">Choose an area <span class="s3d-new">3D</span></div>${seg}${list}${detail}</div>`;
+  return `<div class="mpk-card s3d-card"><div class="mpk-card-title">Choose an area <span class="s3d-new">3D</span></div>${s3dSearchHtml()}${seg}${list}${detail}</div>`;
 }
 const s3dShort = n => String(n).replace(/\s+\d{6,}$/, '').replace(/^(.{26}).+$/, '$1…');
 function strata3dFocus(bid) {
@@ -934,6 +1078,7 @@ const S3DUI = {
 };
 
 Object.assign(window, { strata3dBuilding, strata3dAreaName, strata3dSync, strata3dRemove, strata3dSelectArea, strata3dSetGroup, strata3dFilter,
-  strata3dPanelHtml, strata3dFocus, strata3dOnEnter, strata3dForScheme, strata3dOpen, strata3dClose, S3DUI });
+  strata3dPanelHtml, strata3dFocus, strata3dOnEnter, strata3dForScheme, strata3dOpen, strata3dClose, S3DUI,
+  strata3dSearch, strata3dSearchKey, strata3dPick });
 // Strata may already be on (restored mode) before this module ran
 if (typeof STRATA !== 'undefined' && STRATA.active) strata3dOnEnter();

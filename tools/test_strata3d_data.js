@@ -67,3 +67,11 @@ for (const p of cat.plans) {
 assert.strictEqual(cat.plans.find(p => p.id === 'uzma').levels.length, 19, 'UZMA 19 levels');
 for (const f of fc.features) if (f.properties.plan) assert.ok(planIds.has(f.properties.plan), f.properties.id + ' plan');
 console.log(`strata3d data OK: ${cat.areas.length} areas, ${fc.features.length} buildings, ${cat.plans.length} plans`);
+
+// the search index of named places (tools/build_strata3d_places.mjs)
+const places = JSON.parse(fs.readFileSync(path.join(DIR, 'places.json'), 'utf8'));
+assert.ok(places.length > 1000, 'places index');
+for (const p of places) assert.ok(p.n && p.k && ['dp', 'mpk'].includes(p.r) && isFinite(p.c[0]) && isFinite(p.c[1]), 'place ' + p.n);
+for (const n of ['Surian', 'Mutiara Damansara', 'Bandar Utama']) assert.ok(places.some(p => p.n === n && /^MRT station/.test(p.k)), n + ' MRT station');
+assert.ok(!places.some(p => /^(Rail|MRT|LRT) station/.test(p.k) && /\bbus\b|\bbas\b/i.test(p.n)), 'bus hubs are not rail stations');
+console.log(`places OK: ${places.length}`);

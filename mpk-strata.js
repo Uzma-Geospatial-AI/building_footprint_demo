@@ -29,25 +29,28 @@
 // ---------- Act 757 First Schedule (pure, exported for tools/test_mpk_strata.js) ----------
 // Table 1, WF1 by type of parcel: [no air-con, lift] [no air-con, no lift] [air-con, lift] [air-con, no lift]
 const STRATA_WF1 = {
-  pangsapuri: ['Pangsapuri / SOHO', [1.00, 0.85, 1.30, 1.15]],
-  pejabat: ['Pejabat / institusi (kolej)', [1.00, 0.85, 1.30, 1.15]],
-  runcit: ['Kompleks runcit', [2.00, 1.70, 3.20, 2.90]],
-  hotel: ['Hotel / pusat perubatan', [2.20, 1.90, 2.80, 2.45]],
-  industri: ['Kompleks industri', [1.00, 0.85, 1.45, 1.30]],
-  parkir: ['Tempat letak kereta (petak satu tingkat penuh)', [0.75, 0.65, 0.85, 0.75]],
-  kedai_atas: ['Rumah kedai: petak tingkat atas', [1.00, 0.85, 1.30, 1.15]],
-  kedai_bawah: ['Rumah kedai: petak tingkat bawah', [0.85, 0.85, 1.15, 1.15]],
+  pangsapuri: ['Apartment / SOHO', [1.00, 0.85, 1.30, 1.15]],
+  pejabat: ['Office / institution (college)', [1.00, 0.85, 1.30, 1.15]],
+  runcit: ['Retail complex', [2.00, 1.70, 3.20, 2.90]],
+  hotel: ['Hotel / medical centre', [2.20, 1.90, 2.80, 2.45]],
+  industri: ['Industrial complex', [1.00, 0.85, 1.45, 1.30]],
+  parkir: ['Car park (whole-floor parcel)', [0.75, 0.65, 0.85, 0.75]],
+  kedai_atas: ['Shophouse: upper-floor parcel', [1.00, 0.85, 1.30, 1.15]],
+  kedai_bawah: ['Shophouse: ground-floor parcel', [0.85, 0.85, 1.15, 1.15]],
 };
 // Table 2, WF2 for a whole floor parcel; Table 3, WF3 for an accessory parcel
-const STRATA_WF2 = { tidak: ['Bukan petak satu tingkat penuh', 1], tanpa: ['Satu tingkat penuh, tanpa teras lif / eskalator', 0.85],
-  dengan: ['Satu tingkat penuh, termasuk teras lif / eskalator', 0.80] };
-const STRATA_WF3 = { luar: ['Di luar bangunan', 0.25], dalam: ['Di dalam bangunan', 0.5] };
+const STRATA_WF2 = { tidak: ['Not a whole-floor parcel', 1], tanpa: ['Whole floor, without lift / escalator core', 0.85],
+  dengan: ['Whole floor, including lift / escalator core', 0.80] };
+const STRATA_WF3 = { luar: ['Outside the building', 0.25], dalam: ['Within the building', 0.5] };
 // The scheme type picks the parcels' type when they are created
-const STRATA_SCHEME_TYPES = { kedai: 'Rumah kedai / pejabat kedai', pangsapuri: 'Pangsapuri / SOHO', pejabat: 'Kompleks pejabat',
-  runcit: 'Kompleks runcit', hotel: 'Hotel / pusat perubatan', industri: 'Kompleks industri' };
+const STRATA_SCHEME_TYPES = { kedai: 'Shophouse / shop office', pangsapuri: 'Apartment / SOHO', pejabat: 'Office complex',
+  runcit: 'Retail complex', hotel: 'Hotel / medical centre', industri: 'Industrial complex' };
 // Parcel type → use for assessment tax
 const STRATA_TAX_USE = { pangsapuri: 'Kediaman', pejabat: 'Komersial', runcit: 'Komersial', hotel: 'Komersial', industri: 'Industri',
   parkir: 'Lain-lain', kedai_atas: 'Komersial', kedai_bawah: 'Komersial' };
+// English labels for the stored tax-use keys above
+const STRATA_USE_LABEL = { Kediaman: 'Residential', Komersial: 'Commercial', Industri: 'Industrial', 'Lain-lain': 'Other' };
+const strataUseLabel = u => STRATA_USE_LABEL[u] || u;
 const STRATA_TYPE_COLOR = { pangsapuri: '#42A5F5', pejabat: '#26A69A', runcit: '#FFA726', hotel: '#EC407A', industri: '#8D6E63',
   parkir: '#78909C', kedai_atas: '#FFB74D', kedai_bawah: '#F57C00' };
 const STRATA_DEFAULTS = {
@@ -57,21 +60,21 @@ const STRATA_DEFAULTS = {
 const STRATA_NET = 0.85;              // share of a floor sold as parcels when they are created; the rest is common property
 const STRATA_FLOOR_M = 3.5;           // metres a floor, to turn a building height into floors
 const STRATA_STAGES = [
-  { k: 'draf', label: 'Preparation', ms: 'Penyediaan: syarat, petak dan unit syer', color: '#FFB300' },
-  { k: 'sifus', label: 'SiFUS & schedule filed', ms: 'Sijil Formula Unit Syer (PTG) diluluskan; Jadual Petak difailkan dengan Pesuruhjaya Bangunan', color: '#00ACC1' },
-  { k: 'cpsp', label: 'CPSP approved', ms: 'Pelan Strata Cadangan diperakui JUPEM (CPSP)', color: '#1E88E5' },
-  { k: 'pecah', label: 'Applied to subdivide', ms: 'Permohonan pecah bahagi dikemukakan ke PTG', color: '#7E57C2' },
-  { k: 'hakmilik', label: 'Strata titles issued', ms: 'Hakmilik strata didaftarkan; buku daftar strata dibuka', color: '#2E7D32' },
+  { k: 'draf', label: 'Preparation', ms: 'Preparation: conditions, parcels and share units', color: '#FFB300' },
+  { k: 'sifus', label: 'SiFUS & schedule filed', ms: 'Share Unit Formula Certificate (SiFUS) approved by PTG; schedule of parcels filed with the Commissioner of Buildings', color: '#00ACC1' },
+  { k: 'cpsp', label: 'CPSP approved', ms: 'Certified Proposed Strata Plan (CPSP) approved by JUPEM', color: '#1E88E5' },
+  { k: 'pecah', label: 'Applied to subdivide', ms: 'Application to subdivide submitted to PTG', color: '#7E57C2' },
+  { k: 'hakmilik', label: 'Strata titles issued', ms: 'Strata titles registered; strata register opened', color: '#2E7D32' },
 ];
 const STRATA_SYARAT = [
-  ['tetap', 'Hakmilik tetap (bukan hakmilik sementara)'], ['gadaian', 'Tiada gadaian atau lien di atas tanah'],
-  ['kategori', 'Selaras dengan kategori kegunaan tanah dan syarat nyata'], ['pajakan', 'Tanah pegangan kekal, atau baki pajakan sekurang-kurangnya 21 tahun'],
-  ['sempadan', 'Bangunan di dalam sempadan lot'], ['ccc', 'Perakuan Siap dan Pematuhan (CCC) / Perakuan Kelayakan Menduduki (CFO)'],
+  ['tetap', 'Final title (not a qualified title)'], ['gadaian', 'No charge or lien on the land'],
+  ['kategori', 'Consistent with the land-use category and express conditions'], ['pajakan', 'Freehold land, or at least 21 years of lease left'],
+  ['sempadan', 'Building within the lot boundary'], ['ccc', 'Certificate of Completion and Compliance (CCC) / Certificate of Fitness for Occupation (CFO)'],
 ];
-const STRATA_PECAH = { bangunan: 'Pecah bahagi bangunan', bangunan_tanah: 'Pecah bahagi bangunan dan tanah', tanah: 'Pecah bahagi tanah (petak tanah)' };
+const STRATA_PECAH = { bangunan: 'Subdivision of building', bangunan_tanah: 'Subdivision of building and land', tanah: 'Subdivision of land (land parcels)' };
 const STRATA_DOCS = [
-  ['cpsp', 'Pelan Strata Cadangan diperakui (CPSP)'], ['sifus', 'Sijil Formula Unit Syer (SiFUS)'], ['jadual', 'Jadual Petak difailkan dengan COB'],
-  ['ccc', 'CCC / CFO'], ['carian', 'Salinan hakmilik induk dan carian rasmi'], ['pelan', 'Pelan bangunan diluluskan'], ['fi', 'Fi permohonan dibayar'],
+  ['cpsp', 'Certified Proposed Strata Plan (CPSP)'], ['sifus', 'Share Unit Formula Certificate (SiFUS)'], ['jadual', 'Schedule of parcels filed with the COB'],
+  ['ccc', 'CCC / CFO'], ['carian', 'Copy of the master title and official search'], ['pelan', 'Approved building plan'], ['fi', 'Application fee paid'],
 ];
 const STRATA_LOD = [
   { v: 100, name: 'Conceptual', text: 'Footprint only: a 2D outline.', color: '#B0BEC5' },
@@ -80,7 +83,12 @@ const STRATA_LOD = [
   { v: 400, name: 'Fabrication', text: 'Structure and services modelled, ready for construction.', color: '#3949AB' },
   { v: 500, name: 'As-built', text: 'Verified on site against the building as built.', color: '#1A237E' },
 ];
+// Cemetery type and status: the stored values (keys) and their English labels
 const STRATA_KUBUR_TYPES = ['Islam', 'Bukan Islam', 'Swasta', 'Krematorium'];
+const STRATA_KUBUR_TYPE_LABEL = { Islam: 'Muslim', 'Bukan Islam': 'Non-Muslim', Swasta: 'Private', Krematorium: 'Crematorium' };
+const STRATA_KUBUR_STATUS = ['Sedia ada', 'Cadangan', 'Penuh / ditutup'];
+const STRATA_KUBUR_STATUS_LABEL = { 'Sedia ada': 'Existing', Cadangan: 'Proposed', 'Penuh / ditutup': 'Full / closed' };
+const strataKuburLabel = (labels, v) => labels[v] || v || '';
 
 const strataNum = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) && n > 0 ? n : 0; };
 const strataWF1 = (jenis, aircond, lif) => { const t = STRATA_WF1[jenis] || STRATA_WF1.pejabat; return t[1][(aircond ? 2 : 0) + (lif ? 0 : 1)]; };
@@ -236,7 +244,7 @@ function strataMigrate() {
     const y = new Date().getFullYear(), now = new Date().toISOString();
     for (const [bid, st] of Object.entries(h.strata || {})) {
       const lod = (h.lod || {})[bid] || {};
-      s.schemes[bid] = { bid, no: strataNextNo(Object.values(s.schemes).map(x => x.no), 'STR', y), nama: 'Skim strata ' + (st.plus_code || bid),
+      s.schemes[bid] = { bid, no: strataNextNo(Object.values(s.schemes).map(x => x.no), 'STR', y), nama: 'Strata scheme ' + (st.plus_code || bid),
         created: st.updated || now, updated: now, bld: { plus_code: st.plus_code, kawasan: st.kawasan, lot: st.lot, lng: st.lng, lat: st.lat, area_m2: lod.area_m2 },
         bim: { tingkat: lod.tingkat || '', tinggi: lod.tinggi || '', lod: lod.level || 100, disahkan: !!lod.disahkan }, parcels: st.units, bills: {} };
     }
@@ -564,8 +572,8 @@ function strataRenderPanel() {
       ${s.kubur.length ? `<div class="mpk-dpb-list">${s.kubur.map(k => { const kap = strataNum(k.kapasiti) || Math.floor(strataNum(k.luas) / 2.5), used = strataNum(k.terisi);
         const pct = kap ? Math.min(100, used / kap * 100) : 0;
         return `<button type="button" class="mpk-dpb-row" onclick='strataKuburGo(${JSON.stringify(k.id)})'>
-          <div class="mpk-dpb-row-t"><b>${strataEsc(k.nama)}</b><span class="mpk-h-pill">${strataEsc(k.jenis)}</span></div>
-          <div class="mpk-dpb-row-m">${[k.id, k.status, kap ? `${mpkNum(used)} of ${mpkNum(kap)} lots in use` : ''].filter(Boolean).map(strataEsc).join(' · ')}</div>
+          <div class="mpk-dpb-row-t"><b>${strataEsc(k.nama)}</b><span class="mpk-h-pill">${strataEsc(strataKuburLabel(STRATA_KUBUR_TYPE_LABEL, k.jenis))}</span></div>
+          <div class="mpk-dpb-row-m">${[k.id, strataKuburLabel(STRATA_KUBUR_STATUS_LABEL, k.status), kap ? `${mpkNum(used)} of ${mpkNum(kap)} lots in use` : ''].filter(Boolean).map(strataEsc).join(' · ')}</div>
           ${kap ? `<div class="mpk-h-cap${pct >= 90 ? ' full' : ''}"><i style="width:${pct.toFixed(1)}%"></i></div>` : ''}</button>`; }).join('')}</div>`
         : '<div class="mpk-reg-empty">No cemetery sites yet: add one, then click the map where it is.</div>'}
     </div>
@@ -587,7 +595,7 @@ function strataNewScheme(bid) {
   const p = f.properties, now = new Date().toISOString(), dp = !!p.dp_area;
   const floors = strataNum(p.tingkat_est) || '', h = strataNum(p.tinggi_m) || '';
   return strataNormalise({ bid: String(bid), no: strataNextNo(Object.values(STRATA.s.schemes).map(x => x.no), 'STR', new Date().getFullYear()),
-    nama: 'Skim strata ' + (dp ? p.nama : p.plus_code), pemaju: '', hakmilik_induk: '', alamat: '', mukim: dp ? 'Mukim Sungai Buloh' : 'Mukim Kemaman',
+    nama: 'Strata scheme ' + (dp ? p.nama : p.plus_code), pemaju: '', hakmilik_induk: '', alamat: '', mukim: dp ? 'Mukim Sungai Buloh' : 'Mukim Kemaman',
     created: now, updated: now,
     bld: { plus_code: p.plus_code, kawasan: dp ? 'dp:' + p.dp_area : p.kawasan || '', lot: p.lot || '', upi: p.upi || '', area_m2: p.area_m2, lng: p.lng, lat: p.lat },
     bim: { tingkat: floors ? String(floors) : '', tinggi: h ? String(h) : '', lod: floors ? 200 : 100, disahkan: false, src: p.tinggi_src || '' },
@@ -721,11 +729,11 @@ function strataStep1(sc) {
     <section class="mpk-h-card"><h4>Scheme and master title</h4>
       <div class="mpk-h-form flat">
         <label class="wide">Scheme name${sIn('nama', sc.nama)}</label>
-        <label class="wide">Proprietor / developer (tuan punya / pemaju)${sIn('pemaju', sc.pemaju, 'placeholder="e.g. Syarikat Pemaju Sdn Bhd"')}</label>
+        <label class="wide">Proprietor / developer${sIn('pemaju', sc.pemaju, 'placeholder="e.g. ABC Development Sdn Bhd"')}</label>
         <label>Master title (hakmilik induk)${sIn('hakmilik_induk', sc.hakmilik_induk, 'placeholder="e.g. GRN 12345"')}</label>
-        <label>Mukim${sIn('mukim', sc.mukim)}</label>
-        <label class="wide">Address${sIn('alamat', sc.alamat, 'placeholder="No., jalan, Chukai, Kemaman"')}</label>
-        <label>Tenure${sSel('tempoh', sc.tempoh || 'Kekal', { Kekal: 'Pegangan kekal (freehold)', Pajakan: 'Pajakan (leasehold)' })}</label>
+        <label>Mukim (subdistrict)${sIn('mukim', sc.mukim)}</label>
+        <label class="wide">Address${sIn('alamat', sc.alamat, 'placeholder="No., street, Chukai, Kemaman"')}</label>
+        <label>Tenure${sSel('tempoh', sc.tempoh || 'Kekal', { Kekal: 'Freehold', Pajakan: 'Leasehold' })}</label>
         <label>Lease years left${sIn('baki_pajakan', sc.baki_pajakan, 'type="number" min="0" placeholder="leasehold only"')}</label>
         <label class="wide">Type of application${sSel('jenis_pecah', sc.jenis_pecah, STRATA_PECAH)}</label>
       </div>
@@ -894,7 +902,7 @@ function strataStep3(sc) {
     </div>
     <section class="mpk-h-card"><h4>Schedule of parcels <small>· allocated share units (unit syer)</small></h4>
       ${sc.parcels.length ? `<div class="mpk-h-tablewrap"><table class="mpk-h-t">
-        <thead><tr><th>Petak</th><th>Floor</th><th>Type</th><th class="r">Area</th><th class="r">WF1</th><th class="r">WF2</th><th class="r">Acc. m²</th><th class="r">WF3</th>
+        <thead><tr><th>Parcel</th><th>Floor</th><th>Type</th><th class="r">Area</th><th class="r">WF1</th><th class="r">WF2</th><th class="r">Acc. m²</th><th class="r">WF3</th>
           <th class="r">Share units</th><th class="r">%</th>${alt ? '<th class="r">What-if</th><th class="r">Charges / mo</th>' : ''}</tr></thead>
         <tbody>${sc.parcels.map((x, i) => { const d = alt ? alt.su[i] - r.su[i] : 0;
           return `<tr><td><b>${strataEsc(x.petak)}</b></td><td>${strataEsc(x.tingkat)}</td><td>${strataEsc((STRATA_WF1[x.jenis] || [''])[0])}</td>
@@ -983,9 +991,9 @@ function strataStep5(sc) {
       <div class="mpk-h-form flat">
         <label>Vacant possession delivered${sDate('urus.d_vp', sc.urus.d_vp)}</label>
         <label>First AGM of the JMB held${sDate('urus.d_jmb', sc.urus.d_jmb)}</label>
-        <label class="wide">JMB name${sIn('urus.nama_jmb', sc.urus.nama_jmb, 'placeholder="Badan Pengurusan Bersama ..."')}</label>
+        <label class="wide">JMB name${sIn('urus.nama_jmb', sc.urus.nama_jmb, 'placeholder="e.g. Badan Pengurusan Bersama ... (registered name)"')}</label>
         <label>MC in existence (strata register opened)${sDate('urus.d_mc', sc.urus.d_mc)}</label>
-        <label>MC name${sIn('urus.nama_mc', sc.urus.nama_mc, 'placeholder="Perbadanan Pengurusan ..."')}</label>
+        <label>MC name${sIn('urus.nama_mc', sc.urus.nama_mc, 'placeholder="e.g. Perbadanan Pengurusan ... (registered name)"')}</label>
       </div>
       <span class="strata-dl ${dl.status}">${dl.label}: ${dl.status === 'na' ? 'enter the vacant possession date' : dl.done ? 'held ' + strataDate(dl.done) : 'due ' + strataDate(dl.due)} · ${dl.note}</span>
       <div class="mpk-h-hint">The JMB comes into being at its first AGM, which the developer must convene within 12 months of delivering vacant possession
@@ -1012,7 +1020,7 @@ function strataStep5(sc) {
         <button type="button" class="mpk-btn ghost" onclick="strataTool('penyata')">Owner statements PDF</button>
       </div>
       ${sc.parcels.length ? `<div class="mpk-h-tablewrap"><table class="mpk-h-t bills">
-        <thead><tr><th>Petak</th><th>Owner</th><th class="r">Share units</th><th>Annual value RM</th><th class="r">Tax / year</th><th class="r">Charges / mo</th><th class="r">Sinking / mo</th><th>Penggal 1</th><th>Penggal 2</th></tr></thead>
+        <thead><tr><th>Parcel</th><th>Owner</th><th class="r">Share units</th><th>Annual value RM</th><th class="r">Tax / year</th><th class="r">Charges / mo</th><th class="r">Sinking / mo</th><th>1st half</th><th>2nd half</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td colspan="4">Total</td><td>${strataRM0(tTax)}</td><td>${strataRM0(tCaj)}</td><td>${strataRM0(tSink)}</td><td colspan="2"></td></tr></tfoot></table></div>`
         : '<div class="mpk-reg-empty">Create the parcels in step 2 first.</div>'}
@@ -1024,7 +1032,7 @@ function strataStep5(sc) {
       <div class="mpk-h-hint">Tax = annual value × the rate of the parcel's use; an empty annual value is area × rent × 12. Paid in two halves (by end February and end August).</div>
       <details class="strata-rates"><summary>Assessment rates and rents <span class="mpk-tag">assumption</span> · all schemes</summary>
         <table class="mpk-h-t rates"><thead><tr><th>Use</th><th>Rate (% of annual value)</th><th>Rent for the estimate (RM / m² / month)</th></tr></thead>
-          <tbody>${Object.keys(s.kadar).map(u => `<tr><td>${u}</td><td>${kIn('kadar.' + u, s.kadar[u])}</td><td>${kIn('sewa.' + u, s.sewa[u])}</td></tr>`).join('')}</tbody></table>
+          <tbody>${Object.keys(s.kadar).map(u => `<tr><td>${strataEsc(strataUseLabel(u))}</td><td>${kIn('kadar.' + u, s.kadar[u])}</td><td>${kIn('sewa.' + u, s.sewa[u])}</td></tr>`).join('')}</tbody></table>
       </details>
     </section>`;
 }
@@ -1057,7 +1065,7 @@ function strataStep6(sc) {
     ['Stage', STRATA_STAGES[strataStageIdx(sc)].label], ['Deadlines', dl.map(d => `${d.label}: ${d.note}`).join(' · ')],
     ['Management & tax', `${strataRM(sc.parcels.reduce((a, p) => a + strataTax(p, STRATA.s), 0))} assessment tax a year`]];
   return `<section class="mpk-h-card strata-report">
-      <h4>Strata scheme report <small>· A4 PDF, in Bahasa Melayu</small></h4>
+      <h4>Strata scheme report <small>· A4 PDF</small></h4>
       <p class="mpk-h-hint" style="margin-top:0">For the proprietor, a buyer or MPK's own file: the scheme, the building and its height, the JKPTG conditions, the floor stack,
         the schedule of parcels with the Act 757 share units, the application stages and deadlines, the managing body, Charges, sinking fund and
         assessment tax of every parcel.</p>
@@ -1152,7 +1160,7 @@ function strataVoteTool(sc) {
     <div class="strata-ramp-l"><span><b>${mpkNum(v.yes)}</b> for (${pct(v.yes)}%)</span><span><b>${mpkNum(v.no)}</b> against (${pct(v.no)}%)</span><span>${mpkNum(v.abstain)} absent / abstain</span></div>
     <div class="strata-res3">${res(v.ordinary, 'Ordinary resolution', 'more for than against, of those voting')}${res(v.special, 'Special resolution', 'at least ¾ of the share units voting')}
       ${res(v.unanimous, 'Unanimous resolution', 'every share unit in favour')}</div>
-    <div class="mpk-h-tablewrap" style="margin-top:10px"><table class="mpk-h-t"><thead><tr><th>Petak</th><th>Owner</th><th class="r">Share units</th><th>Vote</th></tr></thead>
+    <div class="mpk-h-tablewrap" style="margin-top:10px"><table class="mpk-h-t"><thead><tr><th>Parcel</th><th>Owner</th><th class="r">Share units</th><th>Vote</th></tr></thead>
       <tbody>${sc.parcels.map((p, i) => `<tr><td><b>${strataEsc(p.petak)}</b></td><td>${strataEsc(p.pemilik) || '—'}</td><td class="r">${mpkNum(r.su[i])}</td>
         <td><div class="strata-seg small">${[['ya', 'For'], ['tidak', 'Against'], ['', 'Absent']].map(([k, l]) =>
           `<button type="button" class="${votes[i] === k ? 'on' : ''}" onclick='strataCast(${JSON.stringify(p.id)}, "${k}")'>${l}</button>`).join('')}</div></td></tr>`).join('')}</tbody></table></div>
@@ -1166,9 +1174,9 @@ function strataSinkingTool(sc) {
   const r = strataShareUnits(sc.parcels, sc.kompleks), monthly = strataCharges(r.total, sc.caj.kadar).sinking;
   if (!sc.sf.capex.length) {
     const common = strataCommon(sc);
-    sc.sf.capex = [{ tahun: 5, perkara: 'Cat semula bangunan (repaint)', kos: String(Math.round(common * 25)) },
-      { tahun: 8, perkara: 'Kalis air bumbung (roof waterproofing)', kos: String(Math.round(strataNum(sc.bld.area_m2) * 60)) }];
-    if (sc.kompleks.lif) sc.sf.capex.push({ tahun: 10, perkara: 'Naik taraf lif (lift modernisation)', kos: '250000' });
+    sc.sf.capex = [{ tahun: 5, perkara: 'Repaint the building', kos: String(Math.round(common * 25)) },
+      { tahun: 8, perkara: 'Roof waterproofing', kos: String(Math.round(strataNum(sc.bld.area_m2) * 60)) }];
+    if (sc.kompleks.lif) sc.sf.capex.push({ tahun: 10, perkara: 'Lift modernisation', kos: '250000' });
   }
   const rows = strataSinking(monthly, sc.sf.baki, sc.sf.capex, 10);
   const max = Math.max(1, ...rows.map(x => Math.abs(x.bal)), ...rows.map(x => x.spend));
@@ -1254,7 +1262,7 @@ function strataPdfKit(pdf, title, ref, logo) {
     pdf.setFillColor(...P.PURPLE); pdf.rect(0, 0, P.W, 3, 'F');
     if (logo) pdf.addImage(logo.url, 'PNG', P.M, 7, 22, 22 * logo.ratio);
     const x = P.M + (logo ? 26 : 0);
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12); pdf.setTextColor(...P.NAVY); pdf.text('MAJLIS PERBANDARAN KEMAMAN', x, 13);
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12); pdf.setTextColor(...P.NAVY); pdf.text('KEMAMAN MUNICIPAL COUNCIL (MPK)', x, 13);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(...P.MUTED); pdf.text(title, x, 18.5);
     pdf.text(ref, P.W - P.M, 13, { align: 'right' });
     pdf.setDrawColor(...P.LINE); pdf.setLineWidth(0.3); pdf.line(P.M, 25, P.W - P.M, 25);
@@ -1297,11 +1305,11 @@ function strataPdfFooter(pdf, text) {
   for (let i = 1; i <= n; i++) {
     pdf.setPage(i); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(...P.MUTED);
     pdf.text(text, P.M, P.H - 9);
-    pdf.text(`Muka ${i} / ${n}`, P.W - P.M, P.H - 9, { align: 'right' });
+    pdf.text(`Page ${i} / ${n}`, P.W - P.M, P.H - 9, { align: 'right' });
   }
 }
 const strataPdfDate = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); if (!m) return '-';
-  return `${+m[3]} ${['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'][+m[2] - 1]} ${m[1]}`; };
+  return `${+m[3]} ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][+m[2] - 1]} ${m[1]}`; };
 const strataPdfRM = v => 'RM ' + strataRM0(v);
 async function strataPdf() {
   const sc = strataSc() || strataToolScheme();
@@ -1312,39 +1320,39 @@ async function strataPdf() {
     const logo = await strataLogo();
     const { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const P = STRATA_P, today = strataToday();
-    const k = strataPdfKit(pdf, 'Laporan Skim Strata', `${sc.no} · ${strataPdfDate(today)}`, logo);
+    const k = strataPdfKit(pdf, 'Strata Scheme Report', `${sc.no} · ${strataPdfDate(today)}`, logo);
     const r = strataShareUnits(sc.parcels, sc.kompleks), dl = strataDeadlines(sc, today), s = STRATA.s;
     const f = strataBuilding(sc.bid), p = f ? f.properties : {};
     k.header();
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(...P.NAVY);
     const t = pdf.splitTextToSize(sc.nama.toUpperCase(), k.CW); pdf.text(t, P.M, k.y); k.y += t.length * 7;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(...P.MUTED);
-    const sub = pdf.splitTextToSize(`${sc.no} · Peringkat: ${STRATA_STAGES[strataStageIdx(sc)].ms}`, k.CW);
+    const sub = pdf.splitTextToSize(`${sc.no} · Stage: ${STRATA_STAGES[strataStageIdx(sc)].ms}`, k.CW);
     pdf.text(sub, P.M, k.y); k.y += sub.length * 4.5 + 4;
     // 1 particulars
-    k.section(1, 'Maklumat skim dan bangunan');
-    k.table([{ t: 'Perkara', w: 52 }, { t: '', w: k.CW - 52 }], [
-      ['Tuan punya / pemaju', sc.pemaju || '-'], ['Hakmilik induk', sc.hakmilik_induk || '-'], ['Lot / UPI', [sc.bld.lot || '-', sc.bld.upi].filter(Boolean).join(' · ')],
-      ['Mukim / daerah', strataDp(sc.bld.kawasan) ? `${sc.mukim || 'Mukim Sungai Buloh'}, Daerah Petaling, Selangor` : `${sc.mukim || 'Mukim Kemaman'}, Daerah Kemaman, Terengganu`], ['Alamat', sc.alamat || '-'],
-      ['Pegangan', (sc.tempoh || 'Kekal') === 'Kekal' ? 'Pegangan kekal' : `Pajakan, baki ${sc.baki_pajakan || '-'} tahun`],
-      ['Jenis permohonan', STRATA_PECAH[sc.jenis_pecah]], ['Jenis skim', STRATA_SCHEME_TYPES[sc.kompleks.jenis] || '-'],
-      ['Lokasi (Plus Code)', `${sc.bld.plus_code} · ${(+sc.bld.lat).toFixed(6)}, ${(+sc.bld.lng).toFixed(6)}`],
-      ['Keluasan tapak bangunan', `${mpkNum(sc.bld.area_m2)} m²`],
-      ['Bilangan tingkat / tinggi', `${sc.bim.tingkat || '-'} tingkat · ${Math.round(strataHeight(sc.bim) * 10) / 10} m${p.tinggi_src ? ` (anggaran: ${p.tinggi_src})` : ''}`],
-      ['Tahap model BIM', `LOD ${sc.bim.lod}`], ['Kemudahan bersama', `${sc.kompleks.aircond ? 'Berhawa dingin' : 'Tanpa hawa dingin'} · ${sc.kompleks.lif ? 'ada lif / eskalator' : 'tiada lif / eskalator'}`],
+    k.section(1, 'Scheme and building particulars');
+    k.table([{ t: 'Item', w: 52 }, { t: '', w: k.CW - 52 }], [
+      ['Proprietor / developer', sc.pemaju || '-'], ['Master title', sc.hakmilik_induk || '-'], ['Lot / UPI', [sc.bld.lot || '-', sc.bld.upi].filter(Boolean).join(' · ')],
+      ['Mukim / district', strataDp(sc.bld.kawasan) ? `${sc.mukim || 'Mukim Sungai Buloh'}, Petaling District, Selangor` : `${sc.mukim || 'Mukim Kemaman'}, Kemaman District, Terengganu`], ['Address', sc.alamat || '-'],
+      ['Tenure', (sc.tempoh || 'Kekal') === 'Kekal' ? 'Freehold' : `Leasehold, ${sc.baki_pajakan || '-'} years left`],
+      ['Type of application', STRATA_PECAH[sc.jenis_pecah]], ['Type of scheme', STRATA_SCHEME_TYPES[sc.kompleks.jenis] || '-'],
+      ['Location (Plus Code)', `${sc.bld.plus_code} · ${(+sc.bld.lat).toFixed(6)}, ${(+sc.bld.lng).toFixed(6)}`],
+      ['Building footprint area', `${mpkNum(sc.bld.area_m2)} m²`],
+      ['Number of floors / height', `${sc.bim.tingkat || '-'} floors · ${Math.round(strataHeight(sc.bim) * 10) / 10} m${p.tinggi_src ? ` (estimate: ${p.tinggi_src})` : ''}`],
+      ['BIM model level', `LOD ${sc.bim.lod}`], ['Shared facilities', `${sc.kompleks.aircond ? 'Air-conditioned' : 'Not air-conditioned'} · ${sc.kompleks.lif ? 'with lift / escalator' : 'no lift / escalator'}`],
     ]);
     // 2 conditions
-    k.section(2, 'Syarat permohonan hakmilik strata');
-    k.table([{ t: 'Syarat (JKPTG)', w: k.CW - 26 }, { t: 'Dipenuhi', w: 26 }], STRATA_SYARAT.map(([key, l]) => [l, sc.syarat[key] ? 'Ya' : 'Belum']));
+    k.section(2, 'Conditions for a strata title application');
+    k.table([{ t: 'Condition (JKPTG)', w: k.CW - 26 }, { t: 'Met', w: 26 }], STRATA_SYARAT.map(([key, l]) => [l, sc.syarat[key] ? 'Yes' : 'Not yet']));
     // 3 floor stack drawing
     if (sc.parcels.length) {
       const floors = Math.max(1, Math.floor(strataNum(sc.bim.tingkat) || Math.max(...sc.parcels.map(x => strataNum(x.tingkat)))));
       const fh = Math.min(9, 70 / floors), h = floors * (fh + 1.5) + 14;
-      k.ensure(h + 14); k.section(3, 'Susunan tingkat dan petak');
+      k.ensure(h + 14); k.section(3, 'Floors and parcels');
       const x0 = P.M + 22, w = k.CW - 24, foot = strataNum(sc.bld.area_m2) || 1;
       for (let fl = floors; fl >= 1; fl--) {
         const yy = k.y + (floors - fl) * (fh + 1.5);
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(...P.MUTED); pdf.text(`Tingkat ${fl}`, P.M, yy + fh / 2 + 1.2);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(...P.MUTED); pdf.text(`Floor ${fl}`, P.M, yy + fh / 2 + 1.2);
         pdf.setDrawColor(...P.NAVY); pdf.setLineWidth(0.3); pdf.rect(x0, yy, w, fh);
         let xx = x0 + 0.6;
         sc.parcels.filter(x => Math.floor(strataNum(x.tingkat)) === fl).forEach(x => {
@@ -1357,60 +1365,61 @@ async function strataPdf() {
       }
       k.y += floors * (fh + 1.5) + 2;
       pdf.setFillColor(141, 110, 99); pdf.rect(x0, k.y, w, 1.5, 'F'); k.y += 7;
-      k.para(`Petak di setiap tingkat dilukis mengikut keluasan; ruang berbaki ialah harta bersama (${mpkNum(strataCommon(sc))} m²).`, 8, P.MUTED);
+      k.para(`Parcels on each floor are drawn to scale by area; the remaining space is common property (${mpkNum(strataCommon(sc))} m²).`, 8, P.MUTED);
     }
     // 4 schedule of parcels
-    k.section(4, 'Jadual petak dan unit syer');
-    k.para('Unit syer diperuntukkan = (keluasan petak × WF1 × WF2) + (keluasan petak aksesori × WF3), dalam meter persegi, dibundarkan kepada nombor bulat terdekat '
-      + '(Akta Pengurusan Strata 2013 [Akta 757], Jadual Pertama).', 8.5);
+    k.section(4, 'Schedule of parcels and share units');
+    k.para('Allocated share units = (parcel area × WF1 × WF2) + (accessory parcel area × WF3), in square metres, rounded to the nearest whole number '
+      + '(Strata Management Act 2013 [Act 757], First Schedule).', 8.5);
     const W = [16, 11, 0, 17, 12, 12, 19, 12, 17, 14];
     W[2] = k.CW - W.reduce((a, b) => a + b, 0);
-    k.table([{ t: 'Petak', w: W[0] }, { t: 'Tgkt', w: W[1] }, { t: 'Jenis petak', w: W[2] }, { t: 'Luas m²', w: W[3], r: 1 }, { t: 'WF1', w: W[4], r: 1 }, { t: 'WF2', w: W[5], r: 1 },
-      { t: 'Aksesori m²', w: W[6], r: 1 }, { t: 'WF3', w: W[7], r: 1 }, { t: 'Unit syer', w: W[8], r: 1 }, { t: '%', w: W[9], r: 1 }],
-      [...sc.parcels.map((x, i) => [x.petak, x.tingkat, (STRATA_WF1[x.jenis] || [''])[0] + (x.aks_no ? ` (aksesori ${x.aks_no})` : ''), x.luas, r.rows[i].wf1.toFixed(2), r.rows[i].wf2.toFixed(2),
+    k.table([{ t: 'Parcel', w: W[0] }, { t: 'Floor', w: W[1] }, { t: 'Parcel type', w: W[2] }, { t: 'Area m²', w: W[3], r: 1 }, { t: 'WF1', w: W[4], r: 1 }, { t: 'WF2', w: W[5], r: 1 },
+      { t: 'Acc. m²', w: W[6], r: 1 }, { t: 'WF3', w: W[7], r: 1 }, { t: 'Units', w: W[8], r: 1 }, { t: '%', w: W[9], r: 1 }],
+      [...sc.parcels.map((x, i) => [x.petak, x.tingkat, (STRATA_WF1[x.jenis] || [''])[0] + (x.aks_no ? ` (accessory ${x.aks_no})` : ''), x.luas, r.rows[i].wf1.toFixed(2), r.rows[i].wf2.toFixed(2),
         x.aks_luas || '-', r.rows[i].wf3 ? r.rows[i].wf3.toFixed(2) : '-', mpkNum(r.su[i]), r.pct[i].toFixed(2)]),
-       ['Jumlah', '', `${sc.parcels.length} petak`, mpkNum(sc.parcels.reduce((a, x) => a + strataNum(x.luas), 0)), '', '', '', '', mpkNum(r.total), '100.00']], { size: 7.6, boldLast: true });
-    k.table([{ t: 'Pemfailan', w: 74 }, { t: 'Tarikh', w: 34 }, { t: 'Rujukan', w: k.CW - 108 }], [
-      ['Sijil Formula Unit Syer (SiFUS), PTG', strataPdfDate(sc.app.d_sifus), sc.app.no_sifus || '-'],
-      ['Jadual Petak difailkan dengan Pesuruhjaya Bangunan', strataPdfDate(sc.app.d_cob), sc.app.no_cob || '-']]);
+       ['Total', '', `${sc.parcels.length} parcels`, mpkNum(sc.parcels.reduce((a, x) => a + strataNum(x.luas), 0)), '', '', '', '', mpkNum(r.total), '100.00']], { size: 7.6, boldLast: true });
+    k.para('Units = allocated share units; Acc. m² = accessory parcel area.', 7.5, P.MUTED);
+    k.table([{ t: 'Filing', w: 74 }, { t: 'Date', w: 34 }, { t: 'Reference', w: k.CW - 108 }], [
+      ['Share Unit Formula Certificate (SiFUS), PTG', strataPdfDate(sc.app.d_sifus), sc.app.no_sifus || '-'],
+      ['Schedule of parcels filed with the Commissioner of Buildings', strataPdfDate(sc.app.d_cob), sc.app.no_cob || '-']]);
     // 5 application stages and deadlines
-    k.section(5, 'Status permohonan hakmilik strata');
+    k.section(5, 'Strata title application status');
     const idx = strataStageIdx(sc);
-    k.table([{ t: 'Peringkat', w: k.CW - 60 }, { t: 'Tarikh', w: 34 }, { t: 'Status', w: 26 }], STRATA_STAGES.map((st, i) => [st.ms,
+    k.table([{ t: 'Stage', w: k.CW - 60 }, { t: 'Date', w: 34 }, { t: 'Status', w: 26 }], STRATA_STAGES.map((st, i) => [st.ms,
       strataPdfDate({ draf: sc.created.slice(0, 10), sifus: sc.app.d_sifus, cpsp: sc.app.d_cpsp, pecah: sc.app.d_pecah, hakmilik: sc.app.d_hakmilik }[st.k]),
-      i < idx ? 'Selesai' : i === idx ? 'Semasa' : 'Belum']));
-    const dlMs = { ok: 'Menepati masa', late: 'Lewat', overdue: 'Melebihi tempoh', ext: 'Dalam lanjutan', open: 'Berjalan', na: 'Tarikh mula belum diisi' };
-    k.table([{ t: 'Had masa', w: k.CW - 84 }, { t: 'Tarikh akhir', w: 30 }, { t: 'Selesai', w: 28 }, { t: 'Status', w: 26 }], dl.map((d, i) => [
-      ['Mohon CPSP: 3 bulan dari siap bangunan (+1 bulan)', 'Mohon pecah bahagi: 1 bulan dari CPSP (+1 bulan)', 'AGM pertama JMB: 12 bulan dari milikan kosong'][i],
-      strataPdfDate(d.due), strataPdfDate(d.done), dlMs[d.status]]));
+      i < idx ? 'Done' : i === idx ? 'Current' : 'Pending']));
+    const dlEn = { ok: 'On time', late: 'Late', overdue: 'Overdue', ext: 'In extension', open: 'Running', na: 'Start date not entered' };
+    k.table([{ t: 'Time limit', w: k.CW - 84 }, { t: 'Due date', w: 30 }, { t: 'Done', w: 28 }, { t: 'Status', w: 26 }], dl.map((d, i) => [
+      ['Apply for CPSP: 3 months from completion (+1 month)', 'Apply to subdivide: 1 month from CPSP (+1 month)', 'First AGM of the JMB: 12 months from vacant possession'][i],
+      strataPdfDate(d.due), strataPdfDate(d.done), dlEn[d.status]]));
     const docs = STRATA_DOCS.filter(([key]) => (sc.app.docs || {})[key]).map(([, l]) => l);
-    k.para(`Dokumen sedia: ${docs.length ? docs.join('; ') : 'tiada'} (${docs.length} daripada ${STRATA_DOCS.length}).`, 8.5);
+    k.para(`Documents ready: ${docs.length ? docs.join('; ') : 'none'} (${docs.length} of ${STRATA_DOCS.length}).`, 8.5);
     // 6 management and money
-    k.section(6, 'Pengurusan, caj dan cukai taksiran');
-    const body = sc.app.stage === 'hakmilik' ? 'Perbadanan Pengurusan (MC)' : sc.urus.d_jmb ? 'Badan Pengurusan Bersama (JMB)' : 'Pemaju (tempoh pengurusan pemaju)';
-    k.para(`Badan pengurusan semasa: ${body}${sc.urus.nama_jmb ? ` · JMB: ${sc.urus.nama_jmb}` : ''}${sc.urus.nama_mc ? ` · MC: ${sc.urus.nama_mc}` : ''}. Milikan kosong: ${strataPdfDate(sc.urus.d_vp)}; `
-      + `AGM pertama JMB: ${strataPdfDate(sc.urus.d_jmb)}. Caj ditetapkan mengikut unit syer pada RM ${strataNum(sc.caj.kadar).toFixed(2)} seunit sebulan; kumpulan wang penjelas 10% daripada caj (Akta 757 s.25).`, 8.5);
+    k.section(6, 'Management, charges and assessment tax');
+    const body = sc.app.stage === 'hakmilik' ? 'Management corporation (MC)' : sc.urus.d_jmb ? 'Joint management body (JMB)' : 'Developer (developer management period)';
+    k.para(`Current managing body: ${body}${sc.urus.nama_jmb ? ` · JMB: ${sc.urus.nama_jmb}` : ''}${sc.urus.nama_mc ? ` · MC: ${sc.urus.nama_mc}` : ''}. Vacant possession: ${strataPdfDate(sc.urus.d_vp)}; `
+      + `first AGM of the JMB: ${strataPdfDate(sc.urus.d_jmb)}. Charges are set by share units at RM ${strataNum(sc.caj.kadar).toFixed(2)} per unit a month; the sinking fund is 10% of the Charges (Act 757 s.25).`, 8.5);
     let tt = 0, tc = 0, ts = 0;
     const money = sc.parcels.map((x, i) => { const tax = strataTax(x, s), ch = strataCharges(r.su[i], sc.caj.kadar); tt += tax; tc += ch.caj; ts += ch.sinking;
       return [x.petak, x.pemilik || '-', mpkNum(r.su[i]), strataRM0(ch.caj), strataRM0(ch.sinking), strataRM0(tax)]; });
-    k.table([{ t: 'Petak', w: 18 }, { t: 'Pemilik', w: k.CW - 120 }, { t: 'Unit syer', w: 20, r: 1 }, { t: 'Caj / bulan', w: 26, r: 1 }, { t: 'Penjelas / bulan', w: 28, r: 1 }, { t: 'Cukai / tahun', w: 28, r: 1 }],
-      [...money, ['Jumlah', '', mpkNum(r.total), strataRM0(tc), strataRM0(ts), strataRM0(tt)]], { size: 7.8, boldLast: true });
-    k.para('Cukai taksiran = nilai tahunan × kadar mengikut kegunaan (Akta Kerajaan Tempatan 1976, s.127), dibayar dua penggal (Februari dan Ogos). '
-      + 'Kadar dan nilai tahunan dalam laporan ini ialah anggaran untuk rujukan.', 8, P.MUTED);
+    k.table([{ t: 'Parcel', w: 18 }, { t: 'Owner', w: k.CW - 120 }, { t: 'Share units', w: 20, r: 1 }, { t: 'Charges / mo', w: 26, r: 1 }, { t: 'Sinking / mo', w: 28, r: 1 }, { t: 'Tax / year', w: 28, r: 1 }],
+      [...money, ['Total', '', mpkNum(r.total), strataRM0(tc), strataRM0(ts), strataRM0(tt)]], { size: 7.8, boldLast: true });
+    k.para('Assessment tax = annual value × the rate for the use (Local Government Act 1976, s.127), paid in two halves (February and August). '
+      + 'The rates and annual values in this report are estimates for reference.', 8, P.MUTED);
     // 7 notes and signatures
-    k.section(7, 'Nota');
-    k.para('Laporan ini disediakan berdasarkan Akta Hakmilik Strata 1985 [Akta 318], Akta Pengurusan Strata 2013 [Akta 757] dan panduan JKPTG mengenai permohonan hakmilik strata. '
-      + 'Ketinggian dan bilangan tingkat bangunan ialah anggaran daripada data terbuka (OpenStreetMap, GHSL) dan perlu disahkan di tapak. '
-      + 'Unit syer muktamad tertakluk kepada kelulusan Pengarah Tanah dan Galian (Akta 318 s.18).', 8.5);
+    k.section(7, 'Notes');
+    k.para('This report is prepared under the Strata Titles Act 1985 [Act 318], the Strata Management Act 2013 [Act 757] and JKPTG guidance on strata title applications. '
+      + 'Building heights and floor counts are estimates from open data (OpenStreetMap, GHSL) and must be verified on site. '
+      + 'Final share units are subject to the approval of the Director of Lands and Mines (Act 318 s.18).', 8.5);
     k.ensure(34);
     pdf.setDrawColor(...P.LINE); pdf.setLineWidth(0.3);
-    [['Disediakan oleh', P.M], ['Disemak oleh', P.M + k.CW / 2 + 4]].forEach(([l, x]) => {
+    [['Prepared by', P.M], ['Checked by', P.M + k.CW / 2 + 4]].forEach(([l, x]) => {
       pdf.line(x, k.y + 18, x + k.CW / 2 - 8, k.y + 18);
       pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(...P.MUTED);
-      pdf.text(l, x, k.y + 23); pdf.text('Nama / jawatan / tarikh', x, k.y + 27.5);
+      pdf.text(l, x, k.y + 23); pdf.text('Name / position / date', x, k.y + 27.5);
     });
-    strataPdfFooter(pdf, 'Dijana oleh Geospatial AI BuildVision untuk Majlis Perbandaran Kemaman. Dokumen rujukan, bukan dokumen hakmilik rasmi.');
-    pdf.save(`Laporan_Strata_${sc.no.replace(/\//g, '-')}.pdf`);
+    strataPdfFooter(pdf, 'Generated by Geospatial AI BuildVision for Kemaman Municipal Council. Reference only, not an official title document.');
+    pdf.save(`Strata_Report_${sc.no.replace(/\//g, '-')}.pdf`);
     addActivityLog('Strata report PDF', sc.no);
   } catch (e) {
     showToast('⚠️ Could not make the PDF: ' + e.message, 5000);
@@ -1443,11 +1452,11 @@ async function strataPassports(sc) {
       pdf.setDrawColor(...P.LINE); pdf.setLineWidth(0.4); pdf.roundedRect(cx, cy, cw, ch, 3, 3);
       pdf.setFillColor(...strataHex(STRATA_TYPE_COLOR[x.jenis] || '#5E35B1')); pdf.rect(cx, cy, 4, ch, 'F');
       if (logo) pdf.addImage(logo.url, 'PNG', cx + 7, cy + 4, 12, 12 * logo.ratio);
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5); pdf.setTextColor(...P.MUTED); pdf.text('PASPORT PETAK STRATA', cx + 22, cy + 7.5);
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5); pdf.setTextColor(...P.MUTED); pdf.text('PARCEL PASSPORT', cx + 22, cy + 7.5);
       pdf.setFontSize(16); pdf.setTextColor(...P.NAVY); pdf.text(x.petak, cx + 22, cy + 15);
       pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.8); pdf.setTextColor(...P.INK);
-      const lines = [['Skim', sc.no], ['Tingkat', x.tingkat], ['Jenis', (STRATA_WF1[x.jenis] || [''])[0]], ['Keluasan', `${x.luas} m²${x.aks_luas ? ` + aksesori ${x.aks_luas} m²` : ''}`],
-        ['Unit syer', `${mpkNum(r.su[i])} / ${mpkNum(r.total)} (${r.pct[i].toFixed(2)}%)`], ['Pemilik', x.pemilik || '-'], ['Lokasi', sc.bld.plus_code]];
+      const lines = [['Scheme', sc.no], ['Floor', x.tingkat], ['Type', (STRATA_WF1[x.jenis] || [''])[0]], ['Area', `${x.luas} m²${x.aks_luas ? ` + accessory ${x.aks_luas} m²` : ''}`],
+        ['Share units', `${mpkNum(r.su[i])} / ${mpkNum(r.total)} (${r.pct[i].toFixed(2)}%)`], ['Owner', x.pemilik || '-'], ['Location', sc.bld.plus_code]];
       // the first two lines sit beside the QR code, the rest below it with the card's full width
       lines.forEach(([a, b], j) => {
         const yy = cy + 23 + j * 5.2, room = (yy < cy + 31 ? cw - 24 - 28 : cw - 25);
@@ -1458,10 +1467,10 @@ async function strataPassports(sc) {
       const n = q.getModuleCount(), size = 24, m = size / n, qx = cx + cw - size - 4, qy = cy + 4;
       pdf.setFillColor(0, 0, 0);
       for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) if (q.isDark(a, b)) pdf.rect(qx + b * m, qy + a * m, m + 0.02, m + 0.02, 'F');
-      pdf.setFontSize(6); pdf.setTextColor(...P.MUTED); pdf.text('Imbas: lokasi bangunan', qx + size / 2, qy + size + 3, { align: 'center' });
+      pdf.setFontSize(6); pdf.setTextColor(...P.MUTED); pdf.text('Scan: building location', qx + size / 2, qy + size + 3, { align: 'center' });
     });
-    strataPdfFooter(pdf, `${sc.no} · ${sc.nama} · Majlis Perbandaran Kemaman · dokumen rujukan`);
-    pdf.save(`Pasport_Petak_${sc.no.replace(/\//g, '-')}.pdf`);
+    strataPdfFooter(pdf, `${sc.no} · ${sc.nama} · Kemaman Municipal Council · reference document`);
+    pdf.save(`Parcel_Passports_${sc.no.replace(/\//g, '-')}.pdf`);
     addActivityLog('Parcel passports PDF', sc.no);
   } catch (e) { showToast('⚠️ ' + e.message, 5000); } finally { hideLoading(); }
 }
@@ -1476,29 +1485,29 @@ async function strataStatements(sc) {
     const r = strataShareUnits(sc.parcels, sc.kompleks), today = strataToday();
     sc.parcels.forEach((x, i) => {
       if (i) pdf.addPage();
-      const k = strataPdfKit(pdf, `Penyata Petak Strata ${y}`, `${sc.no} · ${x.petak}`, logo);
+      const k = strataPdfKit(pdf, `Strata Parcel Statement ${y}`, `${sc.no} · ${x.petak}`, logo);
       k.header();
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.setTextColor(...P.NAVY); pdf.text(`PENYATA PEMILIK PETAK ${x.petak}`, P.M, k.y); k.y += 7;
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor(...P.MUTED); pdf.text(`${sc.nama} · tarikh penyata ${strataPdfDate(today)}`, P.M, k.y); k.y += 8;
-      k.table([{ t: 'Perkara', w: 55 }, { t: '', w: k.CW - 55 }], [['Pemilik', x.pemilik || '-'], ['Petak / tingkat', `${x.petak} · tingkat ${x.tingkat}`],
-        ['Jenis petak', (STRATA_WF1[x.jenis] || [''])[0]], ['Keluasan', `${x.luas} m²${x.aks_no ? ` · petak aksesori ${x.aks_no} (${x.aks_luas || '-'} m²)` : ''}`],
-        ['Unit syer', `${mpkNum(r.su[i])} daripada ${mpkNum(r.total)} (${r.pct[i].toFixed(2)}%)`], ['Lokasi', `${sc.bld.plus_code} · Lot ${sc.bld.lot || '-'}`]]);
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.setTextColor(...P.NAVY); pdf.text(`OWNER STATEMENT: PARCEL ${x.petak}`, P.M, k.y); k.y += 7;
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor(...P.MUTED); pdf.text(`${sc.nama} · statement date ${strataPdfDate(today)}`, P.M, k.y); k.y += 8;
+      k.table([{ t: 'Item', w: 55 }, { t: '', w: k.CW - 55 }], [['Owner', x.pemilik || '-'], ['Parcel / floor', `${x.petak} · floor ${x.tingkat}`],
+        ['Parcel type', (STRATA_WF1[x.jenis] || [''])[0]], ['Area', `${x.luas} m²${x.aks_no ? ` · accessory parcel ${x.aks_no} (${x.aks_luas || '-'} m²)` : ''}`],
+        ['Share units', `${mpkNum(r.su[i])} of ${mpkNum(r.total)} (${r.pct[i].toFixed(2)}%)`], ['Location', `${sc.bld.plus_code} · Lot ${sc.bld.lot || '-'}`]]);
       const tax = strataTax(x, s), b = (sc.bills[y] || {})[x.id], ch = strataCharges(r.su[i], sc.caj.kadar), amt = b ? b.amount : tax;
-      k.section('A', `Cukai taksiran ${y} (kepada Majlis Perbandaran Kemaman)`);
-      k.table([{ t: 'Penggal', w: 60 }, { t: 'Amaun', w: 40, r: 1 }, { t: 'Status', w: k.CW - 100 }], [
-        ['Penggal 1 (akhir Februari)', strataPdfRM(amt / 2), b && b.p1 ? 'Dibayar ' + strataPdfDate(b.p1) : 'Belum dibayar'],
-        ['Penggal 2 (akhir Ogos)', strataPdfRM(amt / 2), b && b.p2 ? 'Dibayar ' + strataPdfDate(b.p2) : 'Belum dibayar'],
-        ['Jumlah setahun', strataPdfRM(amt), '']], { boldLast: true });
-      k.section('B', 'Caj dan kumpulan wang penjelas (kepada badan pengurusan)');
-      k.table([{ t: 'Perkara', w: 90 }, { t: 'Sebulan', w: 35, r: 1 }, { t: 'Setahun', w: k.CW - 125, r: 1 }], [
-        [`Caj (RM ${strataNum(sc.caj.kadar).toFixed(2)} × ${mpkNum(r.su[i])} unit syer)`, strataPdfRM(ch.caj), strataPdfRM(ch.caj * 12)],
-        ['Kumpulan wang penjelas (10% daripada caj)', strataPdfRM(ch.sinking), strataPdfRM(ch.sinking * 12)],
-        ['Jumlah', strataPdfRM(ch.caj + ch.sinking), strataPdfRM((ch.caj + ch.sinking) * 12)]], { boldLast: true });
-      k.para('Cukai taksiran dibayar kepada MPK; caj dan kumpulan wang penjelas dibayar kepada badan pengurusan (JMB / MC) mengikut unit syer petak (Akta 757 s.25). '
-        + 'Amaun ialah anggaran untuk rujukan dan bukan bil rasmi.', 8, P.MUTED);
+      k.section('A', `Assessment tax ${y} (to Kemaman Municipal Council)`);
+      k.table([{ t: 'Instalment', w: 60 }, { t: 'Amount', w: 40, r: 1 }, { t: 'Status', w: k.CW - 100 }], [
+        ['1st half (end of February)', strataPdfRM(amt / 2), b && b.p1 ? 'Paid ' + strataPdfDate(b.p1) : 'Not paid'],
+        ['2nd half (end of August)', strataPdfRM(amt / 2), b && b.p2 ? 'Paid ' + strataPdfDate(b.p2) : 'Not paid'],
+        ['Total for the year', strataPdfRM(amt), '']], { boldLast: true });
+      k.section('B', 'Charges and sinking fund (to the managing body)');
+      k.table([{ t: 'Item', w: 90 }, { t: 'Monthly', w: 35, r: 1 }, { t: 'Yearly', w: k.CW - 125, r: 1 }], [
+        [`Charges (RM ${strataNum(sc.caj.kadar).toFixed(2)} × ${mpkNum(r.su[i])} share units)`, strataPdfRM(ch.caj), strataPdfRM(ch.caj * 12)],
+        ['Sinking fund (10% of the Charges)', strataPdfRM(ch.sinking), strataPdfRM(ch.sinking * 12)],
+        ['Total', strataPdfRM(ch.caj + ch.sinking), strataPdfRM((ch.caj + ch.sinking) * 12)]], { boldLast: true });
+      k.para('Assessment tax is paid to MPK; Charges and the sinking fund are paid to the managing body (JMB / MC) by the parcel\'s share units (Act 757 s.25). '
+        + 'The amounts are estimates for reference, not an official bill.', 8, P.MUTED);
     });
-    strataPdfFooter(pdf, 'Dijana oleh Geospatial AI BuildVision untuk Majlis Perbandaran Kemaman. Penyata rujukan, bukan bil rasmi.');
-    pdf.save(`Penyata_Pemilik_${sc.no.replace(/\//g, '-')}_${y}.pdf`);
+    strataPdfFooter(pdf, 'Generated by Geospatial AI BuildVision for Kemaman Municipal Council. Reference statement, not an official bill.');
+    pdf.save(`Owner_Statements_${sc.no.replace(/\//g, '-')}_${y}.pdf`);
     addActivityLog('Owner statements PDF', sc.no);
   } catch (e) { showToast('⚠️ ' + e.message, 5000); } finally { hideLoading(); }
 }
@@ -1539,12 +1548,12 @@ function strataKuburOpen(id, at) {
       <button type="button" class="mpk-dpb-x" onclick="document.getElementById('strata-kubur').hidden = true" aria-label="Close">×</button></div>
     <div class="mpk-dpb-scroll"><form class="mpk-h-form" onsubmit="return false" oninput="strataKuburCalc()">
       <label class="wide">Site name<input id="kb-nama" value="${v('nama')}" placeholder="e.g. Tanah Perkuburan Islam Kg. Teluk Kalong"></label>
-      <label>Type<select id="kb-jenis">${STRATA_KUBUR_TYPES.map(t => `<option${t === k.jenis ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-      <label>Status<select id="kb-status">${['Sedia ada', 'Cadangan', 'Penuh / ditutup'].map(t => `<option${t === k.status ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label>Type<select id="kb-jenis">${STRATA_KUBUR_TYPES.map(t => `<option value="${strataEsc(t)}"${t === k.jenis ? ' selected' : ''}>${strataEsc(STRATA_KUBUR_TYPE_LABEL[t])}</option>`).join('')}</select></label>
+      <label>Status<select id="kb-status">${STRATA_KUBUR_STATUS.map(t => `<option value="${strataEsc(t)}"${t === k.status ? ' selected' : ''}>${strataEsc(STRATA_KUBUR_STATUS_LABEL[t])}</option>`).join('')}</select></label>
       <label>Area (m²)<input id="kb-luas" inputmode="decimal" value="${v('luas')}"></label>
       <label>Grave lots (capacity)<input id="kb-kapasiti" inputmode="numeric" value="${v('kapasiti')}" placeholder="≈ area ÷ 2.5 m²"></label>
       <label>Lots in use<input id="kb-terisi" inputmode="numeric" value="${v('terisi')}"></label>
-      <label>Managed by<input id="kb-pengurus" value="${v('pengurus')}" placeholder="e.g. Majlis Agama Islam, waris, syarikat"></label>
+      <label>Managed by<input id="kb-pengurus" value="${v('pengurus')}" placeholder="e.g. State Islamic Religious Council, heirs, a company"></label>
       <label class="wide">Note<textarea id="kb-catatan" rows="2">${v('catatan')}</textarea></label>
     </form><div class="mpk-h-hint" id="kb-calc"></div></div>
     <div class="mpk-dpb-foot">
@@ -1609,7 +1618,7 @@ function strataExport(kind) {
     blob = csv(rows); name = `mpk_strata_parcels_${day}.csv`;
   } else {
     blob = csv([['id', 'name', 'type', 'status', 'lat', 'lng', 'area_m2', 'capacity', 'in_use', 'managed_by', 'note'],
-      ...s.kubur.map(k => [k.id, k.nama, k.jenis, k.status, k.lat, k.lng, k.luas, k.kapasiti, k.terisi, k.pengurus, k.catatan])]);
+      ...s.kubur.map(k => [k.id, k.nama, strataKuburLabel(STRATA_KUBUR_TYPE_LABEL, k.jenis), strataKuburLabel(STRATA_KUBUR_STATUS_LABEL, k.status), k.lat, k.lng, k.luas, k.kapasiti, k.terisi, k.pengurus, k.catatan])]);
     name = `mpk_cemeteries_${day}.csv`;
   }
   const a = document.createElement('a');

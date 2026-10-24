@@ -380,6 +380,12 @@ header, Step 2) opens the **Strata 3D studio**:
   D'Cosmos, D'Clover, D'Quince, D'Terra, D'Tessera, Rafflesia and Empire Heritage Lane layouts, by level, all levels or exploded, with
   the 2D plan, room schedule CSV and GLB. These are layout studies, not registered strata plans.
 
+**Search** (top of the Strata panel): one box for both regions. It finds areas, modelled buildings (name or Plus Code), Kemaman
+buildings (Plus Code, lot, UPI), saved schemes, parcel owners, interior plans, and named places from OpenStreetMap (MRT / LRT
+stations, bus stations, malls, schools, mosques, parks, roads and neighbourhoods; `strata3d/places.json`, rebuilt with
+`node tools/build_strata3d_places.mjs`). Other addresses are looked up live with Nominatim inside the region. Picking a place opens
+its area and drops a marker; Enter picks the first result.
+
 Refresh after the 3D project changes: `node tools/build_strata3d.mjs C:\Users\User\Desktop\UzmaTower3D_Model` copies every GLB
 (~165 MB, the separate Perdana and Mutiara overviews included) and interior plan, and writes `strata3d/catalog.json` and
 `strata3d/buildings.geojson` from the GLB node extras; `node tools/test_strata3d_data.js` checks the result.
