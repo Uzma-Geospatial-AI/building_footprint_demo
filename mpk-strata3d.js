@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261025d';
+const S3D_VERSION = '20261025e';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },
@@ -44,7 +44,7 @@ const isDp = bid => String(bid).startsWith('dp-');
 // Both regional overviews contain only their own named areas, including for
 // map highlights, scheme totals, search and interior-plan suggestions.
 const s3dIncludesArea = (area, id) => !!area && (Array.isArray(area.includedAreaIds) ? area.includedAreaIds.includes(id) : area.id === id);
-const s3dRegion = area => area?.region || (String(area?.id || S3D.area).startsWith('umpsa') ? 'UMPSA Pekan' : String(area?.id || S3D.area).startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
+const s3dRegion = area => area?.region || (String(area?.id || S3D.area).startsWith('umpsa') ? 'Pekan' : String(area?.id || S3D.area).startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
 const s3dAreaLabel = area => area.overview ? area.name : area.name + ', ' + s3dRegion(area);
 
 // ---------- Data ----------
@@ -589,11 +589,11 @@ function s3dSearchHtml() {
 }
 function strata3dPanelHtml() {
   const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {}, region = s3dCurrentRegion();
-  const campus = region === 'UMPSA Pekan';
+  const campus = g === 'dp' && String(S3D.area || '').startsWith('umpsa');
   const opt = (v, l, on) => `<option value="${esc(v)}"${on ? ' selected' : ''}>${esc(l)}</option>`;
   const seg = `<div class="s3d-pickers">
       <label class="s3d-pick"><span>Region</span><select onchange="strata3dSetGroup(this.value)" aria-label="Region">
-        ${opt('mpk', 'MPK Kemaman', g === 'mpk')}${opt('dp', 'Damansara', g === 'dp' && !campus)}${opt('umpsa', 'UMPSA Pekan', campus)}</select></label>
+        ${opt('mpk', 'MPK Kemaman', g === 'mpk')}${opt('dp', 'Damansara', g === 'dp' && !campus)}${opt('umpsa', 'Pekan', campus)}</select></label>
       ${g === 'dp' && !campus ? `<label class="s3d-pick${region ? '' : ' need'}"><span>Damansara area</span><select onchange="strata3dSetRegion(this.value)" aria-label="Damansara area">
         ${region ? '' : '<option value="" selected disabled>Select…</option>'}
         ${S3D_DP_REGIONS.map(r => opt(r, r, r === region)).join('')}</select></label>` : ''}</div>`;

@@ -17,7 +17,7 @@ for (const a of cat.areas) {
   assert.ok(w < e && s < n, a.id + ' bounds');
   assert.ok(a.id.startsWith('umpsa') ? a.center[0]>103.42 && a.center[0]<103.44 && a.center[1]>3.53 && a.center[1]<3.56 : a.center[0] > 101.59 && a.center[0] < 101.63 && a.center[1] > 3.14 && a.center[1] < 3.19, a.id + ' centre in Damansara Perdana');
   assert.ok(a.includedAreaIds.length > 0 && a.includedAreaIds.every(id => cat.areas.some(other => other.id === id && !other.overview)), a.id + ' explicit area membership');
-  assert.strictEqual(a.region, a.id.startsWith('umpsa') ? 'UMPSA Pekan' : a.id.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
+  assert.strictEqual(a.region, a.id.startsWith('umpsa') ? 'Pekan' : a.id.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
 }
 assert.ok(isGlb(cat.uzma.glb), 'UZMA tower model');
 

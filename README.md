@@ -626,3 +626,13 @@ ranges, not whole files.
 - Elevation — [Terrarium DEM](https://registry.opendata.aws/terrain-tiles/) via AWS Open Data
 - Satellite imagery — **UZMA-sat**, © UZMA Berhad
 - PDF export — [jsPDF](https://github.com/parallax/jsPDF) + [html2canvas](https://html2canvas.hertzen.com/)
+
+### Pekan campus exterior review
+
+The Strata region menu displays **Pekan** (UMPSA campus coverage). Its 65 models
+have detailed facades, roof edges, entrances and use-specific exterior elements.
+Dewan Konvokesyen and Dewan Cheese are distinct, corrected building identities.
+The convocation hall has two documented storeys, a tall main volume and an
+estimated curved canopy reconstruction. See [evidence and limitations](strata3d/umpsa-pekan.md).
+The campus overview and five zones retain stable identifiers and load separately
+from Damansara. Model and footprint visibility controls are unchanged.

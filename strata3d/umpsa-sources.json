@@ -355,8 +355,8 @@
   ],
   "names": {
     "fk": "OpenStreetMap named node 12825444378; official FK website",
-    "canseleri": "OpenStreetMap named node 13651009782",
-    "dewan": "OpenStreetMap named node 13651009781",
+    "canseleri": "Canseleri Tun Abdul Razak (CTAR), official UMPSA aerial photograph dated 19 July 2024.",
+    "dewan": "UMPSA official October 2026 convocation hall handover; user corrected the earlier misplaced OSM Dewan Cheese label.",
     "pap": "OSM CAFE PAP node 13650935758 and official mosque history",
     "masjid": "UMPSA official Masjid Al-Jazari page",
     "library": "UMPSA Library official Wadah 2012 exterior and four-storey description",
@@ -367,7 +367,8 @@
     "kk5-h": "OpenStreetMap named node 13652706155",
     "kk5-i": "OpenStreetMap named node 13652505283",
     "kk5-b": "OSM building way 1489288201",
-    "kk5-c": "OSM building way 1489288202"
+    "kk5-c": "OSM building way 1489288202",
+    "civic-office": "Dewan Cheese: building identity corrected by the user on 25 October 2026; previously mislabeled central administration block."
   },
   "references": {
     "masjid": [
@@ -379,6 +380,13 @@
     ],
     "fk": [
       "https://fk.umpsa.edu.my/"
+    ],
+    "dewan": [
+      "https://news.umpsa.edu.my/campus-life/jkr-serah-projek-dewan-konvokesyen-umpsa",
+      "https://www.kesb.com.my/projects/ump/"
+    ],
+    "canseleri": [
+      "https://news.umpsa.edu.my/tersergam-indah-pandangan-dari-udara-bangunan-canseleri-tun-abdul-razak-ctar-dan-masjid-umpsa-di"
     ]
   },
   "datasetReview": {
@@ -574,5 +582,12 @@
         3.5466432
       ]
     ]
+  },
+  "architectureReview": {
+    "date": "2026-10-25",
+    "convocation": "Two-storey hall with triple-volume auditorium; Wau Pungguk/orbit-inspired sweeping roof, recessed walls, panelled facade, entrance awnings and soffit ribs. Exterior design reference: Kamal Engineering project renders; exact as-built dimensions are unavailable.",
+    "cheese": "User-confirmed separate hall at the former civic-office feature. Solar-roof envelope retained from imagery; facade detailing indicative.",
+    "otherBuildings": "Individual traced envelopes retained. Window frames, shading fins, entrance doors, industrial shutters, residential screens, roof seams and utility tank shell are indicative exterior details appropriate to building use. No unsupported interior floor plans added.",
+    "supersededName": "The original Dewan Cheese OSM point at the convocation-hall envelope is retained only in raw evidence; it is not used as the model identity."
   }
 }

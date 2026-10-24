@@ -123,7 +123,7 @@ for (const b of buildings.values()) {
 const order = a => (a.overview ? 0 : 1);
 areas.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
 const catalog = { generated: new Date().toISOString().slice(0, 10), source: 'UZMA Spatial Studio (UzmaTower3D_Model)',
-  note: 'Damansara Perdana, Mutiara Damansara and UMPSA Pekan campus. Original mapped and individually reviewed imagery footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.',
+  note: 'Damansara Perdana, Mutiara Damansara and Pekan (UMPSA campus). Original mapped and individually reviewed imagery footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.',
   attribution: 'Building footprints © OpenStreetMap contributors (ODbL 1.0) · Microsoft Global ML Building Footprints (CDLA Permissive 2.0)',
   uzma: { glb: 'models/UZMA-Tower.glb', building: 'dp-uzma-tower' }, areas, plans };
 fs.writeFileSync(path.join(OUT, 'catalog.json'), JSON.stringify(catalog, null, 1));

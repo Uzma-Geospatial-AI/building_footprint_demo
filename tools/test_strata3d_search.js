@@ -21,3 +21,10 @@ assert(source.includes('strata3dToggleModels'),'Preserve latest model visibility
 console.log('PASS: restored buildings searchable; reviewed tenants open their real model hosts; latest model toggle retained.');
 
 for(const q of ['UMPSA','Al-Jazari','Canseleri','Perpustakaan','FTKMA','Komputeran'])assert(vm.runInContext(`s3dLocalSearch(${JSON.stringify(q)})`,ctx).some(r=>r.go.dp||r.go.area),'Campus search: '+q);
+
+for(const [q,host] of [['Dewan Konvokesyen','reference/umpsa-dewan'],['Dewan Cheese','reference/umpsa-civic-office']]) {
+ const expected=fc.features.find(f=>f.properties.src_id===host).properties.id;
+ assert(vm.runInContext('s3dLocalSearch('+JSON.stringify(q)+')',ctx).some(r=>r.go.dp===expected),q+' opens corrected model host');
+}
+assert.equal(cat.areas.find(a=>a.id==='umpsa').name,'Pekan');
+assert(cat.areas.filter(a=>a.id.startsWith('umpsa')).every(a=>a.region==='Pekan'));

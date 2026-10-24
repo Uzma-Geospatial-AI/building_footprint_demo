@@ -264,14 +264,17 @@ for (const [floors, units] of [['', '2'], ['0', '2'], ['-1', '2'], ['1.5', '2'],
   assert.strictEqual(title.textContent, 'Strata Titles — MPK Kemaman');
   assert.deepStrictEqual(Array.from(ui.data().features, f => f.properties.on), [0, 0]);
   assert.match(ui.panel(), /Teluk Kalong/);
-  ui.state.cat.areas.push({id:'umpsa',name:'All of UMPSA Pekan',overview:true,includedAreaIds:['umpsa-civic'],region:'UMPSA Pekan',regionGroup:'umpsa',buildings:1,mb:2});
-  ui.state.fc.features.push({type:'Feature',geometry:null,properties:{id:'dp-campus',dp_area:'umpsa-civic',nama:'Perpustakaan UMPSA Pekan',tinggi_m:19,tingkat_est:4}});
+  ui.state.cat.areas.push({id:'umpsa',name:'All of Pekan',overview:true,includedAreaIds:['umpsa-civic'],region:'Pekan',regionGroup:'umpsa',buildings:1,mb:2});
+  ui.state.fc.features.push({type:'Feature',geometry:null,properties:{id:'dp-campus',dp_area:'umpsa-civic',nama:'Perpustakaan Pekan',tinggi_m:19,tingkat_est:4}});
   ui.state.area='umpsa';ui.state.group='dp';
   const campusHtml=ui.panel();
-  assert.match(campusHtml,/<option value="umpsa" selected>UMPSA Pekan<\/option>/);
-  assert(campusHtml.includes('Perpustakaan UMPSA Pekan'));
+  assert.match(campusHtml,/<option value="umpsa" selected>Pekan<\/option>/);
+  assert(campusHtml.includes('Perpustakaan Pekan'));
   assert(!campusHtml.includes('aria-label="Damansara area"'));
-  context.STRATA.active=true;ui.title();assert.match(title.textContent,/UMPSA Pekan/);
+  context.STRATA.active=true;ui.title();assert.match(title.textContent,/Pekan/);
+  ui.state.group='mpk';
+  assert.match(ui.panel(),/<option value="mpk" selected>MPK Kemaman<\/option>/);
+  assert(!ui.panel().includes('<option value="umpsa" selected>'),'Remembered Pekan area cannot select two regions');
 
 }
 
@@ -328,8 +331,8 @@ async function checkRegionalModelLoading() {
       { id: 'mutiara', overview: true, includedAreaIds: ['mutiara-retail'], region: 'Mutiara Damansara', center: [101.62, 3.16], bounds: [[101, 3], [102, 4]], glb: 'models/mutiara.glb', mb: 1 },
       { id: 'empire', includedAreaIds: ['empire'], center: [101.61, 3.17], glb: 'models/empire.glb', mb: 1 },
       { id: 'mutiara-retail', includedAreaIds: ['mutiara-retail'], center: [101.62, 3.16], glb: 'models/mutiara-retail.glb', mb: 1 },
-      {id:'umpsa',overview:true,includedAreaIds:['umpsa-civic'],region:'UMPSA Pekan',regionGroup:'umpsa',center:[103.43,3.54],bounds:[[103.42,3.53],[103.44,3.56]],glb:'models/umpsa.glb',mb:1},
-      {id:'umpsa-civic',includedAreaIds:['umpsa-civic'],region:'UMPSA Pekan',regionGroup:'umpsa',center:[103.43,3.54],glb:'models/umpsa-civic.glb',mb:1},
+      {id:'umpsa',overview:true,includedAreaIds:['umpsa-civic'],region:'Pekan',regionGroup:'umpsa',center:[103.43,3.54],bounds:[[103.42,3.53],[103.44,3.56]],glb:'models/umpsa.glb',mb:1},
+      {id:'umpsa-civic',includedAreaIds:['umpsa-civic'],region:'Pekan',regionGroup:'umpsa',center:[103.43,3.54],glb:'models/umpsa-civic.glb',mb:1},
     ], plans: [] };
     ui.state.fc = { type: 'FeatureCollection', features: [] };
     const nodes = {};
