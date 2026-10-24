@@ -57,7 +57,7 @@
    "id": "mutiara",
    "name": "Seluruh Mutiara Damansara",
    "glb": "models/Mutiara-Damansara.glb",
-   "mb": 16.71,
+   "mb": 19.29,
    "center": [
     101.6089741,
     3.1577982
@@ -65,11 +65,11 @@
    "bounds": [
     [
      101.6019292,
-     3.1534445
+     3.1470149
     ],
     [
-     101.6166818,
-     3.163747
+     101.6182735,
+     3.1645403
     ]
    ],
    "overview": true,
@@ -83,10 +83,39 @@
     "mutiara-homes-west",
     "mutiara-homes-south",
     "mutiara-homes-central",
-    "mutiara-homes-east"
+    "mutiara-homes-east",
+    "mutiara-utilities",
+    "mutiara-one-utama"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 906,
+   "buildings": 925,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-one-utama",
+   "name": "1 Utama — Bandar Utama",
+   "glb": "models/1-Utama-Shopping-Centre.glb",
+   "mb": 8.26,
+   "center": [
+    101.6161,
+    3.14945
+   ],
+   "bounds": [
+    [
+     101.6143787,
+     3.1470149
+    ],
+    [
+     101.6182735,
+     3.1520423
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-one-utama"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 8,
    "uzma": false
   },
   {
@@ -174,7 +203,7 @@
    "id": "mutiara-residences",
    "name": "Desa Mutiara / Surian / Suria residences",
    "glb": "models/mutiara-residences.glb",
-   "mb": 8.27,
+   "mb": 8.82,
    "center": [
     101.6061477,
     3.1585714
@@ -185,7 +214,7 @@
      3.1534445
     ],
     [
-     101.6102891,
+     101.613766,
      3.1636982
     ]
    ],
@@ -194,7 +223,7 @@
     "mutiara-residences"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 26,
+   "buildings": 28,
    "uzma": false
   },
   {
@@ -390,7 +419,7 @@
    "id": "mutiara-retail",
    "name": "IKEA / IPC / The Curve",
    "glb": "models/mutiara-retail.glb",
-   "mb": 6.69,
+   "mb": 6.74,
    "center": [
     101.6114446,
     3.1570794
@@ -410,7 +439,7 @@
     "mutiara-retail"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 42,
+   "buildings": 43,
    "uzma": false
   },
   {
@@ -468,6 +497,33 @@
    "uzma": false
   },
   {
+   "id": "mutiara-utilities",
+   "name": "Mutiara GIS substation",
+   "glb": "models/Mutiara-GIS-substation.glb",
+   "mb": 0.13,
+   "center": [
+    101.60235,
+    3.16425
+   ],
+   "bounds": [
+    [
+     101.6022208,
+     3.163953
+    ],
+    [
+     101.6025188,
+     3.1645403
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-utilities"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 2,
+   "uzma": false
+  },
+  {
    "id": "mutiara-homes-central",
    "name": "Mutiara homes — central",
    "glb": "models/mutiara-homes-central.glb",
@@ -498,7 +554,7 @@
    "id": "mutiara-homes-east",
    "name": "Mutiara homes — east",
    "glb": "models/mutiara-homes-east.glb",
-   "mb": 2.27,
+   "mb": 2.43,
    "center": [
     101.6102729,
     3.1611703
@@ -509,8 +565,8 @@
      3.158986
     ],
     [
-     101.6121057,
-     3.1633545
+     101.6124902,
+     3.1637459
     ]
    ],
    "overview": false,
@@ -518,7 +574,7 @@
     "mutiara-homes-east"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 64,
+   "buildings": 68,
    "uzma": false
   },
   {
@@ -606,7 +662,7 @@
    "id": "mutiara-offices",
    "name": "Mutiara office district / Lotus's",
    "glb": "models/mutiara-offices.glb",
-   "mb": 2.12,
+   "mb": 2.24,
    "center": [
     101.6144624,
     3.1611842
@@ -626,7 +682,7 @@
     "mutiara-offices"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 14,
+   "buildings": 16,
    "uzma": false
   },
   {
