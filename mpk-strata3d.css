@@ -117,3 +117,14 @@ body:not(.strata-mode) .s3d-studio { display:none !important; }
 .s3d-res small { display:block; font-size:10.5px; color:var(--charcoal-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .s3d-res-k { color:#5E35B1; font-weight:600; }
 .s3d-res-empty { padding:8px 10px; font-size:11px; color:var(--charcoal-light); }
+
+/* 3D models on / off (strata3dToggleModels) */
+.s3d-toggle { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 10px; margin-bottom:8px; border-radius:9px; background:#F5F1FC; cursor:pointer; }
+.s3d-toggle b { display:block; font-size:12px; color:var(--charcoal-dark); }
+.s3d-toggle small { display:block; font-size:10.5px; color:var(--charcoal-light); }
+.s3d-toggle input { position:absolute; opacity:0; width:1px; height:1px; }
+.s3d-toggle i { position:relative; flex:none; width:36px; height:20px; border-radius:10px; background:#B0BEC5; transition:background 0.15s; }
+.s3d-toggle i::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.25); transition:left 0.15s; }
+.s3d-toggle input:checked + i { background:#5E35B1; }
+.s3d-toggle input:checked + i::after { left:18px; }
+.s3d-toggle input:focus-visible + i { outline:2px solid var(--orange); outline-offset:2px; }
