@@ -32,7 +32,17 @@ for (const f of fc.features) {
   assert.ok(p.tingkat_est >= 1 && p.area_m2 > 0 && isFinite(p.lng) && isFinite(p.lat), p.id + ' strata fields');
 }
 assert.ok(ids.has('dp-uzma-tower'), 'UZMA Tower building');
-assert.strictEqual(fc.features.length, 1539, '905 Mutiara additions plus 634 existing structures');
+assert.strictEqual(fc.features.length, 1540, '906 Mutiara structures including one historical reference, plus 634 existing structures');
+const historical=fc.features.find(f=>f.properties.src_id==='way/107998493');
+assert.ok(historical.properties.historical_reference && historical.properties.current_use_verified===false);
+assert.match(historical.properties.nama,/historical reference/);
+const regionalBytes=fs.readFileSync(path.join(DIR,cat.areas.find(a=>a.id==='mutiara').glb));
+const regionalJson=JSON.parse(regionalBytes.subarray(20,20+regionalBytes.readUInt32LE(12)).toString('utf8'));
+const bridges=regionalJson.nodes.filter(n=>n.extras && n.extras.pedestrianLink);
+assert.strictEqual(bridges.length,15,'The regional map GLB contains all pedestrian bridges');
+assert.strictEqual(new Set(bridges.map(n=>n.extras.routeId)).size,15,'No duplicate links in the overview');
+assert.strictEqual(bridges.reduce((n,b)=>n+b.extras.stairRoutes.length,0),4,'Mapped station access stairs survive deployment export');
+assert.ok(bridges.every(b=>!b.extras.footprint),'Bridge infrastructure cannot create additional strata parcels');
 const regionIds = new Set();
 for (const a of cat.areas.filter(area => area.overview)) {
   const selected = fc.features.filter(f => a.includedAreaIds.includes(f.properties.dp_area));

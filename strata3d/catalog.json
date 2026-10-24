@@ -57,7 +57,7 @@
    "id": "mutiara",
    "name": "Seluruh Mutiara Damansara",
    "glb": "models/Mutiara-Damansara.glb",
-   "mb": 13.82,
+   "mb": 16.71,
    "center": [
     101.6089741,
     3.1577982
@@ -86,7 +86,7 @@
     "mutiara-homes-east"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 905,
+   "buildings": 906,
    "uzma": false
   },
   {
@@ -390,7 +390,7 @@
    "id": "mutiara-retail",
    "name": "IKEA / IPC / The Curve",
    "glb": "models/mutiara-retail.glb",
-   "mb": 3.88,
+   "mb": 6.69,
    "center": [
     101.6114446,
     3.1570794
@@ -410,7 +410,7 @@
     "mutiara-retail"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 41,
+   "buildings": 42,
    "uzma": false
   },
   {
@@ -606,7 +606,7 @@
    "id": "mutiara-offices",
    "name": "Mutiara office district / Lotus's",
    "glb": "models/mutiara-offices.glb",
-   "mb": 0.88,
+   "mb": 2.12,
    "center": [
     101.6144624,
     3.1611842

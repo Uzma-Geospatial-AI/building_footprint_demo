@@ -77,7 +77,8 @@ for (const f of files.filter(f => !/^UZMA-/.test(f))) {
       id, src_id: x.id, nama: x.name, dp_area: x.areaId, kind: x.kind || '', tingkat_est: levels || (height ? Math.max(1, Math.round(height / 3.5)) : 1),
       tinggi_m: height ? r2(height) : null, tinggi_src: x.heightSource || (height ? 'UZMA Spatial Studio model' : 'not recorded; 1 floor assumed'),
       ht_est: !!x.heightEstimated, area_m2: Math.round(ringArea(ring) - holes.reduce((sum, hole) => sum + ringArea(hole), 0)), lng: r7(x.coordinates ? x.coordinates[0] : ring[0][0]),
-      lat: r7(x.coordinates ? x.coordinates[1] : ring[0][1]), sumber: x.source || '' } });
+      lat: r7(x.coordinates ? x.coordinates[1] : ring[0][1]), sumber: x.source || '',
+      ...(x.historicalReference ? { historical_reference:true, temporal_status:x.temporalStatus, current_use_verified:false } : {}) } });
   }
 }
 // UZMA Tower is a detailed model without a footprint record: its shaft outline from the tower's own extras

@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261024b';
+const S3D_VERSION = '20261024c';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'Semua kawasan kajian', sub: 'Teluk Kalong + Binjai – Chukai' },
@@ -313,6 +313,7 @@ function strata3dPanelHtml() {
       const plans = S3D.cat.plans.filter(p => s3dIncludesArea(a, p.area));
       detail = `<div class="s3d-now"><div class="s3d-now-t"><b>${esc(a.name)}</b><span data-s3d-progress="${esc(a.id)}">${esc(s3dMapStatus(a.id))}</span></div>
         <p class="strata-panel-copy">Click any outlined building to start a strata scheme or open it in the Strata 3D studio.</p>
+        ${inArea.some(f => f.properties.historical_reference) ? '<p class="mpk-note">Former eCurve is shown as a historical satellite reference. It is not verified current construction or the proposed The LINES development.</p>' : ''}
         <div class="s3d-chips">${tall.map(f => { const p = f.properties;
           return `<button type="button" class="s3d-chip" onclick='strata3dFocus(${JSON.stringify(p.id)})' title="${esc(p.nama)}">${esc(s3dShort(p.nama))}<small>${p.tingkat_est} fl</small></button>`; }).join('')}</div>
         ${plans.length ? `<div class="s3d-sub">Interior plans</div><div class="s3d-chips">${plans.map(p =>
