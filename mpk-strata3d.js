@@ -1,6 +1,6 @@
 // ============================================================
 // STRATA 3D — the UZMA Spatial Studio models in Strata mode (ES module, after mpk-strata.js)
-//   Area picker   MPK Kemaman (Teluk Kalong, Binjai – Chukai) or one of the Damansara Perdana areas;
+//   Area picker   MPK Kemaman (Teluk Kalong, Binjai – Chukai), Damansara Perdana or Mutiara Damansara;
 //                 a Damansara area puts its GLB model on the map (MapLibre custom layer, three.js) and
 //                 its building footprints (strata3d/buildings.geojson) take strata schemes like any MPK building
 //   Studio        a three.js workspace for one building:
@@ -33,6 +33,11 @@ const fmt = n => (typeof mpkNum === 'function' ? mpkNum(n) : Math.round(n).toLoc
 const dpArea = id => S3D.cat && S3D.cat.areas.find(a => a.id === id);
 const dpPlan = id => S3D.cat && S3D.cat.plans.find(p => p.id === id);
 const isDp = bid => String(bid).startsWith('dp-');
+// Both regional overviews contain only their own named areas, including for
+// map highlights, scheme totals, search and interior-plan suggestions.
+const s3dIncludesArea = (area, id) => !!area && (Array.isArray(area.includedAreaIds) ? area.includedAreaIds.includes(id) : area.id === id);
+const s3dRegion = area => area?.region || (String(area?.id || S3D.area).startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
+const s3dAreaLabel = area => area.overview ? area.name : area.name + ', ' + s3dRegion(area);
 
 // ---------- Data ----------
 function s3dLoad() {
@@ -49,7 +54,7 @@ function s3dLoad() {
       }
       S3D.fc = fc;
     })
-    .catch(e => { S3D.loading = null; if (typeof showToast === 'function') showToast('⚠️ Could not load the Damansara Perdana 3D data: ' + e.message, 5000); throw e; });
+    .catch(e => { S3D.loading = null; if (typeof showToast === 'function') showToast('⚠️ Could not load the Damansara 3D data: ' + e.message, 5000); throw e; });
   return S3D.loading;
 }
 // A Damansara building as an MPK-like feature, for strataBuilding (mpk-strata.js)
@@ -57,7 +62,7 @@ function strata3dBuilding(bid) { return S3D.byId.get(String(bid)) || null; }
 function strata3dAreaName(k) {
   if (!k) return '';
   const id = String(k).replace(/^dp:/, ''), a = dpArea(id);
-  return a ? a.name + ', Damansara Perdana' : (String(k).startsWith('dp:') ? 'Damansara Perdana' : '');
+  return a ? s3dAreaLabel(a) : (String(k).startsWith('dp:') ? s3dRegion({ id }) : '');
 }
 
 // ---------- Map: building footprints and the GLB model ----------
@@ -67,7 +72,7 @@ function s3dBldData() {
   return { type: 'FeatureCollection', features: S3D.fc.features.map(f => {
     const sc = schemes[f.properties.id];
     return { type: 'Feature', geometry: f.geometry, properties: { id: f.properties.id, st: sc ? strataStageIdx(sc) + 1 : 0,
-      on: f.properties.dp_area === S3D.area || dpArea(S3D.area)?.overview ? 1 : 0, plan: f.properties.plan ? 1 : 0 } };
+      on: s3dIncludesArea(dpArea(S3D.area), f.properties.dp_area) ? 1 : 0, plan: f.properties.plan ? 1 : 0 } };
   }) };
 }
 function strata3dSync() {
@@ -224,7 +229,7 @@ function strata3dSelectArea(id, opts = {}) {
 // The page title names the region of the selected area
 function s3dTitle() {
   const t = document.getElementById('page-title');
-  if (t && STRATA.active) t.textContent = 'Strata Titles — ' + (S3D_KEMAMAN.some(k => k.id === S3D.area) ? 'MPK Kemaman' : 'Damansara Perdana');
+  if (t && STRATA.active) t.textContent = 'Strata Titles — ' + (S3D_KEMAMAN.some(k => k.id === S3D.area) ? 'MPK Kemaman' : s3dRegion(dpArea(S3D.area)));
 }
 function strata3dSetGroup(g) {
   S3D.group = g;
@@ -236,7 +241,7 @@ function strata3dFilter(q) {
 }
 function strata3dPanelHtml() {
   const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {};
-  const seg = `<div class="strata-seg" role="radiogroup" aria-label="Region">${[['mpk', 'MPK Kemaman'], ['dp', 'Damansara Perdana 3D']].map(([k, l]) =>
+  const seg = `<div class="strata-seg" role="radiogroup" aria-label="Region">${[['mpk', 'MPK Kemaman'], ['dp', 'Damansara Perdana + Mutiara 3D']].map(([k, l]) =>
     `<button type="button" role="radio" aria-checked="${g === k}" class="${g === k ? 'on' : ''}" onclick="strata3dSetGroup('${k}')">${l}</button>`).join('')}</div>`;
   let list = '', detail = '';
   if (g === 'mpk') {
@@ -245,21 +250,21 @@ function strata3dPanelHtml() {
       <b>${esc(k.name)}</b><small>${esc(k.sub)} · ${fmt(count(k.id))} buildings</small></button>`).join('');
     detail = `<p class="strata-panel-copy">Strata 3D builds each Kemaman building from its footprint and estimated floors. Open a building, then <b>View in 3D</b>.</p>`;
   } else if (!S3D.cat) {
-    list = '<div class="mpk-reg-empty">Loading the Damansara Perdana areas…</div>';
+    list = '<div class="mpk-reg-empty">Loading the Damansara Perdana and Mutiara Damansara areas…</div>';
   } else {
     const areas = S3D.cat.areas;
-    list = `<input type="search" class="s3d-search" placeholder="Search an area or building…" aria-label="Search Damansara Perdana areas" oninput="strata3dFilter(this.value)">
+    list = `<input type="search" class="s3d-search" placeholder="Search an area or building…" aria-label="Search Damansara Perdana and Mutiara Damansara areas" oninput="strata3dFilter(this.value)">
       <div class="s3d-areas">${areas.map(a => {
-        const names = S3D.fc.features.filter(f => f.properties.dp_area === a.id).map(f => f.properties.nama).join(' ');
-        const n = Object.values(schemes).filter(x => x.bld && x.bld.kawasan === 'dp:' + a.id).length;
+        const names = S3D.fc.features.filter(f => s3dIncludesArea(a, f.properties.dp_area)).map(f => f.properties.nama).join(' ');
+        const n = Object.values(schemes).filter(x => x.bld && String(x.bld.kawasan).startsWith('dp:') && s3dIncludesArea(a, String(x.bld.kawasan).slice(3))).length;
         return `<button type="button" class="s3d-area${S3D.area === a.id ? ' on' : ''}" data-name="${esc((a.name + ' ' + names).toLowerCase())}" onclick="strata3dSelectArea('${esc(a.id)}')">
           <b>${esc(a.name)}${a.uzma ? ' <span class="s3d-tag">UZMA</span>' : ''}</b>
           <small>${fmt(a.buildings)} buildings · ${a.mb} MB model${n ? ` · ${n} scheme${n > 1 ? 's' : ''}` : ''}</small></button>`; }).join('')}</div>`;
     const a = dpArea(S3D.area);
     if (a) {
-      const inArea = S3D.fc.features.filter(f => a.overview || f.properties.dp_area === a.id);
+      const inArea = S3D.fc.features.filter(f => s3dIncludesArea(a, f.properties.dp_area));
       const tall = inArea.slice().sort((x, y) => (y.properties.tinggi_m || 0) - (x.properties.tinggi_m || 0)).slice(0, 6);
-      const plans = S3D.cat.plans.filter(p => a.overview || p.area === a.id);
+      const plans = S3D.cat.plans.filter(p => s3dIncludesArea(a, p.area));
       const ready = S3D.onMap && S3D.onMap.areaId === a.id;
       detail = `<div class="s3d-now"><div class="s3d-now-t"><b>${esc(a.name)}</b><span data-s3d-progress="${esc(a.id)}">${S3D.progress[a.id] != null ? `Loading 3D model… ${S3D.progress[a.id]}%` : ready ? '3D model on the map' : ''}</span></div>
         <p class="strata-panel-copy">Click any outlined building to start a strata scheme or open it in the Strata 3D studio.</p>
@@ -692,7 +697,7 @@ function s3dHead() {
   const sc = ST.sc, area = p.dp_area ? dpArea(p.dp_area) : null;
   document.getElementById('s3d-title').textContent = ST.mode === 'plan' && !ST.bid ? (dpPlan(ST.planId) || {}).label || 'Interior plan'
     : (sc && !ST.preview ? sc.no + ' · ' + sc.nama : (p.nama || 'Building ' + (p.plus_code || '')));
-  document.getElementById('s3d-sub').textContent = [p.plus_code, area ? area.name + ', Damansara Perdana' : (MPK_AREAS[p.kawasan] || {}).name,
+  document.getElementById('s3d-sub').textContent = [p.plus_code, area ? s3dAreaLabel(area) : (MPK_AREAS[p.kawasan] || {}).name,
     p.area_m2 ? fmt(p.area_m2) + ' m² footprint' : '', p.tinggi_m ? p.tinggi_m + ' m' : ''].filter(Boolean).join(' · ');
 }
 function s3dStrataSide() {

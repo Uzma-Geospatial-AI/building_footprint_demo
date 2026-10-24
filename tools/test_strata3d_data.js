@@ -3,19 +3,21 @@ const fs = require('fs');
 const path = require('path');
 
 // strata3d/ as written by tools/build_strata3d.mjs: every file the catalog names exists, every
-// building is a closed polygon in Damansara Perdana with the properties Strata reads.
+// building is a closed polygon in Perdana/Mutiara Damansara with the properties Strata reads.
 const DIR = path.join(__dirname, '..', 'strata3d');
 const cat = JSON.parse(fs.readFileSync(path.join(DIR, 'catalog.json'), 'utf8'));
 const fc = JSON.parse(fs.readFileSync(path.join(DIR, 'buildings.geojson'), 'utf8'));
 const isGlb = f => fs.readFileSync(path.join(DIR, f)).readUInt32LE(0) === 0x46546c67;
 
-assert.ok(cat.areas.length >= 19, 'areas');
-assert.strictEqual(cat.areas.filter(a => a.overview).length, 1, 'one overview area');
+assert.strictEqual(cat.areas.length, 31, '29 modeled areas plus two regional overviews');
+assert.deepStrictEqual(cat.areas.filter(a => a.overview).map(a => a.id).sort(), ['damansara', 'mutiara']);
 for (const a of cat.areas) {
   assert.ok(isGlb(a.glb), a.glb);
   const [[w, s], [e, n]] = a.bounds;
   assert.ok(w < e && s < n, a.id + ' bounds');
   assert.ok(a.center[0] > 101.59 && a.center[0] < 101.63 && a.center[1] > 3.15 && a.center[1] < 3.19, a.id + ' centre in Damansara Perdana');
+  assert.ok(a.includedAreaIds.length > 0 && a.includedAreaIds.every(id => cat.areas.some(other => other.id === id && !other.overview)), a.id + ' explicit area membership');
+  assert.strictEqual(a.region, a.id.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
 }
 assert.ok(isGlb(cat.uzma.glb), 'UZMA tower model');
 
@@ -26,9 +28,20 @@ for (const f of fc.features) {
   ids.add(p.id);
   assert.ok(areaIds.has(p.dp_area), p.id + ' area');
   assert.ok(ring.length >= 4 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1], p.id + ' closed ring');
+  for (const hole of f.geometry.coordinates.slice(1)) assert.ok(hole.length >= 4 && hole[0][0] === hole.at(-1)[0] && hole[0][1] === hole.at(-1)[1], p.id + ' closed courtyard');
   assert.ok(p.tingkat_est >= 1 && p.area_m2 > 0 && isFinite(p.lng) && isFinite(p.lat), p.id + ' strata fields');
 }
 assert.ok(ids.has('dp-uzma-tower'), 'UZMA Tower building');
+assert.strictEqual(fc.features.length, 1539, '905 Mutiara additions plus 634 existing structures');
+const regionIds = new Set();
+for (const a of cat.areas.filter(area => area.overview)) {
+  const selected = fc.features.filter(f => a.includedAreaIds.includes(f.properties.dp_area));
+  assert.strictEqual(selected.length, a.buildings + Number(a.uzma), a.id + ' overview count includes its own region only');
+  for (const f of selected) { assert.ok(!regionIds.has(f.properties.id), 'regional overviews are disjoint'); regionIds.add(f.properties.id); }
+}
+assert.strictEqual(regionIds.size, fc.features.length, 'every source building belongs to one regional overview');
+const curve = fc.features.find(f => f.properties.src_id === 'relation/13518521');
+assert.strictEqual(curve.geometry.coordinates.length, 3, 'The Curve retains both courtyard holes in the map footprint');
 assert.strictEqual(fc.features.find(f => f.properties.id === 'dp-uzma-tower').properties.tingkat_est, 12);
 
 const planIds = new Set(cat.plans.map(p => p.id));

@@ -363,9 +363,9 @@ earlier `mpk_strata_v1` / `mpk_harta_v1` data carries over), with CSV / JSON exp
 
 **Strata 3D** (`mpk-strata3d.js`, `mpk-strata3d.css`, data in `strata3d/`): the UZMA Spatial Studio models
 (`UzmaTower3D_Model`) brought into Strata mode. **Choose an area** at the top of the Strata panel picks *MPK Kemaman* (all
-study areas, Teluk Kalong, Binjai – Chukai) or one of 20 *Damansara Perdana 3D* areas (searchable by area or building name;
+study areas, Teluk Kalong, Binjai – Chukai) or one of 31 *Damansara Perdana + Mutiara Damansara 3D* selections (29 modeled areas and two regional overviews, searchable by area or building name;
 the choice is remembered in this browser). A Damansara area puts its GLB model on the map (a MapLibre custom layer drawn with
-three.js 0.180 from jsDelivr, georeferenced by the area centre in the GLB) and outlines its buildings; each of the 634 modelled
+three.js 0.180 from jsDelivr, georeferenced by the area centre in the GLB) and outlines its buildings; each of the 1,539 modelled
 buildings (UZMA Tower included) takes a strata scheme like an MPK building (`dp:<area>` in the scheme, Mukim Sungai Buloh, Daerah
 Petaling in the report), and the floor X-ray swaps the model's own building for the slabs. *View in 3D* (building popup, workspace
 header, Step 2) opens the **Strata 3D studio**:
@@ -379,8 +379,10 @@ header, Step 2) opens the **Strata 3D studio**:
   the 2D plan, room schedule CSV and GLB. These are layout studies, not registered strata plans.
 
 Refresh after the 3D project changes: `node tools/build_strata3d.mjs C:\Users\User\Desktop\UzmaTower3D_Model` copies every GLB
-(~114 MB, the 23 MB district overview included) and interior plan, and writes `strata3d/catalog.json` and
+(~165 MB, the separate Perdana and Mutiara overviews included) and interior plan, and writes `strata3d/catalog.json` and
 `strata3d/buildings.geojson` from the GLB node extras; `node tools/test_strata3d_data.js` checks the result.
+
+The Mutiara extension adds 905 mapped structures, including 658 house outlines, IKEA, IPC, The Curve, Curve NX, the MRT station and office buildings. Each regional overview selects only its own buildings and available interior plans. The Curve retains both courtyard holes in the map footprint as well as the GLB. Exterior details and most metric heights are estimates; missing tower outlines and redevelopment sites remain documented gaps. See [Mutiara reconstruction references](docs/mutiara-damansara-references.md). No new Mutiara interior floor plans are claimed.
 
 **Building heights** (study areas, `tinggi_m`, `tingkat_est`, `tinggi_src` in `mpk_buildings.geojson`, `tools/build_heights.py`):
 no survey of heights exists for Kemaman, so each building takes OpenStreetMap's mapped height or levels (× 3.5 m) where a mapped

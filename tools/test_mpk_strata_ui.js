@@ -204,4 +204,66 @@ for (const [floors, units] of [['', '2'], ['0', '2'], ['-1', '2'], ['1.5', '2'],
   }
 }
 
+// The two Damansara overviews must keep map highlights, building shortcuts,
+// plans, saved-scheme counts and labels inside the selected region.
+{
+  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'mpk-strata3d.js'), 'utf8').replace(/^import .*;\r?$/gm, '');
+  const title = { textContent: '' };
+  const context = vm.createContext({
+    window: {}, localStorage: { getItem() { return null; } },
+    document: { getElementById: id => id === 'page-title' ? title : null },
+    STRATA: { active: false, s: { schemes: {
+      dp: { bld: { kawasan: 'dp:empire' } },
+      md1: { bld: { kawasan: 'dp:mutiara-retail' } },
+      md2: { bld: { kawasan: 'dp:mutiara-retail' } },
+      mpk: { bld: { kawasan: 'tk' } },
+    } } },
+    MPK: { data: { buildings: { features: [{ properties: { kawasan: 'tk' } }] } } },
+    strataEsc: escapeHtml,
+  });
+  vm.runInContext(moduleSource + `
+    globalThis.ui = { state: S3D, panel: strata3dPanelHtml, data: s3dBldData, title: s3dTitle, areaName: strata3dAreaName };
+  `, context, { filename: 'mpk-strata3d.js' });
+  const { ui } = context;
+  ui.state.cat = {
+    areas: [
+      { id: 'damansara', name: 'Seluruh Damansara Perdana', overview: true, includedAreaIds: ['empire'], region: 'Damansara Perdana', buildings: 1, mb: 1 },
+      { id: 'mutiara', name: 'Seluruh Mutiara Damansara', overview: true, includedAreaIds: ['mutiara-retail'], region: 'Mutiara Damansara', buildings: 1, mb: 1 },
+      { id: 'empire', name: 'Empire Damansara', includedAreaIds: ['empire'], region: 'Damansara Perdana', buildings: 1, mb: 1 },
+      { id: 'mutiara-retail', name: 'Mutiara retail', includedAreaIds: ['mutiara-retail'], region: 'Mutiara Damansara', buildings: 1, mb: 1 },
+    ],
+    plans: [{ id: 'uzma', label: 'UZMA interior', area: 'empire' }, { id: 'md-test', label: 'Mutiara interior fixture', area: 'mutiara-retail' }],
+    note: 'Estimated geometry', attribution: 'Footprint sources',
+  };
+  ui.state.fc = { type: 'FeatureCollection', features: [
+    { type: 'Feature', geometry: null, properties: { id: 'dp-tower', dp_area: 'empire', nama: 'UZMA Tower', tinggi_m: 62, tingkat_est: 12 } },
+    { type: 'Feature', geometry: null, properties: { id: 'dp-retail', dp_area: 'mutiara-retail', nama: 'IKEA Damansara', tinggi_m: 15, tingkat_est: 3 } },
+  ] };
+  ui.state.group = 'dp';
+  for (const [selected, flags, ownBuilding, otherBuilding, ownPlan, otherPlan, schemes] of [
+    ['mutiara', [0, 1], 'IKEA Damansara', 'UZMA Tower', 'Mutiara interior fixture', 'UZMA interior', 2],
+    ['damansara', [1, 0], 'UZMA Tower', 'IKEA Damansara', 'UZMA interior', 'Mutiara interior fixture', 1],
+    ['mutiara-retail', [0, 1], 'IKEA Damansara', 'UZMA Tower', 'Mutiara interior fixture', 'UZMA interior', 2],
+  ]) {
+    ui.state.area = selected;
+    assert.deepStrictEqual(Array.from(ui.data().features, f => f.properties.on), flags, selected + ' map highlights');
+    const html = ui.panel(), detail = html.slice(html.indexOf('<div class="s3d-now">'));
+    assert.ok(detail.includes(ownBuilding) && !detail.includes(otherBuilding), selected + ' building shortcuts');
+    assert.ok(detail.includes(ownPlan) && !detail.includes(otherPlan), selected + ' interior plans');
+    const selectedCard = html.match(/<button\b[^>]*class="s3d-area on"[^>]*>[\s\S]*?<\/button>/)?.[0];
+    assert.ok(selectedCard.includes(`${schemes} scheme`), selected + ' scheme count');
+    assert.ok(selectedCard.includes(ownBuilding.toLowerCase()) && !selectedCard.includes(otherBuilding.toLowerCase()), selected + ' search terms');
+    context.STRATA.active = true;
+    ui.title();
+    assert.strictEqual(title.textContent, 'Strata Titles — ' + (selected.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana'));
+  }
+  assert.strictEqual(ui.areaName('dp:mutiara-retail'), 'Mutiara retail, Mutiara Damansara');
+  assert.strictEqual(ui.areaName('dp:empire'), 'Empire Damansara, Damansara Perdana');
+  assert.strictEqual(ui.areaName('dp:mutiara'), 'Seluruh Mutiara Damansara');
+  ui.state.area = 'tk'; ui.state.group = 'mpk'; ui.title();
+  assert.strictEqual(title.textContent, 'Strata Titles — MPK Kemaman');
+  assert.deepStrictEqual(Array.from(ui.data().features, f => f.properties.on), [0, 0]);
+  assert.match(ui.panel(), /Teluk Kalong/);
+}
+
 console.log('mpk strata UI: all tests passed');

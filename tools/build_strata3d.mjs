@@ -1,4 +1,4 @@
-// Strata 3D: brings the UZMA Spatial Studio models (Damansara Perdana) into the Strata mode.
+// Strata 3D: brings the UZMA Spatial Studio models (Perdana and Mutiara Damansara) into Strata mode.
 //   node tools/build_strata3d.mjs [path to UzmaTower3D_Model]
 // Copies every area model and interior plan into strata3d/, then reads the metadata the studio's
 // exporter writes into each GLB (glTF node extras) to make:
@@ -58,18 +58,25 @@ for (const f of files.filter(f => !/^UZMA-/.test(f))) {
   for (const b of blds) for (const [x, y] of b.extras.footprint) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); }
   areas.push({ id: ex.areaId, name: ex.areaName || root.name, glb: 'models/' + f, mb: r2(fs.statSync(path.join(PUB, f)).size / 1048576),
     center: [r7(ex.coordinates.longitude), r7(ex.coordinates.latitude)], bounds: [[r7(w), r7(s)], [r7(e), r7(n)]],
-    overview: !!ex.overview, buildings: blds.length, uzma: /UZMA/.test(root.name) || ex.areaId === 'damansara' });
+    overview: !!ex.overview, includedAreaIds: ex.overview ? ex.includedAreaIds : [ex.areaId],
+    region: ex.areaId.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana',
+    buildings: blds.length, uzma: /UZMA/.test(root.name) || ex.areaId === 'damansara' });
   for (const b of blds) {
     const x = b.extras, id = 'dp-' + String(x.id).replace(/[^A-Za-z0-9]+/g, '-');
     // the overview repeats every area's buildings: keep the record from the area's own model
     if (buildings.has(id) && ex.overview) continue;
     const ring = x.footprint.map(([lng, lat]) => [r7(lng), r7(lat)]);
     if (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1]) ring.push([...ring[0]]);
+    const holes = (x.holes || []).map(hole => {
+      const points = hole.map(([lng, lat]) => [r7(lng), r7(lat)]);
+      if (points[0][0] !== points.at(-1)[0] || points[0][1] !== points.at(-1)[1]) points.push([...points[0]]);
+      return points;
+    });
     const levels = Number(x.levels) || 0, height = Number(x.height) || 0;
-    buildings.set(id, { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {
+    buildings.set(id, { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring, ...holes] }, properties: {
       id, src_id: x.id, nama: x.name, dp_area: x.areaId, kind: x.kind || '', tingkat_est: levels || (height ? Math.max(1, Math.round(height / 3.5)) : 1),
       tinggi_m: height ? r2(height) : null, tinggi_src: x.heightSource || (height ? 'UZMA Spatial Studio model' : 'not recorded; 1 floor assumed'),
-      ht_est: !!x.heightEstimated, area_m2: Math.round(ringArea(ring)), lng: r7(x.coordinates ? x.coordinates[0] : ring[0][0]),
+      ht_est: !!x.heightEstimated, area_m2: Math.round(ringArea(ring) - holes.reduce((sum, hole) => sum + ringArea(hole), 0)), lng: r7(x.coordinates ? x.coordinates[0] : ring[0][0]),
       lat: r7(x.coordinates ? x.coordinates[1] : ring[0][1]), sumber: x.source || '' } });
   }
 }
@@ -111,7 +118,7 @@ for (const b of buildings.values()) {
 const order = a => (a.overview ? 0 : 1);
 areas.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
 const catalog = { generated: new Date().toISOString().slice(0, 10), source: 'UZMA Spatial Studio (UzmaTower3D_Model)',
-  note: 'Damansara Perdana, Petaling Jaya. Buildings from OpenStreetMap and Microsoft footprints with estimated heights; UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.',
+  note: 'Damansara Perdana and Mutiara Damansara, Petaling Jaya. Original mapped footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.',
   attribution: 'Building footprints © OpenStreetMap contributors (ODbL 1.0) · Microsoft Global ML Building Footprints (CDLA Permissive 2.0)',
   uzma: { glb: 'models/UZMA-Tower.glb', building: 'dp-uzma-tower' }, areas, plans };
 fs.writeFileSync(path.join(OUT, 'catalog.json'), JSON.stringify(catalog, null, 1));

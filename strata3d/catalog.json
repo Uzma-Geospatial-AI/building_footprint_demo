@@ -1,7 +1,7 @@
 {
  "generated": "2026-10-24",
  "source": "UZMA Spatial Studio (UzmaTower3D_Model)",
- "note": "Damansara Perdana, Petaling Jaya. Buildings from OpenStreetMap and Microsoft footprints with estimated heights; UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.",
+ "note": "Damansara Perdana and Mutiara Damansara, Petaling Jaya. Original mapped footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.",
  "attribution": "Building footprints © OpenStreetMap contributors (ODbL 1.0) · Microsoft Global ML Building Footprints (CDLA Permissive 2.0)",
  "uzma": {
   "glb": "models/UZMA-Tower.glb",
@@ -28,8 +28,66 @@
     ]
    ],
    "overview": true,
+   "includedAreaIds": [
+    "empire",
+    "hextar",
+    "metropolitan",
+    "perdana",
+    "flora",
+    "perdana-exclusive",
+    "rafflesia",
+    "perdana-view",
+    "armanee",
+    "neo",
+    "ritze",
+    "emerald",
+    "empire-residential",
+    "central-park",
+    "foresthill",
+    "masjid-damansara",
+    "desa-temuan",
+    "perdana-central",
+    "hillside-compound"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 633,
    "uzma": true
+  },
+  {
+   "id": "mutiara",
+   "name": "Seluruh Mutiara Damansara",
+   "glb": "models/Mutiara-Damansara.glb",
+   "mb": 13.82,
+   "center": [
+    101.6089741,
+    3.1577982
+   ],
+   "bounds": [
+    [
+     101.6019292,
+     3.1534445
+    ],
+    [
+     101.6166818,
+     3.163747
+    ]
+   ],
+   "overview": true,
+   "includedAreaIds": [
+    "mutiara-retail",
+    "mutiara-offices",
+    "mutiara-phase-10",
+    "mutiara-residences",
+    "mutiara-civic",
+    "mutiara-west",
+    "mutiara-homes-west",
+    "mutiara-homes-south",
+    "mutiara-homes-central",
+    "mutiara-homes-east"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 905,
+   "uzma": false
   },
   {
    "id": "armanee",
@@ -51,6 +109,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "armanee"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 4,
    "uzma": false
   },
@@ -74,6 +136,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "central-park"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 26,
    "uzma": false
   },
@@ -97,7 +163,38 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "perdana-central"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 39,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-residences",
+   "name": "Desa Mutiara / Surian / Suria residences",
+   "glb": "models/mutiara-residences.glb",
+   "mb": 8.27,
+   "center": [
+    101.6061477,
+    3.1585714
+   ],
+   "bounds": [
+    [
+     101.6020062,
+     3.1534445
+    ],
+    [
+     101.6102891,
+     3.1636982
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-residences"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 26,
    "uzma": false
   },
   {
@@ -120,6 +217,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "desa-temuan"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 158,
    "uzma": false
   },
@@ -143,6 +244,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "emerald"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 4,
    "uzma": false
   },
@@ -166,6 +271,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "empire-residential"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 62,
    "uzma": false
   },
@@ -189,6 +298,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "flora"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 8,
    "uzma": false
   },
@@ -212,6 +325,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "foresthill"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 23,
    "uzma": false
   },
@@ -235,6 +352,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "hextar"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 16,
    "uzma": false
   },
@@ -258,7 +379,38 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "hillside-compound"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 15,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-retail",
+   "name": "IKEA / IPC / The Curve",
+   "glb": "models/mutiara-retail.glb",
+   "mb": 3.88,
+   "center": [
+    101.6114446,
+    3.1570794
+   ],
+   "bounds": [
+    [
+     101.6079483,
+     3.1550132
+    ],
+    [
+     101.6149409,
+     3.1591456
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-retail"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 41,
    "uzma": false
   },
   {
@@ -281,6 +433,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "masjid-damansara"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 1,
    "uzma": false
   },
@@ -304,6 +460,172 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "metropolitan"
+   ],
+   "region": "Damansara Perdana",
+   "buildings": 14,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-homes-central",
+   "name": "Mutiara homes — central",
+   "glb": "models/mutiara-homes-central.glb",
+   "mb": 6.97,
+   "center": [
+    101.6074996,
+    3.159038
+   ],
+   "bounds": [
+    [
+     101.606406,
+     3.1555427
+    ],
+    [
+     101.6085931,
+     3.1625332
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-homes-central"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 234,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-homes-east",
+   "name": "Mutiara homes — east",
+   "glb": "models/mutiara-homes-east.glb",
+   "mb": 2.27,
+   "center": [
+    101.6102729,
+    3.1611703
+   ],
+   "bounds": [
+    [
+     101.6084401,
+     3.158986
+    ],
+    [
+     101.6121057,
+     3.1633545
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-homes-east"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 64,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-homes-south",
+   "name": "Mutiara homes — southwest",
+   "glb": "models/mutiara-homes-south.glb",
+   "mb": 4.85,
+   "center": [
+    101.6059925,
+    3.1588478
+   ],
+   "bounds": [
+    [
+     101.6054758,
+     3.1555428
+    ],
+    [
+     101.6065091,
+     3.1621528
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-homes-south"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 188,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-homes-west",
+   "name": "Mutiara homes — west",
+   "glb": "models/mutiara-homes-west.glb",
+   "mb": 2.47,
+   "center": [
+    101.6048499,
+    3.1592877
+   ],
+   "bounds": [
+    [
+     101.6042694,
+     3.1572225
+    ],
+    [
+     101.6054304,
+     3.1613528
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-homes-west"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 86,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-phase-10",
+   "name": "Mutiara Homes Phase 10",
+   "glb": "models/mutiara-phase-10.glb",
+   "mb": 1.88,
+   "center": [
+    101.6065436,
+    3.1628318
+   ],
+   "bounds": [
+    [
+     101.6047229,
+     3.1619166
+    ],
+    [
+     101.6083643,
+     3.163747
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-phase-10"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 52,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-offices",
+   "name": "Mutiara office district / Lotus's",
+   "glb": "models/mutiara-offices.glb",
+   "mb": 0.88,
+   "center": [
+    101.6144624,
+    3.1611842
+   ],
+   "bounds": [
+    [
+     101.612243,
+     3.1586561
+    ],
+    [
+     101.6166818,
+     3.1637122
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-offices"
+   ],
+   "region": "Mutiara Damansara",
    "buildings": 14,
    "uzma": false
   },
@@ -327,6 +649,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "neo"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 8,
    "uzma": false
   },
@@ -350,6 +676,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "perdana"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 16,
    "uzma": false
   },
@@ -373,6 +703,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "perdana-exclusive"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 5,
    "uzma": false
   },
@@ -396,7 +730,38 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "perdana-view"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 3,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-west",
+   "name": "PJU 7 western shops / homes",
+   "glb": "models/mutiara-west.glb",
+   "mb": 5.46,
+   "center": [
+    101.6031391,
+    3.1582398
+   ],
+   "bounds": [
+    [
+     101.6019474,
+     3.1554889
+    ],
+    [
+     101.6043308,
+     3.1609906
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-west"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 195,
    "uzma": false
   },
   {
@@ -419,6 +784,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "rafflesia"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 204,
    "uzma": false
   },
@@ -442,7 +811,38 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "ritze"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 10,
+   "uzma": false
+  },
+  {
+   "id": "mutiara-civic",
+   "name": "Surau / police / community buildings",
+   "glb": "models/mutiara-civic.glb",
+   "mb": 0.29,
+   "center": [
+    101.6027148,
+    3.1597176
+   ],
+   "bounds": [
+    [
+     101.6019292,
+     3.1586382
+    ],
+    [
+     101.6035004,
+     3.160797
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "mutiara-civic"
+   ],
+   "region": "Mutiara Damansara",
+   "buildings": 5,
    "uzma": false
   },
   {
@@ -465,6 +865,10 @@
     ]
    ],
    "overview": false,
+   "includedAreaIds": [
+    "empire"
+   ],
+   "region": "Damansara Perdana",
    "buildings": 17,
    "uzma": true
   }
