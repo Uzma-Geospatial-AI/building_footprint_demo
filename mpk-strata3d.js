@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261025a';
+const S3D_VERSION = '20261025c';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },
@@ -409,7 +409,10 @@ function s3dLocalSearch(q) {
   }
   // an OSM building already in the models under the same name is shown once, as the model
   const modelled = new Set(out.filter(r => r.go.dp).map(r => s3dNorm(r.label)));
-  for (const p of SR.places || []) if (!(p.k === 'Building' && modelled.has(s3dNorm(p.n)))) add(p.k, p.n, (p.r === 'mpk' ? 'Kemaman' : 'Damansara') + ' · OpenStreetMap', p.t, /station|terminal/.test(p.k) ? 8 : 2, { c: p.c, label: p.n });
+  for (const p of SR.places || []) if (!(p.k === 'Building' && modelled.has(s3dNorm(p.n)))) {
+    const host=p.host&&S3D.fc&&S3D.fc.features.find(f=>f.properties.src_id===p.host);
+    add(p.k,p.n,(p.r==='mpk'?'Kemaman':'Damansara')+' · '+(p.s||'OpenStreetMap'),p.t,host?8:/station|terminal/.test(p.k)?8:2,host?{dp:host.properties.id}:{c:p.c,label:p.n});
+  }
   return out.sort((x, y) => y.s - x.s).slice(0, 14);
 }
 // Nominatim (OpenStreetMap) for addresses not in the index: one request per pause in typing, cached

@@ -12,7 +12,7 @@
    "id": "damansara",
    "name": "Seluruh Damansara Perdana",
    "glb": "models/Damansara-Perdana.glb",
-   "mb": 24.88,
+   "mb": 24.86,
    "center": [
     101.6103643,
     3.1731484
@@ -51,14 +51,14 @@
     "tm-bukit-lanjan"
    ],
    "region": "Damansara Perdana",
-   "buildings": 642,
+   "buildings": 648,
    "uzma": true
   },
   {
    "id": "mutiara",
    "name": "Seluruh Mutiara Damansara",
    "glb": "models/Mutiara-Damansara.glb",
-   "mb": 19.44,
+   "mb": 19.45,
    "center": [
     101.6089741,
     3.1577982
@@ -89,7 +89,7 @@
     "mutiara-one-utama"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 928,
+   "buildings": 929,
    "uzma": false
   },
   {
@@ -150,7 +150,7 @@
    "id": "central-park",
    "name": "Central Park Damansara",
    "glb": "models/central-park.glb",
-   "mb": 21.08,
+   "mb": 24.4,
    "center": [
     101.6157081,
     3.1731074
@@ -158,7 +158,7 @@
    "bounds": [
     [
      101.6135234,
-     3.1706746
+     3.1702086
     ],
     [
      101.6186284,
@@ -170,7 +170,7 @@
     "central-park"
    ],
    "region": "Damansara Perdana",
-   "buildings": 26,
+   "buildings": 32,
    "uzma": false
   },
   {
@@ -285,7 +285,7 @@
    "id": "empire-residential",
    "name": "Empire Damansara Residential",
    "glb": "models/empire-residential.glb",
-   "mb": 3.37,
+   "mb": 2.98,
    "center": [
     101.6064219,
     3.1720064
@@ -296,7 +296,7 @@
      3.1684461
     ],
     [
-     101.6076593,
+     101.60768,
      3.1748671
     ]
    ],
@@ -305,7 +305,7 @@
     "empire-residential"
    ],
    "region": "Damansara Perdana",
-   "buildings": 62,
+   "buildings": 61,
    "uzma": false
   },
   {
@@ -366,7 +366,7 @@
    "id": "hextar",
    "name": "Hextar Mall / Empire City",
    "glb": "models/Hextar-Mall-Empire-City.glb",
-   "mb": 2.4,
+   "mb": 2.59,
    "center": [
     101.61565,
     3.1681
@@ -386,7 +386,7 @@
     "hextar"
    ],
    "region": "Damansara Perdana",
-   "buildings": 16,
+   "buildings": 17,
    "uzma": false
   },
   {
@@ -663,7 +663,7 @@
    "id": "mutiara-offices",
    "name": "Mutiara office district / Lotus's",
    "glb": "models/mutiara-offices.glb",
-   "mb": 2.24,
+   "mb": 2.25,
    "center": [
     101.6144624,
     3.1611842
@@ -675,7 +675,7 @@
     ],
     [
      101.6166818,
-     3.1637122
+     3.164282
     ]
    ],
    "overview": false,
@@ -683,7 +683,7 @@
     "mutiara-offices"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 16,
+   "buildings": 17,
    "uzma": false
   },
   {

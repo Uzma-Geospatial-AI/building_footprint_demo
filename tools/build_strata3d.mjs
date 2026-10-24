@@ -124,4 +124,14 @@ const catalog = { generated: new Date().toISOString().slice(0, 10), source: 'UZM
   uzma: { glb: 'models/UZMA-Tower.glb', building: 'dp-uzma-tower' }, areas, plans };
 fs.writeFileSync(path.join(OUT, 'catalog.json'), JSON.stringify(catalog, null, 1));
 fs.writeFileSync(path.join(OUT, 'buildings.geojson'), JSON.stringify({ type: 'FeatureCollection', features: [...buildings.values()] }));
+// Reviewed tenants open their modeled host instead of leaving a marker over a
+// missing model. Keep these curated records through subsequent OSM refreshes.
+const reviewedFile=path.join(SRC,'src','coverage-review-places.json');
+if(fs.existsSync(reviewedFile)){
+ const reviewed=JSON.parse(fs.readFileSync(reviewedFile,'utf8'));
+ for(const p of reviewed)if(![...buildings.values()].some(b=>b.properties.src_id===p.host))throw new Error('Missing reviewed place host: '+p.host);
+ fs.writeFileSync(path.join(OUT,'reviewed-places.json'),JSON.stringify(reviewed,null,2)+'\n');
+ const placesFile=path.join(OUT,'places.json'),old=fs.existsSync(placesFile)?JSON.parse(fs.readFileSync(placesFile,'utf8')):[];
+ fs.writeFileSync(placesFile,JSON.stringify([...old.filter(p=>!reviewed.some(q=>q.n===p.n)),...reviewed]));
+}
 console.log(`${areas.length} areas, ${buildings.size} buildings, ${plans.length} plans, ${(bytes / 1048576).toFixed(1)} MB of models → ${path.relative(ROOT, OUT)}`);

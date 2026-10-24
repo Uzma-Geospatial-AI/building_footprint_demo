@@ -78,5 +78,8 @@ for (const [r, bbox] of Object.entries(REGIONS)) {
   }
   console.log(r, els.length, 'elements →', out.filter(x => x.r === r).length, 'places');
 }
-fs.writeFileSync(path.join(ROOT, 'strata3d', 'places.json'), JSON.stringify(out));
+const reviewedFile=path.join(ROOT,'strata3d','reviewed-places.json');
+const reviewed=fs.existsSync(reviewedFile)?JSON.parse(fs.readFileSync(reviewedFile,'utf8')):[];
+const combined=[...out.filter(p=>!reviewed.some(q=>q.n===p.n)),...reviewed];
+fs.writeFileSync(path.join(ROOT, 'strata3d', 'places.json'), JSON.stringify(combined));
 console.log('strata3d/places.json:', out.length, 'places,', (fs.statSync(path.join(ROOT, 'strata3d', 'places.json')).size / 1024).toFixed(0), 'KB');

@@ -32,7 +32,11 @@ for (const f of fc.features) {
   assert.ok(p.tingkat_est >= 1 && p.area_m2 > 0 && isFinite(p.lng) && isFinite(p.lat), p.id + ' strata fields');
 }
 assert.ok(ids.has('dp-uzma-tower'), 'UZMA Tower building');
-assert.strictEqual(fc.features.length, 1571, '928 Mutiara structures plus 643 Perdana structures including restored TM and ForestHill');
+assert.strictEqual(fc.features.length, 1578, 'Eight restored masses and one merged row fragment, without duplicated structures');
+for(const id of ['reference/dvine-podium','reference/dvine-tower','way/1158914503','reference/dvervain-tower-a','reference/dvervain-tower-b','way/1242229816','way/745554991','reference/base3-retail'])assert.ok(fc.features.some(f=>f.properties.src_id===id),id+' restored in Strata');
+assert.ok(!fc.features.some(f=>f.properties.src_id==='microsoft/2026-08-13/132232022/691049'),'Joined row fragment not exported separately');
+const reviewedPlaces=JSON.parse(fs.readFileSync(path.join(DIR,'reviewed-places.json'),'utf8'));
+for(const p of reviewedPlaces){assert.ok(fc.features.some(f=>f.properties.src_id===p.host),'Reviewed place has actual model host: '+p.n);assert.ok(JSON.parse(fs.readFileSync(path.join(DIR,'places.json'),'utf8')).some(q=>q.n===p.n&&q.host===p.host),'Reviewed place persists in unified search');}
 const oneUtama=cat.areas.find(a=>a.id==='mutiara-one-utama');
 assert.ok(oneUtama&&oneUtama.name.includes('1 Utama'));
 assert.strictEqual(fc.features.filter(f=>f.properties.dp_area==='mutiara-one-utama').length,8,'Eight distinct mall volumes, terrace and connection');

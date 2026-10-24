@@ -1,0 +1,41 @@
+[
+  {
+    "n": "Alquiler Motorbike Rental",
+    "k": "Motorbike rental",
+    "a": "Alquiler bike rental Base 3 Parks Jalan PJU 7/1",
+    "r": "dp",
+    "c": [
+      101.6136768,
+      3.1640383
+    ],
+    "host": "reference/base3-retail",
+    "s": "Reviewed business location",
+    "url": "https://alquilermotorbike.com/contact.html"
+  },
+  {
+    "n": "Vainpod",
+    "k": "Shop",
+    "a": "Reflection Residences EatFreshMart De Mart Jalan PJU 7/6",
+    "r": "dp",
+    "c": [
+      101.613539,
+      3.1630856
+    ],
+    "host": "reference/reflection-podium",
+    "s": "Reviewed tenant location",
+    "url": "https://www.google.com/maps?q=Vainpod+Jalan+PJU+7%2F6"
+  },
+  {
+    "n": "Damansara Street Food Court Empire City",
+    "k": "Food court",
+    "a": "BilaBila Mart BlaBla Mart Disclude Ultimate Frisbee Zone 1 Empire City",
+    "r": "dp",
+    "c": [
+      101.6161,
+      3.1688
+    ],
+    "host": "way/745554991",
+    "s": "User image and mapped host",
+    "url": "https://www.openstreetmap.org/way/745554991"
+  }
+]
