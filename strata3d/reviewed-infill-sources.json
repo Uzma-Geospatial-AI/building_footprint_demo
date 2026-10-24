@@ -1037,40 +1037,210 @@
       "utilities-south",
       [
         [
-          589,
-          406
+          569,
+          391
         ],
         [
-          681,
-          410
+          684,
+          394
         ],
         [
-          699,
-          430
+          706,
+          415
         ],
         [
-          700,
-          462
+          737,
+          465
         ],
         [
-          648,
-          477
-        ],
-        [
-          612,
-          495
-        ],
-        [
-          612,
-          452
-        ],
-        [
-          589,
-          451
+          608,
+          513
         ]
       ],
       7.5,
-      "villa"
+      "stepped-villa",
+      {
+        "levels": 2,
+        "foundationPolicy": "open-precinct",
+        "parts": [
+          {
+            "name": "Rear two-storey wing",
+            "pixels": [
+              [
+                582,
+                398
+              ],
+              [
+                686,
+                403
+              ],
+              [
+                697,
+                429
+              ],
+              [
+                612,
+                426
+              ],
+              [
+                612,
+                440
+              ],
+              [
+                586,
+                438
+              ]
+            ],
+            "top": 7.46,
+            "type": "body"
+          },
+          {
+            "name": "Narrow west wing",
+            "pixels": [
+              [
+                587,
+                421
+              ],
+              [
+                605,
+                421
+              ],
+              [
+                618,
+                490
+              ],
+              [
+                607,
+                498
+              ]
+            ],
+            "top": 5.1,
+            "type": "body"
+          },
+          {
+            "name": "Lower east wing",
+            "pixels": [
+              [
+                618,
+                436
+              ],
+              [
+                695,
+                438
+              ],
+              [
+                706,
+                462
+              ],
+              [
+                636,
+                485
+              ],
+              [
+                619,
+                480
+              ]
+            ],
+            "top": 3.65,
+            "type": "body"
+          },
+          {
+            "name": "Open east terrace",
+            "pixels": [
+              [
+                699,
+                430
+              ],
+              [
+                729,
+                462
+              ],
+              [
+                705,
+                471
+              ],
+              [
+                692,
+                448
+              ]
+            ],
+            "top": 0.25,
+            "type": "terrace"
+          },
+          {
+            "name": "Front terrace",
+            "pixels": [
+              [
+                621,
+                484
+              ],
+              [
+                647,
+                484
+              ],
+              [
+                613,
+                506
+              ],
+              [
+                608,
+                495
+              ]
+            ],
+            "top": 0.25,
+            "type": "terrace"
+          }
+        ],
+        "panelBanks": [
+          {
+            "pixels": [
+              [
+                650,
+                413
+              ],
+              [
+                690,
+                414
+              ],
+              [
+                694,
+                428
+              ],
+              [
+                650,
+                427
+              ]
+            ],
+            "top": 7.52,
+            "columns": 8,
+            "rows": 3
+          },
+          {
+            "pixels": [
+              [
+                592,
+                427
+              ],
+              [
+                602,
+                427
+              ],
+              [
+                611,
+                479
+              ],
+              [
+                602,
+                478
+              ]
+            ],
+            "top": 5.12,
+            "columns": 2,
+            "rows": 9
+          }
+        ],
+        "note": "Separate narrow west wing, rear upper block, lower east wing and open terraces traced from World Imagery. Footprint is the modeling envelope; it is not extruded as a single solid. Heights are approximate."
+      }
     ],
     [
       "reservoir-villa-west",
@@ -1523,5 +1693,190 @@
         "note": "Small one-storey house with a recessed entrance and porch. Estimated outline from imagery; no registered building name is asserted."
       }
     ]
+  ],
+  "existingOverrides": [
+    {
+      "id": "way/1051972777",
+      "name": "Mutiara hillside villa ? west roof terraces",
+      "image": "utilities-south",
+      "height": 6.8,
+      "pixels": [
+        [
+          358,
+          368
+        ],
+        [
+          396,
+          325
+        ],
+        [
+          493,
+          404
+        ],
+        [
+          507,
+          426
+        ],
+        [
+          479,
+          462
+        ],
+        [
+          388,
+          394
+        ]
+      ],
+      "parts": [
+        {
+          "name": "Main lower residence",
+          "pixels": [
+            [
+              395,
+              366
+            ],
+            [
+              488,
+              407
+            ],
+            [
+              475,
+              443
+            ],
+            [
+              388,
+              393
+            ]
+          ],
+          "top": 3.5,
+          "type": "body"
+        },
+        {
+          "name": "Setback upper residence",
+          "pixels": [
+            [
+              418,
+              356
+            ],
+            [
+              487,
+              407
+            ],
+            [
+              465,
+              432
+            ],
+            [
+              399,
+              381
+            ]
+          ],
+          "top": 6.76,
+          "type": "body"
+        },
+        {
+          "name": "Rear roof deck",
+          "pixels": [
+            [
+              362,
+              367
+            ],
+            [
+              396,
+              330
+            ],
+            [
+              421,
+              352
+            ],
+            [
+              388,
+              389
+            ]
+          ],
+          "top": 3.35,
+          "type": "deck"
+        },
+        {
+          "name": "Entrance terrace",
+          "pixels": [
+            [
+              475,
+              420
+            ],
+            [
+              501,
+              431
+            ],
+            [
+              480,
+              457
+            ],
+            [
+              458,
+              440
+            ]
+          ],
+          "top": 0.5,
+          "type": "terrace"
+        },
+        {
+          "name": "Entrance canopy",
+          "pixels": [
+            [
+              477,
+              419
+            ],
+            [
+              492,
+              429
+            ],
+            [
+              478,
+              447
+            ],
+            [
+              464,
+              436
+            ]
+          ],
+          "top": 2.9,
+          "type": "canopy"
+        }
+      ],
+      "circularDeck": {
+        "pixel": [
+          391,
+          359
+        ],
+        "radius": 3.1,
+        "top": 3.42
+      },
+      "panelBanks": [
+        {
+          "pixels": [
+            [
+              429,
+              378
+            ],
+            [
+              459,
+              401
+            ],
+            [
+              450,
+              411
+            ],
+            [
+              420,
+              388
+            ]
+          ],
+          "top": 6.82,
+          "columns": 5,
+          "rows": 3
+        }
+      ],
+      "note": "Roof terraces and setbacks reconstructed from imagery and user photograph. Circular deck feature has unverified use; no helipad designation. Heights and roof registration are approximate."
+    }
   ]
 }
