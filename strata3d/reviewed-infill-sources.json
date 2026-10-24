@@ -973,6 +973,22 @@
       "height": 1000,
       "source": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
       "retrieved": "2026-10-24"
+    },
+    "pju726": {
+      "extent": {
+        "xmin": 101.60839999999997,
+        "ymin": 3.1595,
+        "xmax": 101.61199999999998,
+        "ymax": 3.1625,
+        "spatialReference": {
+          "wkid": 4326,
+          "latestWkid": 4326
+        }
+      },
+      "width": 1200,
+      "height": 1000,
+      "source": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+      "retrieved": "2026-10-24"
     }
   },
   "traces": [
@@ -1343,6 +1359,169 @@
       ],
       23,
       "mall-atrium"
+    ],
+    [
+      "pju726-courtyard-house",
+      "Jalan PJU 7/26 - grey-roof courtyard house",
+      "mutiara-homes-east",
+      "pju726",
+      [
+        [
+          316,
+          475
+        ],
+        [
+          427,
+          506
+        ],
+        [
+          408,
+          580
+        ],
+        [
+          380,
+          572
+        ],
+        [
+          389,
+          535
+        ],
+        [
+          374,
+          531
+        ],
+        [
+          369,
+          548
+        ],
+        [
+          300,
+          528
+        ]
+      ],
+      6.4,
+      "hip-villa",
+      {
+        "levels": 1,
+        "roofColor": 6446179,
+        "roofPanelPixels": [
+          [
+            [
+              339,
+              492
+            ],
+            [
+              365,
+              499
+            ],
+            [
+              361,
+              510
+            ],
+            [
+              335,
+              503
+            ]
+          ],
+          [
+            [
+              328,
+              507
+            ],
+            [
+              353,
+              514
+            ],
+            [
+              350,
+              520
+            ],
+            [
+              325,
+              513
+            ]
+          ]
+        ],
+        "note": "User screenshot matched to imagery. U-shaped slate-grey hip roof; the open courtyard is excluded from the building footprint. Height and exterior details are estimates."
+      }
+    ],
+    [
+      "pju726-courtyard",
+      "Jalan PJU 7/26 - open courtyard basin",
+      "mutiara-homes-east",
+      "pju726",
+      [
+        [
+          301,
+          529
+        ],
+        [
+          369,
+          548
+        ],
+        [
+          374,
+          532
+        ],
+        [
+          388,
+          536
+        ],
+        [
+          379,
+          571
+        ],
+        [
+          297,
+          549
+        ]
+      ],
+      0.18,
+      "courtyard-basin",
+      {
+        "levels": 1,
+        "kind": "district-amenity",
+        "note": "Low open courtyard surface matching the screenshot; not a roof, room, or independent surveyed parcel."
+      }
+    ],
+    [
+      "pju726-small-house",
+      "Jalan PJU 7/26 - small roadside house",
+      "mutiara-homes-east",
+      "pju726",
+      [
+        [
+          437,
+          90
+        ],
+        [
+          474,
+          76
+        ],
+        [
+          485,
+          104
+        ],
+        [
+          499,
+          118
+        ],
+        [
+          463,
+          132
+        ],
+        [
+          450,
+          118
+        ]
+      ],
+      4.8,
+      "hip-villa",
+      {
+        "levels": 1,
+        "roofColor": 10324854,
+        "note": "Small one-storey house with a recessed entrance and porch. Estimated outline from imagery; no registered building name is asserted."
+      }
     ]
   ]
 }

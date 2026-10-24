@@ -57,7 +57,7 @@
    "id": "mutiara",
    "name": "Seluruh Mutiara Damansara",
    "glb": "models/Mutiara-Damansara.glb",
-   "mb": 19.29,
+   "mb": 19.37,
    "center": [
     101.6089741,
     3.1577982
@@ -88,7 +88,7 @@
     "mutiara-one-utama"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 925,
+   "buildings": 928,
    "uzma": false
   },
   {
@@ -554,7 +554,7 @@
    "id": "mutiara-homes-east",
    "name": "Mutiara homes — east",
    "glb": "models/mutiara-homes-east.glb",
-   "mb": 2.43,
+   "mb": 2.51,
    "center": [
     101.6102729,
     3.1611703
@@ -574,7 +574,7 @@
     "mutiara-homes-east"
    ],
    "region": "Mutiara Damansara",
-   "buildings": 68,
+   "buildings": 71,
    "uzma": false
   },
   {

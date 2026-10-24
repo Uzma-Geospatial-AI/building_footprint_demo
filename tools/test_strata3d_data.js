@@ -32,11 +32,11 @@ for (const f of fc.features) {
   assert.ok(p.tingkat_est >= 1 && p.area_m2 > 0 && isFinite(p.lng) && isFinite(p.lat), p.id + ' strata fields');
 }
 assert.ok(ids.has('dp-uzma-tower'), 'UZMA Tower building');
-assert.strictEqual(fc.features.length, 1559, '925 Mutiara/adjacent structures including one historical reference, plus 634 existing structures');
+assert.strictEqual(fc.features.length, 1562, '928 Mutiara/adjacent structures including one historical reference, plus 634 existing structures');
 const oneUtama=cat.areas.find(a=>a.id==='mutiara-one-utama');
 assert.ok(oneUtama&&oneUtama.name.includes('1 Utama'));
 assert.strictEqual(fc.features.filter(f=>f.properties.dp_area==='mutiara-one-utama').length,8,'Eight distinct mall volumes, terrace and connection');
-for(const id of ['way/776319384','way/1213508066','way/38952992','way/559336198','way/1220994486','reference/reflection-tower','reference/reflection-podium'])assert.ok(fc.features.some(f=>f.properties.src_id===id),id+' restored to live Strata footprints');
+for(const id of ['way/776319384','way/1213508066','way/38952992','way/559336198','way/1220994486','reference/reflection-tower','reference/reflection-podium','reference/pju726-courtyard-house','reference/pju726-small-house','reference/pju726-courtyard'])assert.ok(fc.features.some(f=>f.properties.src_id===id),id+' restored to live Strata footprints');
 const historical=fc.features.find(f=>f.properties.src_id==='way/107998493');
 assert.ok(historical.properties.historical_reference && historical.properties.current_use_verified===false);
 assert.match(historical.properties.nama,/historical reference/);

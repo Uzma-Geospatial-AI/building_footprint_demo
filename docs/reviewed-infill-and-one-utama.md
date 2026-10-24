@@ -1,6 +1,6 @@
 # Mutiara infill and 1 Utama exterior review — 24 October 2026
 
-The Strata regional model includes 19 added structures and a revised Park 28 annex. 1 Utama is a separately selectable **Bandar Utama** extension of the regional view, not a claim that the mall belongs to the administrative Mutiara Damansara boundary.
+The Strata regional model includes 22 added structures and a revised Park 28 annex. 1 Utama is a separately selectable **Bandar Utama** extension of the regional view, not a claim that the mall belongs to the administrative Mutiara Damansara boundary.
 
 ## Source and geometry decisions
 
@@ -29,3 +29,7 @@ Manual traces retain their geographic image extent, image size and pixel control
 ## Verification
 
 The dedicated infill check validates unique IDs, original mapped rings, trace provenance, regional selection, open fuel-canopy driving space and road clearance below the mall connection. Existing geometry checks cover finite normals, declared heights, concave-perimeter containment and GLB round trips. Existing viewer checks cover shared podium/tower ground datums, terrain contacts and high/low detail loading.
+
+## Jalan PJU 7/26 screenshot follow-up
+
+Two further unmapped buildings were matched to the user screenshots and georeferenced imagery: the grey-roof courtyard house near 101.60949, 3.16091, and the small roadside house near 101.60980, 3.16219. The former uses a concave roof/building outline, two rooftop panel banks and a separate low open courtyard basin. The latter is a single-storey tan hip-roof volume with smaller residential windows. No building mesh covers the courtyard; its basin is an amenity with no terrain platform. Both footprints, heights and facade details remain visual estimates. The pixel controls and imagery extent are stored under pju726 in the source audit.
