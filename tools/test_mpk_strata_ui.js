@@ -266,4 +266,135 @@ for (const [floors, units] of [['', '2'], ['0', '2'], ['-1', '2'], ['1.5', '2'],
   assert.match(ui.panel(), /Teluk Kalong/);
 }
 
-console.log('mpk strata UI: all tests passed');
+// Exercise actual map-loading orchestration at the renderer/network boundary.
+// Deferred GLBs reproduce switching regions while the other download is pending.
+async function checkRegionalModelLoading() {
+  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'mpk-strata3d.js'), 'utf8').replace(/^import .*;\r?$/gm, '');
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  function setupMap() {
+    const calls = { loads: [], renders: [], toasts: [] }, pending = new Map();
+    class Matrix4 {
+      constructor() { this.ops = []; }
+      makeTranslation(...v) { this.ops = [['translation', ...v]]; return this; }
+      makeRotationX(v) { this.ops = [['rotation', v]]; return this; }
+      scale(v) { this.ops.push(['scale', v.x, v.y, v.z]); return this; }
+      multiply(m) { this.ops.push(...m.ops); return this; }
+      fromArray(v) { this.ops = [['projection', ...v]]; return this; }
+    }
+    class Scene { constructor() { this.children = []; } add(o) { this.children.push(o); } }
+    class Vector3 { constructor(x, y, z) { Object.assign(this, { x, y, z }); } }
+    class Renderer {
+      resetState() {}
+      render(scene, camera) { calls.renders.push({ scene, transform: camera.projectionMatrix.ops.map(op => [...op]) }); }
+      dispose() {}
+    }
+    class GLTFLoader {
+      loadAsync(url, progress) {
+        calls.loads.push(url);
+        return new Promise((resolve, reject) => pending.set(url.match(/models\/([^.]+)\.glb/)[1], { resolve, reject, progress }));
+      }
+    }
+    const sources = new Map(), layers = new Map();
+    const map = {
+      getSource: id => sources.get(id), addSource: (id, source) => sources.set(id, { ...source, setData(data) { this.data = data; } }),
+      getLayer: id => layers.get(id), addLayer: layer => layers.set(layer.id, layer), removeLayer: id => layers.delete(id), removeSource: id => sources.delete(id),
+      triggerRepaint() {}, on() {}, fitBounds() {}, getCanvas: () => ({}),
+    };
+    const context = vm.createContext({
+      window: {}, localStorage: { getItem() { return null; }, setItem() {} },
+      document: { getElementById() { return null; }, querySelector() { return null; } },
+      THREE: { Matrix4, Scene, Vector3, Camera: class {}, WebGLRenderer: Renderer, HemisphereLight: class {}, DirectionalLight: class { constructor() { this.position = { set() {} }; } } },
+      GLTFLoader, map, maplibregl: { MercatorCoordinate: { fromLngLat: center => ({ x: center[0], y: center[1], z: 0, meterInMercatorCoordinateUnits: () => 0.01 }) } },
+      STRATA: { active: false, s: { schemes: {} } }, MPK: { data: null },
+      strataStageColor: () => '#123456', strataRenderPanel() {}, showToast: msg => calls.toasts.push(msg),
+    });
+    vm.runInContext(moduleSource + `
+      globalThis.ui = { state: S3D, select: strata3dSelectArea, group: strata3dSetGroup, remove: strata3dRemove,
+        layer: s3dCustomLayer, xray: s3dXrayHide, status: s3dMapStatus };
+    `, context, { filename: 'mpk-strata3d.js' });
+    const { ui } = context;
+    context.STRATA.active = true;
+    ui.state.cat = { areas: [
+      { id: 'damansara', overview: true, includedAreaIds: ['empire'], region: 'Damansara Perdana', center: [101.61, 3.17], bounds: [[101, 3], [102, 4]], glb: 'models/damansara.glb', mb: 1 },
+      { id: 'mutiara', overview: true, includedAreaIds: ['mutiara-retail'], region: 'Mutiara Damansara', center: [101.62, 3.16], bounds: [[101, 3], [102, 4]], glb: 'models/mutiara.glb', mb: 1 },
+      { id: 'empire', includedAreaIds: ['empire'], center: [101.61, 3.17], glb: 'models/empire.glb', mb: 1 },
+      { id: 'mutiara-retail', includedAreaIds: ['mutiara-retail'], center: [101.62, 3.16], glb: 'models/mutiara-retail.glb', mb: 1 },
+    ], plans: [] };
+    ui.state.fc = { type: 'FeatureCollection', features: [] };
+    const nodes = {};
+    function resolve(id) {
+      const node = { visible: true, userData: { id: id + '-building' } };
+      nodes[id] = node;
+      pending.get(id).resolve({ scene: { traverse(fn) { fn(node); } } });
+    }
+    return { ui, context, calls, pending, map, nodes, resolve };
+  }
+  {
+    const t = setupMap(), selected = t.ui.select('damansara', { fly: false });
+    await tick();
+    assert.strictEqual(t.calls.loads.length, 2, 'Selecting one region requests both overview GLBs');
+    t.pending.get('mutiara').progress({ loaded: 1, total: 2 });
+    t.resolve('damansara'); await tick();
+    assert.strictEqual(t.ui.state.mapEntries.length, 1, 'A loaded region appears while the second is downloading');
+    assert.match(t.ui.status(), /1\/2.*Mutiara Damansara 50%/);
+    t.resolve('mutiara'); await selected;
+    assert.deepStrictEqual(Array.from(t.ui.state.mapEntries, entry => entry.areaId), ['damansara', 'mutiara']);
+    assert.strictEqual(t.ui.state.onMap.areaId, 'damansara');
+    const layer = t.ui.layer(); layer.onAdd(t.map, {});
+    layer.render({}, { defaultProjectionData: { mainMatrix: [1, 0, 0, 1] } });
+    assert.strictEqual(t.calls.renders.length, 2, 'Both regional scenes are rendered in the same frame');
+    assert.deepStrictEqual(t.calls.renders.map(r => r.transform.find(op => op[0] === 'translation').slice(1)), [[101.61, 3.17, 0], [101.62, 3.16, 0]], 'Each overview uses its own geographic origin');
+    await t.ui.select('empire', { fly: false });
+    assert.strictEqual(t.calls.loads.length, 2, 'Leaf selection reuses the overview cache without duplicating a leaf GLB');
+    assert.strictEqual(t.ui.state.mapEntries.length, 2);
+    assert.strictEqual(t.ui.state.onMap.areaId, 'empire');
+    assert.strictEqual(t.ui.state.onMap.modelAreaId, 'damansara');
+    t.ui.state.byId.set('dp-md', { properties: { src_id: 'mutiara-building' } });
+    t.context.STRATA.s.schemes.md = { bid: 'dp-md' };
+    t.context.STRATA.cur = 'md'; t.context.STRATA.xray = true;
+    t.ui.xray();
+    assert.strictEqual(t.nodes.mutiara.visible, false, 'X-ray finds a building in the other regional entry');
+    t.context.STRATA.xray = false; t.ui.xray();
+    assert.strictEqual(t.nodes.mutiara.visible, true);
+    await t.ui.group('mpk');
+    assert.strictEqual(t.ui.state.mapEntries.length, 0);
+    assert.strictEqual(t.ui.state.onMap, null);
+    layer.render({}, [1, 0, 0, 1]);
+    assert.strictEqual(t.calls.renders.length, 2, 'MPK selection does not render Damansara models');
+    await t.ui.group('dp');
+    assert.strictEqual(t.ui.state.mapEntries.length, 2, 'Returning to the Damansara group restores both regional models');
+    assert.strictEqual(t.calls.loads.length, 2, 'Returning uses already cached GLBs');
+  }
+  {
+    const t = setupMap(), first = t.ui.select('damansara', { fly: false });
+    await tick();
+    const second = t.ui.select('mutiara-retail', { fly: false }); await tick();
+    t.resolve('damansara'); t.resolve('mutiara'); await Promise.all([first, second]);
+    assert.strictEqual(t.calls.loads.length, 2, 'Concurrent selections share pending overview downloads');
+    assert.strictEqual(t.ui.state.onMap.areaId, 'mutiara-retail', 'Stale selection cannot replace the latest selected area');
+    assert.strictEqual(t.ui.state.onMap.modelAreaId, 'mutiara');
+    assert.strictEqual(t.ui.state.mapEntries.length, 2, 'Racing selections cannot duplicate map entries');
+  }
+  for (const leave of ['mpk', 'remove']) {
+    const t = setupMap(), loading = t.ui.select('damansara', { fly: false });
+    await tick();
+    if (leave === 'mpk') await t.ui.select('tk', { fly: false }); else t.ui.remove();
+    t.resolve('damansara'); t.resolve('mutiara'); await loading;
+    assert.strictEqual(t.ui.state.onMap, null, leave + ': pending downloads cannot restore a closed map');
+    assert.strictEqual(t.ui.state.mapEntries.length, 0);
+  }
+  {
+    const t = setupMap(), loading = t.ui.select('damansara', { fly: false });
+    await tick(); t.resolve('damansara'); t.pending.get('mutiara').reject(new Error('Network interrupted')); await loading;
+    assert.strictEqual(t.ui.state.mapEntries.length, 1, 'One failed download does not hide the successful regional model');
+    assert.match(t.ui.status(), /1\/2.*Mutiara Damansara failed/);
+    assert.match(t.calls.toasts[0], /Mutiara Damansara.*Network interrupted/);
+    const retry = t.ui.select('empire', { fly: false }); await tick();
+    assert.strictEqual(t.calls.loads.length, 3, 'Retry downloads only the failed regional model');
+    t.resolve('mutiara'); await retry;
+    assert.strictEqual(t.ui.state.mapEntries.length, 2);
+    assert.match(t.ui.status(), /Damansara Perdana \+ Mutiara Damansara 3D on the map/);
+  }
+}
+
+checkRegionalModelLoading().then(() => console.log('mpk strata UI: all tests passed')).catch(error => { console.error(error); process.exitCode = 1; });

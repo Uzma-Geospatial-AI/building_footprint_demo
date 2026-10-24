@@ -49,7 +49,7 @@ building_footprint_demo/
 ├── mpk-daftar.js            # MPK building plan registration form, Registrations tab, Tr. P.U. 9/2026 guideline
 ├── mpk-edit.js              # building popup: pencil edit of the details, status dropdown with its required form
 ├── mpk-strata.js            # Strata mode: map → parcels & 3D → share units → strata title → tax & charges; cemeteries
-├── mpk-strata3d.js(.css)    # Strata 3D: area picker, Damansara Perdana GLB models on the map, three.js strata studio
+├── mpk-strata3d.js(.css)    # Strata 3D: area picker, Perdana + Mutiara GLB models on the map, three.js strata studio
 ├── strata3d/                # Strata 3D models, interior plans, catalog.json, buildings.geojson (tools/build_strata3d.mjs)
 ├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
 ├── tools/                   # data builders (Python) and logic tests (Node)
@@ -364,8 +364,10 @@ earlier `mpk_strata_v1` / `mpk_harta_v1` data carries over), with CSV / JSON exp
 **Strata 3D** (`mpk-strata3d.js`, `mpk-strata3d.css`, data in `strata3d/`): the UZMA Spatial Studio models
 (`UzmaTower3D_Model`) brought into Strata mode. **Choose an area** at the top of the Strata panel picks *MPK Kemaman* (all
 study areas, Teluk Kalong, Binjai – Chukai) or one of 31 *Damansara Perdana + Mutiara Damansara 3D* selections (29 modeled areas and two regional overviews, searchable by area or building name;
-the choice is remembered in this browser). A Damansara area puts its GLB model on the map (a MapLibre custom layer drawn with
-three.js 0.180 from jsDelivr, georeferenced by the area centre in the GLB) and outlines its buildings; each of the 1,539 modelled
+the choice is remembered in this browser). Selecting a Damansara area loads both regional overview models together, so the
+neighbouring region remains 3D when panning across the map. The selection controls camera focus, building highlights and
+the detail panel; it does not hide the other region. A MapLibre custom layer draws each regional GLB with its own geographic
+transform using three.js 0.180 from jsDelivr. Each of the 1,539 modelled
 buildings (UZMA Tower included) takes a strata scheme like an MPK building (`dp:<area>` in the scheme, Mukim Sungai Buloh, Daerah
 Petaling in the report), and the floor X-ray swaps the model's own building for the slabs. *View in 3D* (building popup, workspace
 header, Step 2) opens the **Strata 3D studio**:
@@ -381,6 +383,8 @@ header, Step 2) opens the **Strata 3D studio**:
 Refresh after the 3D project changes: `node tools/build_strata3d.mjs C:\Users\User\Desktop\UzmaTower3D_Model` copies every GLB
 (~165 MB, the separate Perdana and Mutiara overviews included) and interior plan, and writes `strata3d/catalog.json` and
 `strata3d/buildings.geojson` from the GLB node extras; `node tools/test_strata3d_data.js` checks the result.
+When publishing updated assets, bump the matching `S3D_VERSION` in `mpk-strata3d.js` and the module URL in `index.html`.
+This versions the catalog, footprints, models and plan downloads together to avoid mixing cached deployments.
 
 The Mutiara extension adds 905 mapped structures, including 658 house outlines, IKEA, IPC, The Curve, Curve NX, the MRT station and office buildings. Each regional overview selects only its own buildings and available interior plans. The Curve retains both courtyard holes in the map footprint as well as the GLB. Exterior details and most metric heights are estimates; missing tower outlines and redevelopment sites remain documented gaps. See [Mutiara reconstruction references](docs/mutiara-damansara-references.md). No new Mutiara interior floor plans are claimed.
 

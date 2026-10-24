@@ -1,7 +1,7 @@
 // ============================================================
 // STRATA 3D — the UZMA Spatial Studio models in Strata mode (ES module, after mpk-strata.js)
 //   Area picker   MPK Kemaman (Teluk Kalong, Binjai – Chukai), Damansara Perdana or Mutiara Damansara;
-//                 a Damansara area puts its GLB model on the map (MapLibre custom layer, three.js) and
+//                 both Damansara regional models stay on the map (MapLibre custom layer, three.js) and
 //                 its building footprints (strata3d/buildings.geojson) take strata schemes like any MPK building
 //   Studio        a three.js workspace for one building:
 //                   Strata stack   each floor cut into its parcels (petak) and common property, from the
@@ -17,6 +17,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 const S3D_BASE = 'strata3d/';
+// Bump with the module's index.html version whenever the model catalog changes,
+// so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
+const S3D_VERSION = '20261024b';
+const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'Semua kawasan kajian', sub: 'Teluk Kalong + Binjai – Chukai' },
   { id: 'tk', name: 'Teluk Kalong', sub: 'Kawasan Perindustrian Teluk Kalong' },
@@ -24,7 +28,7 @@ const S3D_KEMAMAN = [
 ];
 const S3D_COLOR_BY = [['type', 'Parcel type'], ['su', 'Share units'], ['owner', 'Owner'], ['vote', 'AGM vote'], ['bill', 'Tax bill']];
 const S3D = { cat: null, fc: null, byId: new Map(), loading: null, area: 'mpk-all', group: 'mpk', gltf: new Map(), pending: new Map(),
-  progress: {}, onMap: null, layerOn: false, bound: false, hiddenNode: null };
+  progress: {}, onMap: null, mapEntries: [], mapRequest: 0, mapErrors: {}, layerOn: false, bound: false, hiddenNode: null };
 try { const a = localStorage.getItem('s3d_area'); if (a) { S3D.area = a; S3D.group = S3D_KEMAMAN.some(k => k.id === a) ? 'mpk' : 'dp'; } } catch (e) {}
 
 const esc = v => (typeof strataEsc === 'function' ? strataEsc(v) : String(v == null ? '' : v));
@@ -43,7 +47,7 @@ const s3dAreaLabel = area => area.overview ? area.name : area.name + ', ' + s3dR
 function s3dLoad() {
   if (S3D.cat) return Promise.resolve();
   if (S3D.loading) return S3D.loading;
-  S3D.loading = Promise.all([fetch(S3D_BASE + 'catalog.json').then(r => r.json()), fetch(S3D_BASE + 'buildings.geojson').then(r => r.json())])
+  S3D.loading = Promise.all([fetch(s3dAssetUrl('catalog.json')).then(r => r.json()), fetch(s3dAssetUrl('buildings.geojson')).then(r => r.json())])
     .then(([cat, fc]) => {
       S3D.cat = cat;
       for (const f of fc.features) {
@@ -102,6 +106,10 @@ function strata3dSync() {
   s3dXrayHide();
 }
 function strata3dRemove() {
+  ++S3D.mapRequest;
+  S3D.onMap = null;
+  S3D.mapEntries = [];
+  if (S3D.hiddenNode) { S3D.hiddenNode.visible = true; S3D.hiddenNode = null; }
   if (typeof map === 'undefined' || !map) return;
   for (const id of ['s3d-models', 's3d-line', 's3d-fill']) { try { if (map.getLayer(id)) map.removeLayer(id); } catch (e) {} }
   try { if (map.getSource('s3d-bld')) map.removeSource('s3d-bld'); } catch (e) {}
@@ -111,8 +119,8 @@ function strata3dRemove() {
 function s3dXrayHide() {
   if (S3D.hiddenNode) { S3D.hiddenNode.visible = true; S3D.hiddenNode = null; }
   const sc = STRATA.xray && STRATA.cur && STRATA.s.schemes[STRATA.cur], f = sc && S3D.byId.get(sc.bid);
-  if (!f || !S3D.onMap) return;
-  const node = s3dFindNode(S3D.onMap.gltf.scene, f.properties);
+  if (!f || S3D.group !== 'dp') return;
+  const node = S3D.mapEntries.map(entry => s3dFindNode(entry.gltf.scene, f.properties)).find(Boolean);
   if (node) { node.visible = false; S3D.hiddenNode = node; }
   map.triggerRepaint();
 }
@@ -142,12 +150,13 @@ function s3dCustomLayer() {
       this.mx = new THREE.Matrix4();
     },
     render(gl, args) {
-      const o = S3D.onMap;
-      if (!o || !STRATA.active) return;
+      if (!S3D.mapEntries.length || !STRATA.active || S3D.group !== 'dp') return;
       const matrix = args && args.defaultProjectionData ? args.defaultProjectionData.mainMatrix : args;
-      this.camera.projectionMatrix = this.mx.fromArray(matrix).multiply(o.l);
       this.renderer.resetState();
-      this.renderer.render(o.scene, this.camera);
+      for (const entry of S3D.mapEntries) {
+        this.camera.projectionMatrix = this.mx.fromArray(matrix).multiply(entry.l);
+        this.renderer.render(entry.scene, this.camera);
+      }
     },
     onRemove() { if (this.renderer) this.renderer.dispose(); },
   };
@@ -159,7 +168,7 @@ function s3dGltf(areaId) {
   const a = dpArea(areaId);
   if (!a) return Promise.reject(new Error('Unknown area ' + areaId));
   S3D.progress[areaId] = 0;
-  const p = new GLTFLoader().loadAsync(S3D_BASE + a.glb, e => {
+  const p = new GLTFLoader().loadAsync(s3dAssetUrl(a.glb), e => {
     const pct = e.total ? Math.round(e.loaded / e.total * 100) : Math.min(99, Math.round(e.loaded / (a.mb * 1048576) * 100));
     if (pct !== S3D.progress[areaId]) { S3D.progress[areaId] = pct; s3dProgressUi(areaId); }
   }).then(g => { S3D.gltf.set(areaId, g); S3D.pending.delete(areaId); delete S3D.progress[areaId]; return g; })
@@ -168,23 +177,57 @@ function s3dGltf(areaId) {
   return p;
 }
 function s3dProgressUi(areaId) {
-  const el = document.querySelector(`[data-s3d-progress="${CSS.escape(areaId)}"]`);
-  if (el) el.textContent = S3D.progress[areaId] != null ? `Loading 3D model… ${S3D.progress[areaId]}%` : '';
+  const el = document.querySelector('[data-s3d-progress]');
+  if (el) el.textContent = s3dMapStatus();
 }
-function s3dPutOnMap(areaId) {
-  const a = dpArea(areaId);
-  return s3dGltf(areaId).then(g => {
-    if (S3D.area !== areaId) return;
-    const scene = new THREE.Scene();
-    scene.add(g.scene);
-    s3dLights(scene);
-    const mc = maplibregl.MercatorCoordinate.fromLngLat(a.center, 0), s = mc.meterInMercatorCoordinateUnits();
-    const l = new THREE.Matrix4().makeTranslation(mc.x, mc.y, mc.z).scale(new THREE.Vector3(s, -s, s)).multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
-    S3D.onMap = { areaId, gltf: g, scene, l };
+// Overview GLBs are disjoint regional exports. Using these roots, rather than
+// also adding the selected leaf GLB, keeps neighbouring areas visible once each.
+function s3dMapAreas(areaId = S3D.area) {
+  const overviews = S3D.cat ? S3D.cat.areas.filter(a => a.overview) : [];
+  return overviews.length ? overviews : [dpArea(areaId)].filter(Boolean);
+}
+function s3dMapStatus(areaId = S3D.area) {
+  const areas = s3dMapAreas(areaId);
+  if (!areas.length || S3D.group !== 'dp') return '';
+  const loaded = areas.filter(a => S3D.mapEntries.some(entry => entry.areaId === a.id));
+  const failed = areas.filter(a => S3D.mapErrors[a.id]);
+  if (failed.length) return `${loaded.length}/${areas.length} regional models loaded · ${failed.map(a => s3dRegion(a)).join(', ')} failed. Select an area to retry.`;
+  if (loaded.length === areas.length) return areas.map(a => s3dRegion(a)).join(' + ') + ' 3D on the map';
+  const pending = areas.filter(a => !loaded.includes(a)).map(a => `${s3dRegion(a)} ${S3D.progress[a.id] || 0}%`);
+  return `Loading regional models… ${loaded.length}/${areas.length} · ${pending.join(' · ')}`;
+}
+function s3dPutOnMap(areaId, request = ++S3D.mapRequest) {
+  const areas = s3dMapAreas(areaId);
+  const current = () => request === S3D.mapRequest && S3D.area === areaId && S3D.group === 'dp' && STRATA.active;
+  S3D.mapErrors = {};
+  S3D.mapEntries = S3D.mapEntries.filter(entry => areas.some(a => a.id === entry.areaId));
+  const refresh = () => {
+    const selected = S3D.mapEntries.find(entry => entry.areaId === areaId || s3dIncludesArea(dpArea(entry.areaId), areaId));
+    S3D.onMap = selected ? { ...selected, modelAreaId: selected.areaId, areaId } : null;
     strata3dSync();
     if (map) map.triggerRepaint();
     if (typeof strataRenderPanel === 'function') strataRenderPanel();
-  }).catch(e => { if (typeof showToast === 'function') showToast('⚠️ 3D model did not load: ' + e.message, 5000); strataRenderPanel(); });
+  };
+  if (!current()) return Promise.resolve();
+  refresh();
+  return Promise.all(areas.map(a => s3dGltf(a.id).then(g => {
+    if (!current()) return;
+    if (!S3D.mapEntries.some(entry => entry.areaId === a.id)) {
+      const scene = new THREE.Scene();
+      scene.add(g.scene);
+      s3dLights(scene);
+      const mc = maplibregl.MercatorCoordinate.fromLngLat(a.center, 0), s = mc.meterInMercatorCoordinateUnits();
+      const l = new THREE.Matrix4().makeTranslation(mc.x, mc.y, mc.z).scale(new THREE.Vector3(s, -s, s)).multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+      S3D.mapEntries.push({ areaId: a.id, gltf: g, scene, l });
+      S3D.mapEntries.sort((x, y) => areas.findIndex(a => a.id === x.areaId) - areas.findIndex(a => a.id === y.areaId));
+    }
+    refresh();
+  }).catch(e => {
+    if (!current()) return;
+    S3D.mapErrors[a.id] = e.message;
+    if (typeof showToast === 'function') showToast('⚠️ ' + s3dRegion(a) + ' 3D did not load: ' + e.message, 5000);
+    refresh();
+  })));
 }
 
 // ---------- Area picker ----------
@@ -201,6 +244,7 @@ function s3dKemamanBounds(id) {
 }
 function strata3dSelectArea(id, opts = {}) {
   const fly = opts.fly !== false;
+  const request = ++S3D.mapRequest;
   S3D.area = id;
   try { localStorage.setItem('s3d_area', id); } catch (e) {}
   const kem = S3D_KEMAMAN.find(k => k.id === id);
@@ -208,6 +252,8 @@ function strata3dSelectArea(id, opts = {}) {
   s3dTitle();
   if (kem) {
     S3D.onMap = null;
+    S3D.mapEntries = [];
+    S3D.mapErrors = {};
     if (S3D.hiddenNode) { S3D.hiddenNode.visible = true; S3D.hiddenNode = null; }
     const b = s3dKemamanBounds(id);
     if (fly && b && map) map.fitBounds(b, { padding: 60, pitch: 45, bearing: -15, duration: 1400, maxZoom: 16.5 });
@@ -217,13 +263,13 @@ function strata3dSelectArea(id, opts = {}) {
     return Promise.resolve();
   }
   return s3dLoad().then(() => {
+    if (request !== S3D.mapRequest || S3D.area !== id || S3D.group !== 'dp' || !STRATA.active) return;
     const a = dpArea(id);
     if (!a) return;
-    if (S3D.onMap && S3D.onMap.areaId !== id) S3D.onMap = null;
     if (fly && map) map.fitBounds(a.bounds, { padding: 70, pitch: 58, bearing: -25, duration: 1600, maxZoom: a.overview ? 16 : 18.2 });
     strata3dSync();
     strataRenderPanel();
-    return s3dPutOnMap(id);
+    return s3dPutOnMap(id, request);
   });
 }
 // The page title names the region of the selected area
@@ -232,8 +278,8 @@ function s3dTitle() {
   if (t && STRATA.active) t.textContent = 'Strata Titles — ' + (S3D_KEMAMAN.some(k => k.id === S3D.area) ? 'MPK Kemaman' : s3dRegion(dpArea(S3D.area)));
 }
 function strata3dSetGroup(g) {
-  S3D.group = g;
-  if (g === 'dp') s3dLoad().then(() => strataRenderPanel()); else strataRenderPanel();
+  const kem = S3D_KEMAMAN.some(k => k.id === S3D.area);
+  return strata3dSelectArea(g === 'dp' ? (kem ? 'damansara' : S3D.area) : (kem ? S3D.area : 'mpk-all'));
 }
 function strata3dFilter(q) {
   const t = q.trim().toLowerCase();
@@ -265,8 +311,7 @@ function strata3dPanelHtml() {
       const inArea = S3D.fc.features.filter(f => s3dIncludesArea(a, f.properties.dp_area));
       const tall = inArea.slice().sort((x, y) => (y.properties.tinggi_m || 0) - (x.properties.tinggi_m || 0)).slice(0, 6);
       const plans = S3D.cat.plans.filter(p => s3dIncludesArea(a, p.area));
-      const ready = S3D.onMap && S3D.onMap.areaId === a.id;
-      detail = `<div class="s3d-now"><div class="s3d-now-t"><b>${esc(a.name)}</b><span data-s3d-progress="${esc(a.id)}">${S3D.progress[a.id] != null ? `Loading 3D model… ${S3D.progress[a.id]}%` : ready ? '3D model on the map' : ''}</span></div>
+      detail = `<div class="s3d-now"><div class="s3d-now-t"><b>${esc(a.name)}</b><span data-s3d-progress="${esc(a.id)}">${esc(s3dMapStatus(a.id))}</span></div>
         <p class="strata-panel-copy">Click any outlined building to start a strata scheme or open it in the Strata 3D studio.</p>
         <div class="s3d-chips">${tall.map(f => { const p = f.properties;
           return `<button type="button" class="s3d-chip" onclick='strata3dFocus(${JSON.stringify(p.id)})' title="${esc(p.nama)}">${esc(s3dShort(p.nama))}<small>${p.tingkat_est} fl</small></button>`; }).join('')}</div>
@@ -754,7 +799,7 @@ function s3dShowPlan(planId) {
   ST.planLevel = ST.planLevel && plan.levels.some(l => l.id === ST.planLevel) ? ST.planLevel : (plan.levels.find(l => l.plan) || plan.levels[0]).id;
   s3dPlanSide();
   s3dBusy('Loading the interior…');
-  return new GLTFLoader().loadAsync(S3D_BASE + plan.glb).then(g => {
+  return new GLTFLoader().loadAsync(s3dAssetUrl(plan.glb)).then(g => {
     s3dBusy('');
     if (ST.mode !== 'plan' || ST.planId !== planId) return;
     const obj = g.scene;
@@ -794,9 +839,9 @@ function s3dPlanSide() {
     <div class="s3d-group"><div class="s3d-label">View</div>${seg(ST.planView, [['floor', 'Selected level'], ['stacked', 'All levels'], ['exploded', 'Exploded']], 'planView')}</div>
     <div class="s3d-group"><div class="s3d-label">Levels</div><div class="s3d-floors">${plan.levels.slice().reverse().map(l =>
       `<button type="button" class="${l.id === ST.planLevel ? 'on' : ''}" onclick='S3DUI.level(${JSON.stringify(l.id)})'><b>${esc(l.label.replace(/ ·.*$/, ''))}</b><span>${l.plan ? 'Room plan' : 'Outline only'}</span></button>`).join('')}</div></div>
-    ${lv.svg ? `<div class="s3d-group"><div class="s3d-label">2D plan</div><a href="${S3D_BASE + lv.svg}" target="_blank" rel="noopener"><img class="s3d-svg" src="${S3D_BASE + lv.svg}" alt="Floor plan ${esc(lv.label)}"></a></div>` : ''}
-    <div class="s3d-group s3d-dl"><a class="mpk-btn" href="${S3D_BASE + plan.glb}" download>Download interior .GLB</a>
-      ${lv.csv ? `<a class="mpk-btn ghost" href="${S3D_BASE + lv.csv}" download>Room schedule .CSV</a>` : ''}
+    ${lv.svg ? `<div class="s3d-group"><div class="s3d-label">2D plan</div><a href="${s3dAssetUrl(lv.svg)}" target="_blank" rel="noopener"><img class="s3d-svg" src="${s3dAssetUrl(lv.svg)}" alt="Floor plan ${esc(lv.label)}"></a></div>` : ''}
+    <div class="s3d-group s3d-dl"><a class="mpk-btn" href="${s3dAssetUrl(plan.glb)}" download>Download interior .GLB</a>
+      ${lv.csv ? `<a class="mpk-btn ghost" href="${s3dAssetUrl(lv.csv)}" download>Room schedule .CSV</a>` : ''}
       <p class="s3d-hint">${esc(plan.scope)}</p>
       ${plan.sources.map(s => `<a class="s3d-src" href="${esc(s.url)}${s.page ? '#page=' + s.page : ''}" target="_blank" rel="noopener">${esc(s.publisher)} · ${esc(s.title)}${s.page ? ', p.' + s.page : ''} ↗</a>`).join('')}</div>`;
 }
