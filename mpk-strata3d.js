@@ -191,10 +191,12 @@ function s3dMapStatus(areaId = S3D.area) {
   if (!areas.length || S3D.group !== 'dp') return '';
   const loaded = areas.filter(a => S3D.mapEntries.some(entry => entry.areaId === a.id));
   const failed = areas.filter(a => S3D.mapErrors[a.id]);
-  if (failed.length) return `${loaded.length}/${areas.length} regional models loaded · ${failed.map(a => s3dRegion(a)).join(', ')} failed. Select an area to retry.`;
-  if (loaded.length === areas.length) return areas.map(a => s3dRegion(a)).join(' + ') + ' 3D on the map';
-  const pending = areas.filter(a => !loaded.includes(a)).map(a => `${s3dRegion(a)} ${S3D.progress[a.id] || 0}%`);
-  return `Loading regional models… ${loaded.length}/${areas.length} · ${pending.join(' · ')}`;
+  if (failed.length) return '3D failed · select to retry';
+  if (loaded.length === areas.length) return '3D on the map';
+  // one percentage for all the regional models, weighted by file size
+  const mb = areas.reduce((s, a) => s + (a.mb || 1), 0);
+  const done = areas.reduce((s, a) => s + (a.mb || 1) * (loaded.includes(a) ? 100 : S3D.progress[a.id] || 0), 0);
+  return `Loading 3D… ${Math.min(99, Math.round(done / mb))}%`;
 }
 function s3dPutOnMap(areaId, request = ++S3D.mapRequest) {
   const areas = s3dMapAreas(areaId);

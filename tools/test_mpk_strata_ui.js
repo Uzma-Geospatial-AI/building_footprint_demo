@@ -336,7 +336,7 @@ async function checkRegionalModelLoading() {
     t.pending.get('mutiara').progress({ loaded: 1, total: 2 });
     t.resolve('damansara'); await tick();
     assert.strictEqual(t.ui.state.mapEntries.length, 1, 'A loaded region appears while the second is downloading');
-    assert.match(t.ui.status(), /1\/2.*Mutiara Damansara 50%/);
+    assert.strictEqual(t.ui.status(), 'Loading 3D… 75%', 'One percentage across both regions (one loaded, one at 50%)');
     t.resolve('mutiara'); await selected;
     assert.deepStrictEqual(Array.from(t.ui.state.mapEntries, entry => entry.areaId), ['damansara', 'mutiara']);
     assert.strictEqual(t.ui.state.onMap.areaId, 'damansara');
@@ -387,13 +387,13 @@ async function checkRegionalModelLoading() {
     const t = setupMap(), loading = t.ui.select('damansara', { fly: false });
     await tick(); t.resolve('damansara'); t.pending.get('mutiara').reject(new Error('Network interrupted')); await loading;
     assert.strictEqual(t.ui.state.mapEntries.length, 1, 'One failed download does not hide the successful regional model');
-    assert.match(t.ui.status(), /1\/2.*Mutiara Damansara failed/);
+    assert.strictEqual(t.ui.status(), '3D failed · select to retry');
     assert.match(t.calls.toasts[0], /Mutiara Damansara.*Network interrupted/);
     const retry = t.ui.select('empire', { fly: false }); await tick();
     assert.strictEqual(t.calls.loads.length, 3, 'Retry downloads only the failed regional model');
     t.resolve('mutiara'); await retry;
     assert.strictEqual(t.ui.state.mapEntries.length, 2);
-    assert.match(t.ui.status(), /Damansara Perdana \+ Mutiara Damansara 3D on the map/);
+    assert.strictEqual(t.ui.status(), '3D on the map');
   }
 }
 
