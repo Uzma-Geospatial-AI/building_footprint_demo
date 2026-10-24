@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261025c';
+const S3D_VERSION = '20261025b';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },
@@ -32,7 +32,8 @@ const S3D = { cat: null, fc: null, byId: new Map(), loading: null, area: 'mpk-al
 try { const a = localStorage.getItem('s3d_area'); if (a) { S3D.area = a; S3D.group = S3D_KEMAMAN.some(k => k.id === a) ? 'mpk' : 'dp'; } } catch (e) {}
 // 3D models on the map: on unless switched off in this browser (off: nothing is downloaded or drawn)
 S3D.show3d = true;
-try { S3D.show3d = localStorage.getItem('s3d_models') !== '0'; } catch (e) {}
+S3D.outlines = true;
+try { S3D.show3d = localStorage.getItem('s3d_models') !== '0'; S3D.outlines = localStorage.getItem('s3d_outlines') !== '0'; } catch (e) {}
 
 const esc = v => (typeof strataEsc === 'function' ? strataEsc(v) : String(v == null ? '' : v));
 const num = v => (typeof strataNum === 'function' ? strataNum(v) : (parseFloat(v) || 0));
@@ -137,7 +138,8 @@ function strata3dSync() {
       map.addLayer({ id: 's3d-line', type: 'line', source: 's3d-bld', paint: {
         'line-color': ['case', ['>', ['get', 'st'], 0], '#1E2C44', '#5E35B1'],
         'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, ['case', ['>', ['get', 'st'], 0], 2.2, 1]],
-        'line-opacity': ['case', ['==', ['get', 'on'], 1], 0.85, 0.5] } });
+        'line-opacity': ['case', ['==', ['get', 'on'], 1], 0.85, 0.5] },
+        layout: { visibility: S3D.outlines ? 'visible' : 'none' } });
     } else map.getSource('s3d-bld').setData(s3dBldData());
     if (!map.getLayer('s3d-models')) { map.addLayer(s3dCustomLayer()); S3D.layerOn = true; }
     // main names over the models: buildings with a real name (their own or an OSM place inside), tallest first
@@ -165,6 +167,7 @@ function strata3dSync() {
 function strata3dRemove() {
   strata3dClearSearch();
   s3dTopHint(false);
+  if (!STRATA.active) s3dBasemapOut();
   ++S3D.mapRequest;
   S3D.onMap = null;
   S3D.mapEntries = [];
@@ -258,8 +261,10 @@ function s3dMapStatus(areaId = S3D.area) {
   const done = areas.reduce((s, a) => s + (a.mb || 1) * (loaded.includes(a) ? 100 : S3D.progress[a.id] || 0), 0);
   return `Loading 3D… ${Math.min(99, Math.round(done / mb))}%`;
 }
-// Footprints: faint under the models, filled when the models are off so the buildings still read in 2D
+// Footprints: faint under the models, filled when the models are off so the buildings still read in 2D;
+// with the outlines off they are invisible but still take clicks
 function s3dFillOpacity() {
+  if (!S3D.outlines) return 0;
   return ['case', ['>', ['get', 'st'], 0], 0.55, ['==', ['get', 'on'], 1], S3D.show3d ? 0.04 : 0.45, S3D.show3d ? 0.22 : 0.3];
 }
 function strata3dToggleModels(on) {
@@ -270,9 +275,20 @@ function strata3dToggleModels(on) {
   if (map) map.triggerRepaint();
   strataRenderPanel();
 }
+function strata3dToggleOutlines(on) {
+  S3D.outlines = on == null ? !S3D.outlines : !!on;
+  try { localStorage.setItem('s3d_outlines', S3D.outlines ? '1' : '0'); } catch (e) {}
+  try {
+    if (map.getLayer('s3d-fill')) map.setPaintProperty('s3d-fill', 'fill-opacity', s3dFillOpacity());
+    if (map.getLayer('s3d-line')) map.setLayoutProperty('s3d-line', 'visibility', S3D.outlines ? 'visible' : 'none');
+  } catch (e) {}
+  strataRenderPanel();
+}
 function s3dToggleHtml() {
-  return `<label class="s3d-toggle"><span><b>3D models</b><small>${S3D.show3d ? 'Shown on the map' : 'Off · footprints only, no download'}</small></span>
-    <input type="checkbox" role="switch" ${S3D.show3d ? 'checked' : ''} onchange="strata3dToggleModels(this.checked)" aria-label="Show 3D models on the map"><i></i></label>`;
+  const row = (name, on, small, fn, label) => `<label class="s3d-toggle"><span><b>${name}</b><small>${small}</small></span>
+    <input type="checkbox" role="switch" ${on ? 'checked' : ''} onchange="${fn}(this.checked)" aria-label="${label}"><i></i></label>`;
+  return row('3D models', S3D.show3d, S3D.show3d ? 'Shown on the map' : 'Off · no download', 'strata3dToggleModels', 'Show 3D models on the map')
+    + row('Building outlines', S3D.outlines, S3D.outlines ? 'Purple footprints shown' : 'Off · buildings still clickable', 'strata3dToggleOutlines', 'Show building outlines on the map');
 }
 function s3dPutOnMap(areaId, request = ++S3D.mapRequest) {
   if (!S3D.show3d) return Promise.resolve();
@@ -590,9 +606,29 @@ function strata3dFocus(bid) {
   map.once('moveend', () => strataPopup(bid, [p.lng, p.lat]));
 }
 // strataEnter (mpk-strata.js): the remembered area comes back; the map only moves there when it is out of view
+// MPK's own aerial imagery (Kemaman captures) is not offered in Strata: Google Hybrid stands in while
+// Strata is on, and the capture comes back on return to MPK
+function s3dBasemapIn() {
+  if (typeof currentBasemap === 'undefined' || !/^mpk-esri/.test(currentBasemap) || typeof switchBasemap !== 'function') return;
+  S3D.prevBasemap = currentBasemap;
+  const el = document.querySelector(`.basemap-option[onclick*="'google-hybrid'"]`);
+  switchBasemap('google-hybrid', 'Google Hybrid', el);
+}
+function s3dBasemapOut() {
+  const prev = S3D.prevBasemap;
+  S3D.prevBasemap = null;
+  if (!prev) return;
+  setTimeout(() => {
+    if (STRATA.active || !document.body.classList.contains('mpk-mode') || currentBasemap !== 'google-hybrid') return;
+    const el = document.querySelector(`.basemap-option[onclick*="'${prev}'"]`);
+    const label = el && /switchBasemap\('[^']+',\s*'([^']+)'/.exec(el.getAttribute('onclick'));
+    switchBasemap(prev, label ? label[1] : prev, el);
+  }, 0);
+}
 function strata3dOnEnter() {
   s3dTitle();
   s3dTopHint(true);
+  s3dBasemapIn();
   s3dLoad().then(() => {
     strata3dSync();
     const a = S3D.group === 'dp' && dpArea(S3D.area);
@@ -1192,6 +1228,6 @@ const S3DUI = {
 
 Object.assign(window, { strata3dBuilding, strata3dAreaName, strata3dSync, strata3dRemove, strata3dSelectArea, strata3dSetGroup, strata3dFilter,
   strata3dPanelHtml, strata3dFocus, strata3dOnEnter, strata3dForScheme, strata3dOpen, strata3dClose, S3DUI,
-  strata3dSearch, strata3dTopSearch, strata3dSearchKey, strata3dPick, strata3dToggleModels });
+  strata3dSearch, strata3dTopSearch, strata3dSearchKey, strata3dPick, strata3dToggleModels, strata3dToggleOutlines });
 // Strata may already be on (restored mode) before this module ran
 if (typeof STRATA !== 'undefined' && STRATA.active) strata3dOnEnter();

@@ -128,3 +128,7 @@ body:not(.strata-mode) .s3d-studio { display:none !important; }
 .s3d-toggle input:checked + i { background:#5E35B1; }
 .s3d-toggle input:checked + i::after { left:18px; }
 .s3d-toggle input:focus-visible + i { outline:2px solid var(--orange); outline-offset:2px; }
+
+/* MPK's Kemaman aerial captures are not offered in Strata (s3dBasemapIn swaps to Google Hybrid) */
+body.strata-mode .mpk-aerial-head, body.strata-mode .mpk-aerial-opt { display:none !important; }
+.s3d-toggle + .s3d-toggle { margin-top:-4px; }
