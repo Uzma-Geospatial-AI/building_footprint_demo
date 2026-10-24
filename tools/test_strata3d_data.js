@@ -9,7 +9,7 @@ const cat = JSON.parse(fs.readFileSync(path.join(DIR, 'catalog.json'), 'utf8'));
 const fc = JSON.parse(fs.readFileSync(path.join(DIR, 'buildings.geojson'), 'utf8'));
 const isGlb = f => fs.readFileSync(path.join(DIR, f)).readUInt32LE(0) === 0x46546c67;
 
-assert.strictEqual(cat.areas.length, 33, '31 modeled areas including 1 Utama and GIS infill plus two regional overviews');
+assert.strictEqual(cat.areas.length, 34, '32 modeled areas including TM Bukit Lanjan plus two regional overviews');
 assert.deepStrictEqual(cat.areas.filter(a => a.overview).map(a => a.id).sort(), ['damansara', 'mutiara']);
 for (const a of cat.areas) {
   assert.ok(isGlb(a.glb), a.glb);
@@ -32,7 +32,7 @@ for (const f of fc.features) {
   assert.ok(p.tingkat_est >= 1 && p.area_m2 > 0 && isFinite(p.lng) && isFinite(p.lat), p.id + ' strata fields');
 }
 assert.ok(ids.has('dp-uzma-tower'), 'UZMA Tower building');
-assert.strictEqual(fc.features.length, 1562, '928 Mutiara/adjacent structures including one historical reference, plus 634 existing structures');
+assert.strictEqual(fc.features.length, 1571, '928 Mutiara structures plus 643 Perdana structures including restored TM and ForestHill');
 const oneUtama=cat.areas.find(a=>a.id==='mutiara-one-utama');
 assert.ok(oneUtama&&oneUtama.name.includes('1 Utama'));
 assert.strictEqual(fc.features.filter(f=>f.properties.dp_area==='mutiara-one-utama').length,8,'Eight distinct mall volumes, terrace and connection');
@@ -75,3 +75,8 @@ for (const p of places) assert.ok(p.n && p.k && ['dp', 'mpk'].includes(p.r) && i
 for (const n of ['Surian', 'Mutiara Damansara', 'Bandar Utama']) assert.ok(places.some(p => p.n === n && /^MRT station/.test(p.k)), n + ' MRT station');
 assert.ok(!places.some(p => /^(Rail|MRT|LRT) station/.test(p.k) && /\bbus\b|\bbas\b/i.test(p.n)), 'bus hubs are not rail stations');
 console.log(`places OK: ${places.length}`);
+
+for(const id of ['way/1125645848','way/1125645849','way/1125645853','way/1125645854','way/1125645855','node/10293480242','reference/foresthill-podium','reference/foresthill-tower-a','reference/foresthill-tower-b'])assert.ok(fc.features.some(f=>f.properties.src_id===id),id+' visible in Strata');
+assert.ok(cat.areas.find(a=>a.id==='damansara').includedAreaIds.includes('tm-bukit-lanjan'));
+assert.equal(fc.features.find(f=>f.properties.src_id==='reference/foresthill-tower-a').properties.tingkat_est,38);
+assert.equal(fc.features.find(f=>f.properties.src_id==='reference/foresthill-tower-b').properties.tingkat_est,35);

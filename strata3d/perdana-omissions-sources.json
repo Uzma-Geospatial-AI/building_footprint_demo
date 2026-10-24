@@ -1,0 +1,706 @@
+{
+  "imagery": {
+    "mosque-neighbor": {
+      "extent": {
+        "xmin": 101.6155,
+        "ymin": 3.171199999999997,
+        "xmax": 101.6191,
+        "ymax": 3.174200000000002,
+        "spatialReference": {
+          "wkid": 4326,
+          "latestWkid": 4326
+        }
+      },
+      "width": 1200,
+      "height": 1000,
+      "source": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+      "retrieved": "2026-10-25"
+    },
+    "tm-lanjan": {
+      "extent": {
+        "xmin": 101.6104,
+        "ymin": 3.176299999999998,
+        "xmax": 101.614,
+        "ymax": 3.179300000000003,
+        "spatialReference": {
+          "wkid": 4326,
+          "latestWkid": 4326
+        }
+      },
+      "width": 1200,
+      "height": 1000,
+      "source": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+      "retrieved": "2026-10-25"
+    },
+    "foresthill-site": {
+      "extent": {
+        "xmin": 101.6162,
+        "ymin": 3.1771,
+        "xmax": 101.61980000000001,
+        "ymax": 3.1801,
+        "spatialReference": {
+          "wkid": 4326,
+          "latestWkid": 4326
+        }
+      },
+      "width": 1200,
+      "height": 1000,
+      "source": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+      "retrieved": "2026-10-25"
+    }
+  },
+  "hall": {
+    "id": "microsoft/2026-08-13/132232022/26717",
+    "name": "Jalan PJU 8/8B ? hall complex beside Masjid Damansara Perdana",
+    "image": "mosque-neighbor",
+    "height": 10.5,
+    "profile": "compound-hall",
+    "pixels": [
+      [
+        539,
+        521
+      ],
+      [
+        625,
+        412
+      ],
+      [
+        704,
+        470
+      ],
+      [
+        759,
+        514
+      ],
+      [
+        698,
+        596
+      ],
+      [
+        668,
+        625
+      ],
+      [
+        611,
+        584
+      ]
+    ],
+    "parts": [
+      {
+        "name": "Main pitched-roof hall",
+        "pixels": [
+          [
+            625,
+            412
+          ],
+          [
+            704,
+            470
+          ],
+          [
+            615,
+            578
+          ],
+          [
+            539,
+            521
+          ]
+        ],
+        "top": 10.5,
+        "type": "body"
+      },
+      {
+        "name": "Lower side hall",
+        "pixels": [
+          [
+            707,
+            481
+          ],
+          [
+            759,
+            514
+          ],
+          [
+            698,
+            596
+          ],
+          [
+            645,
+            557
+          ]
+        ],
+        "top": 7.1,
+        "type": "body"
+      },
+      {
+        "name": "Entrance block",
+        "pixels": [
+          [
+            641,
+            560
+          ],
+          [
+            694,
+            599
+          ],
+          [
+            668,
+            625
+          ],
+          [
+            611,
+            584
+          ]
+        ],
+        "top": 4.8,
+        "type": "body"
+      }
+    ],
+    "note": "Visible three-part light-roof hall. Neutral descriptive name: operator/use not verified. Replaces a tiny machine-detected fragment, keeping its original outline in audit."
+  },
+  "forest": [
+    {
+      "id": "foresthill-podium",
+      "name": "ForestHill Residences ? parking and facilities podium",
+      "height": 20,
+      "levels": 6,
+      "profile": "foresthill-podium",
+      "pixels": [
+        [
+          547.9347826086956,
+          716
+        ],
+        [
+          460.64453125,
+          685.453125
+        ],
+        [
+          465.6325577445652,
+          641.609375
+        ],
+        [
+          529.0780279503106,
+          500.375
+        ],
+        [
+          581.972049689441,
+          256
+        ],
+        [
+          795,
+          256
+        ],
+        [
+          717.65625,
+          493.1875
+        ],
+        [
+          606.9409937888199,
+          716
+        ]
+      ],
+      "amenities": [
+        {
+          "kind": "pool",
+          "pixels": [
+            [
+              477.7607300562888,
+              635.140625
+            ],
+            [
+              520.3803134704968,
+              532.71875
+            ],
+            [
+              552.1955975834627,
+              541.703125
+            ],
+            [
+              510.1624187208851,
+              644.484375
+            ]
+          ]
+        },
+        {
+          "kind": "court",
+          "pixels": [
+            [
+              684.9549932065217,
+              392.5625
+            ],
+            [
+              707.9402355881211,
+              312.421875
+            ],
+            [
+              755.1209239130435,
+              312.421875
+            ],
+            [
+              729.9728260869565,
+              392.5625
+            ]
+          ]
+        }
+      ],
+      "image": "foresthill-site",
+      "references": [
+        "https://foresthilldamansara.com/residences/",
+        "https://foresthilldamansara.com/residences/images/2510-Facility-Floor-Plan.jpg",
+        "https://ehsanbina.com/foresthill-residences/",
+        "https://ehsanbina.com/wp-content/uploads/2026/09/2.png",
+        "https://ehsanbina.com/wp-content/uploads/2026/09/1.png",
+        "https://www.edgeprop.my/content/1914670/ehsan-bina-tops-out-rm490m-foresthill-residences-damansara-perdana-85-taken"
+      ],
+      "siteRegistration": "Developer Level 6 plan registered to visible podium and road/lake boundaries; approximate ground envelope, not displaced roof coordinates.",
+      "heightSource": "38 and 35 total storeys reported at topping out; six-level podium and estimated 3.2 m residential floor spacing. Elevations not surveyed.",
+      "status": "Under construction / finishing: developer 2026 Q3 progress photos; completion not asserted.",
+      "auditPlanRegistration": {
+        "planReferenceSize": [
+          1600,
+          1600
+        ],
+        "groundControls": [
+          [
+            155,
+            145,
+            455,
+            716
+          ],
+          [
+            1435,
+            145,
+            540,
+            256
+          ],
+          [
+            1435,
+            789,
+            795,
+            256
+          ],
+          [
+            155,
+            789,
+            645,
+            716
+          ]
+        ],
+        "positionUncertaintyMetres": 8
+      }
+    },
+    {
+      "id": "foresthill-tower-a",
+      "name": "ForestHill Residences ? Tower A (38 storeys)",
+      "height": 122.4,
+      "levels": 38,
+      "totalStoreys": 38,
+      "baseHeight": 20,
+      "parentId": "reference/foresthill-podium",
+      "profile": "foresthill-tower",
+      "pixels": [
+        [
+          575.6031638198758,
+          477.015625
+        ],
+        [
+          583.3922748447205,
+          443.59375
+        ],
+        [
+          564.9425951086956,
+          443.59375
+        ],
+        [
+          580.7139945652174,
+          372.4375
+        ],
+        [
+          599.9755434782609,
+          372.4375
+        ],
+        [
+          626.8605395962733,
+          257.078125
+        ],
+        [
+          695.7168939246894,
+          257.078125
+        ],
+        [
+          673.7851805124224,
+          337.9375
+        ],
+        [
+          667.7374320652174,
+          337.9375
+        ],
+        [
+          659.847995923913,
+          367.40625
+        ],
+        [
+          665.7922894021739,
+          367.40625
+        ],
+        [
+          638.694439052795,
+          467.3125
+        ],
+        [
+          608.6290760869565,
+          467.3125
+        ],
+        [
+          605.1827445652174,
+          480.96875
+        ],
+        [
+          585.0798961568323,
+          480.96875
+        ]
+      ],
+      "image": "foresthill-site",
+      "references": [
+        "https://foresthilldamansara.com/residences/",
+        "https://foresthilldamansara.com/residences/images/2510-Facility-Floor-Plan.jpg",
+        "https://ehsanbina.com/foresthill-residences/",
+        "https://ehsanbina.com/wp-content/uploads/2026/09/2.png",
+        "https://ehsanbina.com/wp-content/uploads/2026/09/1.png",
+        "https://www.edgeprop.my/content/1914670/ehsan-bina-tops-out-rm490m-foresthill-residences-damansara-perdana-85-taken"
+      ],
+      "siteRegistration": "Developer Level 6 plan registered to visible podium and road/lake boundaries; approximate ground envelope, not displaced roof coordinates.",
+      "heightSource": "38 and 35 total storeys reported at topping out; six-level podium and estimated 3.2 m residential floor spacing. Elevations not surveyed.",
+      "status": "Under construction / finishing: developer 2026 Q3 progress photos; completion not asserted.",
+      "shaftLevels": 32
+    },
+    {
+      "id": "foresthill-tower-b",
+      "name": "ForestHill Residences ? Tower B (35 storeys)",
+      "height": 112.8,
+      "levels": 35,
+      "totalStoreys": 35,
+      "baseHeight": 20,
+      "parentId": "reference/foresthill-podium",
+      "profile": "foresthill-tower",
+      "pixels": [
+        [
+          552.6736400912267,
+          711.328125
+        ],
+        [
+          569.2369468167702,
+          672.875
+        ],
+        [
+          573.4998544254659,
+          672.875
+        ],
+        [
+          601.6864809782609,
+          609.625
+        ],
+        [
+          606.1436820652174,
+          609.625
+        ],
+        [
+          617.6296583850932,
+          585.546875
+        ],
+        [
+          613.4221479522515,
+          585.546875
+        ],
+        [
+          650.7755786587733,
+          509.359375
+        ],
+        [
+          680.4536223796583,
+          516.90625
+        ],
+        [
+          686.9934612771739,
+          514.390625
+        ],
+        [
+          701.3156055900621,
+          520.5
+        ],
+        [
+          665.380889703028,
+          589.140625
+        ],
+        [
+          660.8607640236801,
+          589.140625
+        ],
+        [
+          646.9314829192547,
+          616.8125
+        ],
+        [
+          651.6833996506211,
+          616.8125
+        ],
+        [
+          601.9254658385094,
+          716
+        ]
+      ],
+      "image": "foresthill-site",
+      "references": [
+        "https://foresthilldamansara.com/residences/",
+        "https://foresthilldamansara.com/residences/images/2510-Facility-Floor-Plan.jpg",
+        "https://ehsanbina.com/foresthill-residences/",
+        "https://ehsanbina.com/wp-content/uploads/2026/09/2.png",
+        "https://ehsanbina.com/wp-content/uploads/2026/09/1.png",
+        "https://www.edgeprop.my/content/1914670/ehsan-bina-tops-out-rm490m-foresthill-residences-damansara-perdana-85-taken"
+      ],
+      "siteRegistration": "Developer Level 6 plan registered to visible podium and road/lake boundaries; approximate ground envelope, not displaced roof coordinates.",
+      "heightSource": "38 and 35 total storeys reported at topping out; six-level podium and estimated 3.2 m residential floor spacing. Elevations not surveyed.",
+      "status": "Under construction / finishing: developer 2026 Q3 progress photos; completion not asserted.",
+      "shaftLevels": 29
+    }
+  ],
+  "mapped": [
+    {
+      "id": "1125645848",
+      "type": "way",
+      "version": 1,
+      "timestamp": "2022-12-29T15:23:38Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          101.6119159,
+          3.1775353
+        ],
+        [
+          101.6120094,
+          3.1775953
+        ],
+        [
+          101.6121189,
+          3.1774255
+        ],
+        [
+          101.6120255,
+          3.1773654
+        ],
+        [
+          101.6119159,
+          3.1775353
+        ]
+      ]
+    },
+    {
+      "id": "1125645849",
+      "type": "way",
+      "version": 1,
+      "timestamp": "2022-12-29T15:23:38Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          101.6123172,
+          3.1775692
+        ],
+        [
+          101.612375,
+          3.1774871
+        ],
+        [
+          101.6122902,
+          3.1774277
+        ],
+        [
+          101.6122325,
+          3.1775097
+        ],
+        [
+          101.6123172,
+          3.1775692
+        ]
+      ]
+    },
+    {
+      "id": "1125645853",
+      "type": "way",
+      "version": 1,
+      "timestamp": "2022-12-29T15:23:38Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          101.6127273,
+          3.1788734
+        ],
+        [
+          101.612769,
+          3.178928
+        ],
+        [
+          101.6128551,
+          3.1788625
+        ],
+        [
+          101.6128134,
+          3.1788079
+        ],
+        [
+          101.6127273,
+          3.1788734
+        ]
+      ]
+    },
+    {
+      "id": "1125645854",
+      "type": "way",
+      "version": 1,
+      "timestamp": "2022-12-29T15:23:38Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          101.6126635,
+          3.1789636
+        ],
+        [
+          101.6126171,
+          3.1789015
+        ],
+        [
+          101.6126762,
+          3.1788574
+        ],
+        [
+          101.6127226,
+          3.1789196
+        ],
+        [
+          101.6126635,
+          3.1789636
+        ]
+      ]
+    },
+    {
+      "id": "1125645855",
+      "type": "way",
+      "version": 1,
+      "timestamp": "2022-12-29T15:23:38Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          101.6125545,
+          3.178768
+        ],
+        [
+          101.6127036,
+          3.1786546
+        ],
+        [
+          101.6127762,
+          3.1787499
+        ],
+        [
+          101.6126948,
+          3.1788118
+        ],
+        [
+          101.6126764,
+          3.1787877
+        ],
+        [
+          101.6126088,
+          3.1788391
+        ],
+        [
+          101.6125545,
+          3.178768
+        ]
+      ]
+    }
+  ],
+  "siteParcel": {
+    "id": "1213765509",
+    "type": "way",
+    "version": 4,
+    "timestamp": "2026-05-24T08:50:27Z",
+    "tags": {
+      "construction": "apartments",
+      "landuse": "construction",
+      "name": "ForestHill Residences"
+    },
+    "coordinates": [
+      [
+        101.6174607,
+        3.1778343
+      ],
+      [
+        101.618252,
+        3.1778236
+      ],
+      [
+        101.6183542,
+        3.1782607
+      ],
+      [
+        101.618458,
+        3.1782783
+      ],
+      [
+        101.6186718,
+        3.1792798
+      ],
+      [
+        101.6179989,
+        3.1792477
+      ],
+      [
+        101.6177617,
+        3.1794747
+      ],
+      [
+        101.6177551,
+        3.1792295
+      ],
+      [
+        101.6175559,
+        3.1785109
+      ],
+      [
+        101.6175324,
+        3.1783218
+      ],
+      [
+        101.617462,
+        3.1781602
+      ],
+      [
+        101.6174608,
+        3.1778388
+      ],
+      [
+        101.6174607,
+        3.1778343
+      ]
+    ]
+  },
+  "tower": {
+    "id": "10293480242",
+    "coordinates": [
+      101.6124777,
+      3.1784867
+    ],
+    "height": 40,
+    "heightEstimated": true
+  }
+}

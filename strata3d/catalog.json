@@ -12,7 +12,7 @@
    "id": "damansara",
    "name": "Seluruh Damansara Perdana",
    "glb": "models/Damansara-Perdana.glb",
-   "mb": 22.79,
+   "mb": 24.88,
    "center": [
     101.6103643,
     3.1731484
@@ -47,10 +47,11 @@
     "masjid-damansara",
     "desa-temuan",
     "perdana-central",
-    "hillside-compound"
+    "hillside-compound",
+    "tm-bukit-lanjan"
    ],
    "region": "Damansara Perdana",
-   "buildings": 633,
+   "buildings": 642,
    "uzma": true
   },
   {
@@ -338,15 +339,15 @@
    "id": "foresthill",
    "name": "ForestHill Damansara",
    "glb": "models/foresthill.glb",
-   "mb": 0.98,
+   "mb": 3.17,
    "center": [
     101.61817,
     3.1801746
    ],
    "bounds": [
     [
-     101.6178414,
-     3.1784555
+     101.6175819,
+     3.177952
     ],
     [
      101.6188277,
@@ -358,7 +359,7 @@
     "foresthill"
    ],
    "region": "Damansara Perdana",
-   "buildings": 23,
+   "buildings": 26,
    "uzma": false
   },
   {
@@ -899,6 +900,33 @@
    ],
    "region": "Mutiara Damansara",
    "buildings": 5,
+   "uzma": false
+  },
+  {
+   "id": "tm-bukit-lanjan",
+   "name": "TM Bukit Lanjan",
+   "glb": "models/TM-Bukit-Lanjan.glb",
+   "mb": 0.27,
+   "center": [
+    101.61235,
+    3.1781
+   ],
+   "bounds": [
+    [
+     101.6119159,
+     3.1773654
+    ],
+    [
+     101.6128551,
+     3.1789636
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "tm-bukit-lanjan"
+   ],
+   "region": "Damansara Perdana",
+   "buildings": 6,
    "uzma": false
   },
   {
