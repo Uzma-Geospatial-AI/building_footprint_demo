@@ -1,4 +1,10 @@
-# Strata 3D model update — 24 October 2026
+# Strata 3D - 25 October 2026
+
+Select **Strata -> Region -> UMPSA Pekan** for the new campus overview and five zones. It contains 65 reviewed buildings and structures, including Canseleri, FK, engineering faculties and workshops, the library, Masjid Al-Jazari, KK5 / PAP and the sports complex. Curved and stepped footprints, distinct roof forms and solar workshops are modeled. Heights and imagery-derived outlines remain estimates. See [campus evidence and limits](umpsa-pekan.md) and [source records](umpsa-sources.json).
+
+There are now 40 selectable areas (37 zones and three overviews), 1,643 structures and eight existing interior plans. No campus interiors are invented. UMPSA loads independently from the two adjacent Damansara overviews. Existing region selection and model/outline switches remain available. Asset cache version: `20261025d`.
+
+## Previous release: Strata 3D model update — 24 October 2026
 
 The Mutiara regional model and its retail/office area models now include:
 

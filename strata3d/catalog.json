@@ -1,7 +1,7 @@
 {
  "generated": "2026-10-24",
  "source": "UZMA Spatial Studio (UzmaTower3D_Model)",
- "note": "Damansara Perdana and Mutiara Damansara, Petaling Jaya. Original mapped footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.",
+ "note": "Damansara Perdana, Mutiara Damansara and UMPSA Pekan campus. Original mapped and individually reviewed imagery footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.",
  "attribution": "Building footprints © OpenStreetMap contributors (ODbL 1.0) · Microsoft Global ML Building Footprints (CDLA Permissive 2.0)",
  "uzma": {
   "glb": "models/UZMA-Tower.glb",
@@ -51,6 +51,7 @@
     "tm-bukit-lanjan"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 648,
    "uzma": true
   },
@@ -89,7 +90,40 @@
     "mutiara-one-utama"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 929,
+   "uzma": false
+  },
+  {
+   "id": "umpsa",
+   "name": "Seluruh UMPSA Pekan",
+   "glb": "models/UMPSA-Pekan.glb",
+   "mb": 2.06,
+   "center": [
+    103.43,
+    3.5415
+   ],
+   "bounds": [
+    [
+     103.425,
+     3.5316458
+    ],
+    [
+     103.4352118,
+     3.5501597
+    ]
+   ],
+   "overview": true,
+   "includedAreaIds": [
+    "umpsa-north",
+    "umpsa-civic",
+    "umpsa-academic",
+    "umpsa-residential",
+    "umpsa-south"
+   ],
+   "region": "UMPSA Pekan",
+   "regionGroup": "umpsa",
+   "buildings": 65,
    "uzma": false
   },
   {
@@ -116,6 +150,7 @@
     "mutiara-one-utama"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 8,
    "uzma": false
   },
@@ -143,6 +178,7 @@
     "armanee"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 4,
    "uzma": false
   },
@@ -170,6 +206,7 @@
     "central-park"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 32,
    "uzma": false
   },
@@ -197,6 +234,7 @@
     "perdana-central"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 39,
    "uzma": false
   },
@@ -224,6 +262,7 @@
     "mutiara-residences"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 28,
    "uzma": false
   },
@@ -251,6 +290,7 @@
     "desa-temuan"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 158,
    "uzma": false
   },
@@ -278,6 +318,7 @@
     "emerald"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 4,
    "uzma": false
   },
@@ -305,6 +346,7 @@
     "empire-residential"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 61,
    "uzma": false
   },
@@ -332,6 +374,7 @@
     "flora"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 8,
    "uzma": false
   },
@@ -359,6 +402,7 @@
     "foresthill"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 26,
    "uzma": false
   },
@@ -386,6 +430,7 @@
     "hextar"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 17,
    "uzma": false
   },
@@ -413,6 +458,7 @@
     "hillside-compound"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 15,
    "uzma": false
   },
@@ -440,6 +486,7 @@
     "mutiara-retail"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 43,
    "uzma": false
   },
@@ -467,6 +514,7 @@
     "masjid-damansara"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 1,
    "uzma": false
   },
@@ -494,6 +542,7 @@
     "metropolitan"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 14,
    "uzma": false
   },
@@ -521,6 +570,7 @@
     "mutiara-utilities"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 2,
    "uzma": false
   },
@@ -548,6 +598,7 @@
     "mutiara-homes-central"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 234,
    "uzma": false
   },
@@ -575,6 +626,7 @@
     "mutiara-homes-east"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 71,
    "uzma": false
   },
@@ -602,6 +654,7 @@
     "mutiara-homes-south"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 188,
    "uzma": false
   },
@@ -629,6 +682,7 @@
     "mutiara-homes-west"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 86,
    "uzma": false
   },
@@ -656,6 +710,7 @@
     "mutiara-phase-10"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 52,
    "uzma": false
   },
@@ -683,6 +738,7 @@
     "mutiara-offices"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 17,
    "uzma": false
   },
@@ -710,6 +766,7 @@
     "neo"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 8,
    "uzma": false
   },
@@ -737,6 +794,7 @@
     "perdana"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 16,
    "uzma": false
   },
@@ -764,6 +822,7 @@
     "perdana-exclusive"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 5,
    "uzma": false
   },
@@ -791,6 +850,7 @@
     "perdana-view"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 3,
    "uzma": false
   },
@@ -818,6 +878,7 @@
     "mutiara-west"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 195,
    "uzma": false
   },
@@ -845,6 +906,7 @@
     "rafflesia"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 204,
    "uzma": false
   },
@@ -872,6 +934,7 @@
     "ritze"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 10,
    "uzma": false
   },
@@ -899,6 +962,7 @@
     "mutiara-civic"
    ],
    "region": "Mutiara Damansara",
+   "regionGroup": "damansara",
    "buildings": 5,
    "uzma": false
   },
@@ -926,7 +990,148 @@
     "tm-bukit-lanjan"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 6,
+   "uzma": false
+  },
+  {
+   "id": "umpsa-civic",
+   "name": "UMPSA - Canseleri, Perpustakaan dan Dewan",
+   "glb": "models/UMPSA-Pekan-civic.glb",
+   "mb": 0.85,
+   "center": [
+    103.4285347,
+    3.5433403
+   ],
+   "bounds": [
+    [
+     103.425,
+     3.5409444
+    ],
+    [
+     103.4320694,
+     3.5457361
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "umpsa-civic"
+   ],
+   "region": "UMPSA Pekan",
+   "regionGroup": "umpsa",
+   "buildings": 10,
+   "uzma": false
+  },
+  {
+   "id": "umpsa-academic",
+   "name": "UMPSA - Fakulti Kejuruteraan dan Makmal",
+   "glb": "models/UMPSA-Pekan-academic.glb",
+   "mb": 0.96,
+   "center": [
+    103.4319306,
+    3.5386597
+   ],
+   "bounds": [
+    [
+     103.4297153,
+     3.5367639
+    ],
+    [
+     103.4341458,
+     3.5405556
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "umpsa-academic"
+   ],
+   "region": "UMPSA Pekan",
+   "regionGroup": "umpsa",
+   "buildings": 18,
+   "uzma": false
+  },
+  {
+   "id": "umpsa-north",
+   "name": "UMPSA - FK, Masjid Al-Jazari dan kampus utara",
+   "glb": "models/UMPSA-Pekan-north.glb",
+   "mb": 0.4,
+   "center": [
+    103.4307135,
+    3.5480903
+   ],
+   "bounds": [
+    [
+     103.4262153,
+     3.5460208
+    ],
+    [
+     103.4352118,
+     3.5501597
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "umpsa-north"
+   ],
+   "region": "UMPSA Pekan",
+   "regionGroup": "umpsa",
+   "buildings": 13,
+   "uzma": false
+  },
+  {
+   "id": "umpsa-residential",
+   "name": "UMPSA - Kolej Kediaman 5 dan PAP",
+   "glb": "models/UMPSA-Pekan-residential.glb",
+   "mb": 0.8,
+   "center": [
+    103.4277222,
+    3.5390451
+   ],
+   "bounds": [
+    [
+     103.4263958,
+     3.537125
+    ],
+    [
+     103.4290486,
+     3.5409653
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "umpsa-residential"
+   ],
+   "region": "UMPSA Pekan",
+   "regionGroup": "umpsa",
+   "buildings": 12,
+   "uzma": false
+  },
+  {
+   "id": "umpsa-south",
+   "name": "UMPSA - Kompleks Sukan dan kampus selatan",
+   "glb": "models/UMPSA-Pekan-south.glb",
+   "mb": 0.24,
+   "center": [
+    103.4313542,
+    3.5339375
+   ],
+   "bounds": [
+    [
+     103.4287292,
+     3.5316458
+    ],
+    [
+     103.4339792,
+     3.5362292
+    ]
+   ],
+   "overview": false,
+   "includedAreaIds": [
+    "umpsa-south"
+   ],
+   "region": "UMPSA Pekan",
+   "regionGroup": "umpsa",
+   "buildings": 12,
    "uzma": false
   },
   {
@@ -953,6 +1158,7 @@
     "empire"
    ],
    "region": "Damansara Perdana",
+   "regionGroup": "damansara",
    "buildings": 17,
    "uzma": true
   }

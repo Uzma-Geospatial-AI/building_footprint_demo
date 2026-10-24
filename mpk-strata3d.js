@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261025c';
+const S3D_VERSION = '20261025d';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },
@@ -44,7 +44,7 @@ const isDp = bid => String(bid).startsWith('dp-');
 // Both regional overviews contain only their own named areas, including for
 // map highlights, scheme totals, search and interior-plan suggestions.
 const s3dIncludesArea = (area, id) => !!area && (Array.isArray(area.includedAreaIds) ? area.includedAreaIds.includes(id) : area.id === id);
-const s3dRegion = area => area?.region || (String(area?.id || S3D.area).startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
+const s3dRegion = area => area?.region || (String(area?.id || S3D.area).startsWith('umpsa') ? 'UMPSA Pekan' : String(area?.id || S3D.area).startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
 const s3dAreaLabel = area => area.overview ? area.name : area.name + ', ' + s3dRegion(area);
 
 // ---------- Data ----------
@@ -65,7 +65,7 @@ function s3dLoad() {
       s3dMainNames(fc.features, places);
       S3D.fc = fc;
     })
-    .catch(e => { S3D.loading = null; if (typeof showToast === 'function') showToast('⚠️ Could not load the Damansara 3D data: ' + e.message, 5000); throw e; });
+    .catch(e => { S3D.loading = null; if (typeof showToast === 'function') showToast('⚠️ Could not load the 3D area data: ' + e.message, 5000); throw e; });
   return S3D.loading;
 }
 // Main name of every modelled building (p.nama; the model's own label stays in p.nama_model):
@@ -245,7 +245,9 @@ function s3dProgressUi(areaId) {
 // Overview GLBs are disjoint regional exports. Using these roots, rather than
 // also adding the selected leaf GLB, keeps neighbouring areas visible once each.
 function s3dMapAreas(areaId = S3D.area) {
-  const overviews = S3D.cat ? S3D.cat.areas.filter(a => a.overview) : [];
+  const selected = dpArea(areaId);
+  const group = selected?.regionGroup || 'damansara';
+  const overviews = S3D.cat ? S3D.cat.areas.filter(a => a.overview && (a.regionGroup || 'damansara') === group) : [];
   return overviews.length ? overviews : [dpArea(areaId)].filter(Boolean);
 }
 function s3dMapStatus(areaId = S3D.area) {
@@ -378,11 +380,17 @@ function s3dTitle() {
 // before any area is listed or any model is loaded
 const S3D_DP_REGIONS = ['Damansara Perdana', 'Mutiara Damansara'];
 function strata3dSetGroup(g) {
+  if (g === 'umpsa') return strata3dSelectArea('umpsa');
   const kem = S3D_KEMAMAN.some(k => k.id === S3D.area);
-  if (g === 'dp' && kem) {
+  if (g === 'dp' && (kem || dpArea(S3D.area)?.regionGroup === 'umpsa')) {
+    ++S3D.mapRequest;
+    S3D.mapEntries = [];
+    S3D.onMap = null;
+    S3D.mapErrors = {};
     S3D.group = 'dp';
     S3D.regionPending = true;
     s3dTitle();
+    if (typeof map !== 'undefined' && map) map.triggerRepaint();
     s3dLoad().catch(() => {}).then(() => strataRenderPanel());
     return Promise.resolve();
   }
@@ -404,7 +412,7 @@ function strata3dFilter(q) {
 // ---------- Search: areas, buildings, schemes, owners, interior plans, places and addresses ----------
 // Local first (both regions, instant), then OpenStreetMap: the places index (strata3d/places.json, stations,
 // malls, schools, roads…; tools/build_strata3d_places.mjs) and a live Nominatim lookup for other addresses.
-const S3D_REGION_BOX = { dp: [101.575, 3.125, 101.655, 3.205], mpk: [103.38, 4.205, 103.485, 4.315] };  // w, s, e, n
+const S3D_REGION_BOX = { dp: [101.575, 3.125, 101.655, 3.205], mpk: [103.38, 4.205, 103.485, 4.315], umpsa: [103.417, 3.527, 103.447, 3.557] };  // w, s, e, n
 const s3dNorm = s => String(s == null ? '' : s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[’'`]/g, '').replace(/[^a-z0-9+/]+/g, ' ').trim();
 const SR = { q: '', res: [], places: null, placesP: null, timer: 0, seq: 0, cache: new Map(), marker: null, online: false };
@@ -457,7 +465,7 @@ function s3dAddressSearch(q, seq) {
   if (SR.cache.has(key)) return Promise.resolve(SR.cache.get(key));
   const look = box => fetch('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ format: 'jsonv2', q, limit: '6', countrycodes: 'my',
     bounded: '1', viewbox: box.join(','), 'accept-language': 'en' })).then(r => (r.ok ? r.json() : []));
-  const first = S3D.group === 'mpk' ? 'mpk' : 'dp', second = first === 'mpk' ? 'dp' : 'mpk';
+  const first = S3D.group === 'mpk' ? 'mpk' : dpArea(S3D.area)?.regionGroup === 'umpsa' ? 'umpsa' : 'dp', second = first === 'mpk' ? 'dp' : 'mpk';
   return look(S3D_REGION_BOX[first]).then(r => (r.length || seq !== SR.seq ? r : look(S3D_REGION_BOX[second]))).catch(() => [])
     .then(r => {
       const res = r.map(x => ({ kind: 'Address', label: x.name || x.display_name.split(',')[0], sub: x.display_name.split(',').slice(1, 4).join(',').trim(),
@@ -531,8 +539,9 @@ function s3dAreaAt(c) {
   return S3D.cat.areas.filter(a => !a.overview && inside(a)).sort((x, y) => size(x) - size(y))[0] || S3D.cat.areas.find(a => a.overview && inside(a)) || null;
 }
 function s3dGoTo(c, label) {
-  const inKemaman = c[0] > 103;
-  const a = inKemaman ? null : s3dAreaAt(c);
+  const a = s3dAreaAt(c);
+  const box = S3D_REGION_BOX.mpk;
+  const inKemaman = !a && c[0] >= box[0] && c[0] <= box[2] && c[1] >= box[1] && c[1] <= box[3];
   if (inKemaman && S3D.group !== 'mpk') strata3dSelectArea('mpk-all', { fly: false });
   else if (a && S3D.area !== a.id) strata3dSelectArea(a.id, { fly: false });
   map.flyTo({ center: c, zoom: 17.6, pitch: 55, duration: 1300 });
@@ -580,11 +589,12 @@ function s3dSearchHtml() {
 }
 function strata3dPanelHtml() {
   const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {}, region = s3dCurrentRegion();
+  const campus = region === 'UMPSA Pekan';
   const opt = (v, l, on) => `<option value="${esc(v)}"${on ? ' selected' : ''}>${esc(l)}</option>`;
   const seg = `<div class="s3d-pickers">
       <label class="s3d-pick"><span>Region</span><select onchange="strata3dSetGroup(this.value)" aria-label="Region">
-        ${opt('mpk', 'MPK Kemaman', g === 'mpk')}${opt('dp', 'Damansara', g === 'dp')}</select></label>
-      ${g === 'dp' ? `<label class="s3d-pick${region ? '' : ' need'}"><span>Damansara area</span><select onchange="strata3dSetRegion(this.value)" aria-label="Damansara area">
+        ${opt('mpk', 'MPK Kemaman', g === 'mpk')}${opt('dp', 'Damansara', g === 'dp' && !campus)}${opt('umpsa', 'UMPSA Pekan', campus)}</select></label>
+      ${g === 'dp' && !campus ? `<label class="s3d-pick${region ? '' : ' need'}"><span>Damansara area</span><select onchange="strata3dSetRegion(this.value)" aria-label="Damansara area">
         ${region ? '' : '<option value="" selected disabled>Select…</option>'}
         ${S3D_DP_REGIONS.map(r => opt(r, r, r === region)).join('')}</select></label>` : ''}</div>`;
   let list = '', detail = '';
@@ -596,7 +606,7 @@ function strata3dPanelHtml() {
       <b>${esc(k.name)}</b><small>${esc(k.sub)} · ${fmt(count(k.id))} buildings</small></button>`).join('');
     detail = `<p class="strata-panel-copy">Strata 3D builds each Kemaman building from its footprint and estimated floors. Open a building, then <b>View in 3D</b>.</p>`;
   } else if (!S3D.cat) {
-    list = '<div class="mpk-reg-empty">Loading the Damansara Perdana and Mutiara Damansara areas…</div>';
+    list = '<div class="mpk-reg-empty">Loading 3D areas…</div>';
   } else {
     const areas = S3D.cat.areas.filter(a => s3dRegion(a) === region);
     const filt = SR.q.trim().toLowerCase();

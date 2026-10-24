@@ -1,0 +1,578 @@
+{
+  "retrieved": "2026-10-25",
+  "imagerySource": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+  "imageryNote": "North-up visual references exported in EPSG:4326. Capture date is not imagery acquisition date; appearance may differ from current construction. Pixel traces use displayed 1728 x 1440 coordinates, same extents as original 1800 x 1500 images.",
+  "osmBuildings": [
+    {
+      "id": 877521650,
+      "type": "way",
+      "version": 2,
+      "timestamp": "2022-11-01T07:44:51Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          103.4339232,
+          3.5382301
+        ],
+        [
+          103.4331747,
+          3.5385337
+        ],
+        [
+          103.4332692,
+          3.5387659
+        ],
+        [
+          103.4340177,
+          3.5384623
+        ],
+        [
+          103.4339232,
+          3.5382301
+        ]
+      ]
+    },
+    {
+      "id": 907948517,
+      "type": "way",
+      "version": 1,
+      "timestamp": "2021-02-17T05:07:05Z",
+      "tags": {
+        "building": "yes",
+        "office": "security"
+      },
+      "coordinates": [
+        [
+          103.4351018,
+          3.5462586
+        ],
+        [
+          103.4350787,
+          3.5463159
+        ],
+        [
+          103.4351887,
+          3.5463601
+        ],
+        [
+          103.4352118,
+          3.5463028
+        ],
+        [
+          103.4351018,
+          3.5462586
+        ]
+      ]
+    },
+    {
+      "id": 1267089333,
+      "type": "way",
+      "version": 1,
+      "timestamp": "2024-03-28T11:40:40Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          103.4452567,
+          3.5264512
+        ],
+        [
+          103.4453942,
+          3.5267364
+        ],
+        [
+          103.4443441,
+          3.5272274
+        ],
+        [
+          103.4441986,
+          3.526937
+        ],
+        [
+          103.4452567,
+          3.5264512
+        ]
+      ]
+    },
+    {
+      "id": 1267089334,
+      "type": "way",
+      "version": 1,
+      "timestamp": "2024-03-28T11:40:40Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          103.4454438,
+          3.5268213
+        ],
+        [
+          103.4455814,
+          3.5271064
+        ],
+        [
+          103.4445312,
+          3.5275975
+        ],
+        [
+          103.4443857,
+          3.5273071
+        ],
+        [
+          103.4454438,
+          3.5268213
+        ]
+      ]
+    },
+    {
+      "id": 1267089335,
+      "type": "way",
+      "version": 1,
+      "timestamp": "2024-03-28T11:40:40Z",
+      "tags": {
+        "building": "yes"
+      },
+      "coordinates": [
+        [
+          103.4456299,
+          3.5271996
+        ],
+        [
+          103.4457674,
+          3.5274848
+        ],
+        [
+          103.4447172,
+          3.5279759
+        ],
+        [
+          103.4445717,
+          3.5276854
+        ],
+        [
+          103.4456299,
+          3.5271996
+        ]
+      ]
+    },
+    {
+      "id": 1489284065,
+      "type": "way",
+      "version": 3,
+      "timestamp": "2026-03-21T01:07:35Z",
+      "tags": {
+        "building": "yes",
+        "building:levels": "3",
+        "name": "Block A KK5 UMPSA Pekan"
+      },
+      "coordinates": [
+        [
+          103.4285528,
+          3.5378368
+        ],
+        [
+          103.4285856,
+          3.5377573
+        ],
+        [
+          103.4286255,
+          3.5377736
+        ],
+        [
+          103.4286407,
+          3.5377369
+        ],
+        [
+          103.428598,
+          3.5377193
+        ],
+        [
+          103.4286205,
+          3.5376645
+        ],
+        [
+          103.4286574,
+          3.5376796
+        ],
+        [
+          103.4286668,
+          3.5376569
+        ],
+        [
+          103.4288133,
+          3.537717
+        ],
+        [
+          103.4288075,
+          3.5377311
+        ],
+        [
+          103.4288511,
+          3.537749
+        ],
+        [
+          103.4288586,
+          3.5377307
+        ],
+        [
+          103.4290028,
+          3.5377899
+        ],
+        [
+          103.428995,
+          3.537809
+        ],
+        [
+          103.4290316,
+          3.537824
+        ],
+        [
+          103.4290017,
+          3.5378965
+        ],
+        [
+          103.4289383,
+          3.5378704
+        ],
+        [
+          103.4289255,
+          3.5379016
+        ],
+        [
+          103.4289859,
+          3.5379263
+        ],
+        [
+          103.4289545,
+          3.5380026
+        ],
+        [
+          103.4289158,
+          3.5379867
+        ],
+        [
+          103.4289088,
+          3.5380036
+        ],
+        [
+          103.4287671,
+          3.5379455
+        ],
+        [
+          103.4287737,
+          3.5379293
+        ],
+        [
+          103.4287218,
+          3.537908
+        ],
+        [
+          103.4287159,
+          3.5379224
+        ],
+        [
+          103.4285729,
+          3.5378638
+        ],
+        [
+          103.4285795,
+          3.5378477
+        ],
+        [
+          103.4285528,
+          3.5378368
+        ]
+      ]
+    },
+    {
+      "id": 1489288201,
+      "type": "way",
+      "version": 1,
+      "timestamp": "2026-03-15T23:35:16Z",
+      "tags": {
+        "building": "yes",
+        "name": "BLOCK B KK5 UMPSA PEKAN"
+      },
+      "coordinates": [
+        [
+          103.4274092,
+          3.5374702
+        ],
+        [
+          103.4278664,
+          3.5376454
+        ],
+        [
+          103.4280292,
+          3.5373388
+        ],
+        [
+          103.4275366,
+          3.5371368
+        ],
+        [
+          103.4274092,
+          3.5374702
+        ]
+      ]
+    },
+    {
+      "id": 1489288202,
+      "type": "way",
+      "version": 1,
+      "timestamp": "2026-03-15T23:35:16Z",
+      "tags": {
+        "building": "yes",
+        "name": "BLOCK C KK5 UMPSA PEKAN"
+      },
+      "coordinates": [
+        [
+          103.4272824,
+          3.5377315
+        ],
+        [
+          103.4273768,
+          3.5375152
+        ],
+        [
+          103.427869,
+          3.5377147
+        ],
+        [
+          103.4277497,
+          3.5379402
+        ],
+        [
+          103.4272824,
+          3.5377315
+        ]
+      ]
+    }
+  ],
+  "names": {
+    "fk": "OpenStreetMap named node 12825444378; official FK website",
+    "canseleri": "OpenStreetMap named node 13651009782",
+    "dewan": "OpenStreetMap named node 13651009781",
+    "pap": "OSM CAFE PAP node 13650935758 and official mosque history",
+    "masjid": "UMPSA official Masjid Al-Jazari page",
+    "library": "UMPSA Library official Wadah 2012 exterior and four-storey description",
+    "ftkee": "OpenStreetMap named node 13651009778",
+    "ftkee-main": "OpenStreetMap named node 13651009778",
+    "ftkma-main": "OpenStreetMap named node 13651009779",
+    "ftk-main": "OpenStreetMap named node 13651009780",
+    "kk5-h": "OpenStreetMap named node 13652706155",
+    "kk5-i": "OpenStreetMap named node 13652505283",
+    "kk5-b": "OSM building way 1489288201",
+    "kk5-c": "OSM building way 1489288202"
+  },
+  "references": {
+    "masjid": [
+      "https://pimpin.umpsa.edu.my/index.php/perkhidmatan/mosque-management/masjid-umpsa-pekan",
+      "https://mygift.umpsa.edu.my/index.php/ms/pembinaan-masjid-universiti-malaysia-pahang"
+    ],
+    "library": [
+      "https://library.umpsa.edu.my/images/PICTURE/FRONTPAGE/LIB_PUBLICATION/WADAH/Wadah_Edisi2012-UMPLib.pdf"
+    ],
+    "fk": [
+      "https://fk.umpsa.edu.my/"
+    ]
+  },
+  "datasetReview": {
+    "microsoft": {
+      "release": "2026-08-13",
+      "quadkey": "132232031",
+      "candidates": 221,
+      "included": 0,
+      "reason": "Visual comparison showed incomplete outlines, roof fragments and old structures on now empty ground. Reviewed traces used instead of importing these candidates wholesale."
+    },
+    "osm": {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=103.417,3.527,103.447,3.557",
+      "license": "ODbL 1.0",
+      "includedWays": [
+        907948517,
+        1489284065
+      ],
+      "superseded": [
+        {
+          "id": 877521650,
+          "reason": "Separately traced faculty main wing and solar workshops; mapped box is not the full compound."
+        },
+        {
+          "id": 1489288201,
+          "reason": "Reviewed visible block envelope retained as trace."
+        },
+        {
+          "id": 1489288202,
+          "reason": "Reviewed visible block envelope retained as trace."
+        }
+      ],
+      "excluded": [
+        1267089333,
+        1267089334,
+        1267089335
+      ],
+      "excludedReason": "Outside campus boundary."
+    }
+  },
+  "boundary": {
+    "id": "1147355347",
+    "type": "way",
+    "version": 3,
+    "timestamp": "2024-09-26T08:56:55Z",
+    "tags": {
+      "addr:postcode": "26600",
+      "amenity": "university",
+      "email": "pro@umpsa.edu.my",
+      "internet_access": "wlan",
+      "internet_access:fee": "customers",
+      "name": "Universiti Malaysia Pahang Al-Sultan Abdullah (Kampus Pekan)",
+      "name:ms": "Universiti Malaysia Pahang (Kampus Pekan)",
+      "operator": "Universiti Malaysia Pahang",
+      "operator:type": "government",
+      "phone": "+609-431 5000",
+      "short_name": "UMP Kampus Pekan",
+      "website": "https://umpsa.edu.my/en",
+      "wheelchair": "yes",
+      "wikidata": "Q2496084",
+      "wikipedia": "en:Universiti Malaysia Pahang"
+    },
+    "coordinates": [
+      [
+        103.4353466,
+        3.5466432
+      ],
+      [
+        103.4370454,
+        3.5421451
+      ],
+      [
+        103.4378107,
+        3.5407245
+      ],
+      [
+        103.4387719,
+        3.5393894
+      ],
+      [
+        103.4381096,
+        3.5389661
+      ],
+      [
+        103.4370754,
+        3.5393373
+      ],
+      [
+        103.4357392,
+        3.5383631
+      ],
+      [
+        103.4354022,
+        3.5371106
+      ],
+      [
+        103.4354778,
+        3.5363858
+      ],
+      [
+        103.4359716,
+        3.5356319
+      ],
+      [
+        103.435989,
+        3.5350695
+      ],
+      [
+        103.4356404,
+        3.5344838
+      ],
+      [
+        103.434859,
+        3.534569
+      ],
+      [
+        103.4344872,
+        3.5349459
+      ],
+      [
+        103.4339295,
+        3.5349401
+      ],
+      [
+        103.4337087,
+        3.5344356
+      ],
+      [
+        103.4342141,
+        3.5315247
+      ],
+      [
+        103.4345918,
+        3.5305389
+      ],
+      [
+        103.4345976,
+        3.5282079
+      ],
+      [
+        103.4341444,
+        3.5272975
+      ],
+      [
+        103.4306586,
+        3.5273323
+      ],
+      [
+        103.4304669,
+        3.5275584
+      ],
+      [
+        103.4297805,
+        3.5299658
+      ],
+      [
+        103.4281152,
+        3.5351893
+      ],
+      [
+        103.4251111,
+        3.5423496
+      ],
+      [
+        103.4241884,
+        3.5445698
+      ],
+      [
+        103.4260624,
+        3.549981
+      ],
+      [
+        103.426563,
+        3.5518728
+      ],
+      [
+        103.4304397,
+        3.5516087
+      ],
+      [
+        103.4308045,
+        3.5499525
+      ],
+      [
+        103.4312623,
+        3.5489531
+      ],
+      [
+        103.4343593,
+        3.5492886
+      ],
+      [
+        103.4353466,
+        3.5466432
+      ]
+    ]
+  }
+}

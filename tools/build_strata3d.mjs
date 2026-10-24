@@ -41,6 +41,9 @@ const slug = s => String(s).normalize('NFKD').replace(/[’']/g, '').toLowerCase
 
 fs.mkdirSync(path.join(OUT, 'models'), { recursive: true });
 fs.mkdirSync(path.join(OUT, 'interiors'), { recursive: true });
+for (const [source, destination] of [['src/umpsa-sources.json','umpsa-sources.json'],['docs/UMPSA-PEKAN.md','umpsa-pekan.md']]) {
+  if (fs.existsSync(path.join(SRC,source))) fs.copyFileSync(path.join(SRC,source),path.join(OUT,destination));
+}
 
 // ---------- Areas ----------
 const areas = [], buildings = new Map();
@@ -59,7 +62,8 @@ for (const f of files.filter(f => !/^UZMA-/.test(f))) {
   areas.push({ id: ex.areaId, name: ex.areaName || root.name, glb: 'models/' + f, mb: r2(fs.statSync(path.join(PUB, f)).size / 1048576),
     center: [r7(ex.coordinates.longitude), r7(ex.coordinates.latitude)], bounds: [[r7(w), r7(s)], [r7(e), r7(n)]],
     overview: !!ex.overview, includedAreaIds: ex.overview ? ex.includedAreaIds : [ex.areaId],
-    region: ex.areaId.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana',
+    region: ex.region || (ex.areaId.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana'),
+    regionGroup: ex.regionGroup || 'damansara',
     buildings: blds.length, uzma: /UZMA/.test(root.name) || ex.areaId === 'damansara' });
   for (const b of blds) {
     const x = b.extras, id = 'dp-' + String(x.id).replace(/[^A-Za-z0-9]+/g, '-');
@@ -119,7 +123,7 @@ for (const b of buildings.values()) {
 const order = a => (a.overview ? 0 : 1);
 areas.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
 const catalog = { generated: new Date().toISOString().slice(0, 10), source: 'UZMA Spatial Studio (UzmaTower3D_Model)',
-  note: 'Damansara Perdana and Mutiara Damansara, Petaling Jaya. Original mapped footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.',
+  note: 'Damansara Perdana, Mutiara Damansara and UMPSA Pekan campus. Original mapped and individually reviewed imagery footprints and courtyards with sourced or estimated heights and indicative facades. Regional overviews are separate; coverage is incomplete where reliable footprints are unavailable. UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.',
   attribution: 'Building footprints © OpenStreetMap contributors (ODbL 1.0) · Microsoft Global ML Building Footprints (CDLA Permissive 2.0)',
   uzma: { glb: 'models/UZMA-Tower.glb', building: 'dp-uzma-tower' }, areas, plans };
 fs.writeFileSync(path.join(OUT, 'catalog.json'), JSON.stringify(catalog, null, 1));

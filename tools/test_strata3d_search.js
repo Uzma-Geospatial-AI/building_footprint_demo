@@ -19,3 +19,5 @@ for(const [q,host] of [['Alquiler','reference/base3-retail'],['Alquiler bike ren
 for(const q of ["D'Vine","D'Vervain",'Lung Mu'])assert(vm.runInContext(`s3dLocalSearch(${JSON.stringify(q)})`,ctx).some(r=>r.go.dp),q+' finds restored model');
 assert(source.includes('strata3dToggleModels'),'Preserve latest model visibility switch');
 console.log('PASS: restored buildings searchable; reviewed tenants open their real model hosts; latest model toggle retained.');
+
+for(const q of ['UMPSA','Al-Jazari','Canseleri','Perpustakaan','FTKMA','Komputeran'])assert(vm.runInContext(`s3dLocalSearch(${JSON.stringify(q)})`,ctx).some(r=>r.go.dp||r.go.area),'Campus search: '+q);

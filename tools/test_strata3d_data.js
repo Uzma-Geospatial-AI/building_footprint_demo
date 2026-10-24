@@ -9,15 +9,15 @@ const cat = JSON.parse(fs.readFileSync(path.join(DIR, 'catalog.json'), 'utf8'));
 const fc = JSON.parse(fs.readFileSync(path.join(DIR, 'buildings.geojson'), 'utf8'));
 const isGlb = f => fs.readFileSync(path.join(DIR, f)).readUInt32LE(0) === 0x46546c67;
 
-assert.strictEqual(cat.areas.length, 34, '32 modeled areas including TM Bukit Lanjan plus two regional overviews');
-assert.deepStrictEqual(cat.areas.filter(a => a.overview).map(a => a.id).sort(), ['damansara', 'mutiara']);
+assert.strictEqual(cat.areas.length, 40, '37 modeled zones plus three regional overviews');
+assert.deepStrictEqual(cat.areas.filter(a => a.overview).map(a => a.id).sort(), ['damansara', 'mutiara', 'umpsa']);
 for (const a of cat.areas) {
   assert.ok(isGlb(a.glb), a.glb);
   const [[w, s], [e, n]] = a.bounds;
   assert.ok(w < e && s < n, a.id + ' bounds');
-  assert.ok(a.center[0] > 101.59 && a.center[0] < 101.63 && a.center[1] > 3.14 && a.center[1] < 3.19, a.id + ' centre in Damansara Perdana');
+  assert.ok(a.id.startsWith('umpsa') ? a.center[0]>103.42 && a.center[0]<103.44 && a.center[1]>3.53 && a.center[1]<3.56 : a.center[0] > 101.59 && a.center[0] < 101.63 && a.center[1] > 3.14 && a.center[1] < 3.19, a.id + ' centre in Damansara Perdana');
   assert.ok(a.includedAreaIds.length > 0 && a.includedAreaIds.every(id => cat.areas.some(other => other.id === id && !other.overview)), a.id + ' explicit area membership');
-  assert.strictEqual(a.region, a.id.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
+  assert.strictEqual(a.region, a.id.startsWith('umpsa') ? 'UMPSA Pekan' : a.id.startsWith('mutiara') ? 'Mutiara Damansara' : 'Damansara Perdana');
 }
 assert.ok(isGlb(cat.uzma.glb), 'UZMA tower model');
 
@@ -32,7 +32,7 @@ for (const f of fc.features) {
   assert.ok(p.tingkat_est >= 1 && p.area_m2 > 0 && isFinite(p.lng) && isFinite(p.lat), p.id + ' strata fields');
 }
 assert.ok(ids.has('dp-uzma-tower'), 'UZMA Tower building');
-assert.strictEqual(fc.features.length, 1578, 'Eight restored masses and one merged row fragment, without duplicated structures');
+assert.strictEqual(fc.features.length, 1643, 'Previous regions plus 65 campus structures, without duplicates');
 for(const id of ['reference/dvine-podium','reference/dvine-tower','way/1158914503','reference/dvervain-tower-a','reference/dvervain-tower-b','way/1242229816','way/745554991','reference/base3-retail'])assert.ok(fc.features.some(f=>f.properties.src_id===id),id+' restored in Strata');
 assert.ok(!fc.features.some(f=>f.properties.src_id==='microsoft/2026-08-13/132232022/691049'),'Joined row fragment not exported separately');
 const reviewedPlaces=JSON.parse(fs.readFileSync(path.join(DIR,'reviewed-places.json'),'utf8'));
@@ -84,3 +84,6 @@ for(const id of ['way/1125645848','way/1125645849','way/1125645853','way/1125645
 assert.ok(cat.areas.find(a=>a.id==='damansara').includedAreaIds.includes('tm-bukit-lanjan'));
 assert.equal(fc.features.find(f=>f.properties.src_id==='reference/foresthill-tower-a').properties.tingkat_est,38);
 assert.equal(fc.features.find(f=>f.properties.src_id==='reference/foresthill-tower-b').properties.tingkat_est,35);
+
+assert.equal(fc.features.filter(f=>f.properties.dp_area.startsWith("umpsa-")).length,65);
+assert.equal(cat.areas.find(a=>a.id==="umpsa").regionGroup,"umpsa");
