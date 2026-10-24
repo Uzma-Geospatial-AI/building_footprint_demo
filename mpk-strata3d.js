@@ -1,0 +1,886 @@
+// ============================================================
+// STRATA 3D — the UZMA Spatial Studio models in Strata mode (ES module, after mpk-strata.js)
+//   Area picker   MPK Kemaman (Teluk Kalong, Binjai – Chukai) or one of the Damansara Perdana areas;
+//                 a Damansara area puts its GLB model on the map (MapLibre custom layer, three.js) and
+//                 its building footprints (strata3d/buildings.geojson) take strata schemes like any MPK building
+//   Studio        a three.js workspace for one building:
+//                   Strata stack   each floor cut into its parcels (petak) and common property, from the
+//                                  scheme (or a preview); full stack, cutaway at a floor, or exploded; coloured
+//                                  by parcel type, share units, owner, AGM vote or assessment bill; the real
+//                                  model as a glass shell or cut solid around it; GLB / PNG download
+//                   Interior plan  UZMA Tower's 19 levels and the published unit / house plans, room by room
+// Models and data: tools/build_strata3d.mjs (from UzmaTower3D_Model). Estimates, not surveys or registered plans.
+// ============================================================
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+const S3D_BASE = 'strata3d/';
+const S3D_KEMAMAN = [
+  { id: 'mpk-all', name: 'Semua kawasan kajian', sub: 'Teluk Kalong + Binjai – Chukai' },
+  { id: 'tk', name: 'Teluk Kalong', sub: 'Kawasan Perindustrian Teluk Kalong' },
+  { id: 'bbc', name: 'Binjai – Bandar Chukai', sub: 'Koridor jalan Binjai – Chukai' },
+];
+const S3D_COLOR_BY = [['type', 'Parcel type'], ['su', 'Share units'], ['owner', 'Owner'], ['vote', 'AGM vote'], ['bill', 'Tax bill']];
+const S3D = { cat: null, fc: null, byId: new Map(), loading: null, area: 'mpk-all', group: 'mpk', gltf: new Map(), pending: new Map(),
+  progress: {}, onMap: null, layerOn: false, bound: false, hiddenNode: null };
+try { const a = localStorage.getItem('s3d_area'); if (a) { S3D.area = a; S3D.group = S3D_KEMAMAN.some(k => k.id === a) ? 'mpk' : 'dp'; } } catch (e) {}
+
+const esc = v => (typeof strataEsc === 'function' ? strataEsc(v) : String(v == null ? '' : v));
+const num = v => (typeof strataNum === 'function' ? strataNum(v) : (parseFloat(v) || 0));
+const fmt = n => (typeof mpkNum === 'function' ? mpkNum(n) : Math.round(n).toLocaleString('en-MY'));
+const dpArea = id => S3D.cat && S3D.cat.areas.find(a => a.id === id);
+const dpPlan = id => S3D.cat && S3D.cat.plans.find(p => p.id === id);
+const isDp = bid => String(bid).startsWith('dp-');
+
+// ---------- Data ----------
+function s3dLoad() {
+  if (S3D.cat) return Promise.resolve();
+  if (S3D.loading) return S3D.loading;
+  S3D.loading = Promise.all([fetch(S3D_BASE + 'catalog.json').then(r => r.json()), fetch(S3D_BASE + 'buildings.geojson').then(r => r.json())])
+    .then(([cat, fc]) => {
+      S3D.cat = cat;
+      for (const f of fc.features) {
+        const p = f.properties;
+        p.plus_code = typeof mpkPlusCode === 'function' ? mpkPlusCode(p.lat, p.lng) : p.lat.toFixed(5) + ',' + p.lng.toFixed(5);
+        p.kawasan_dp = p.dp_area;
+        S3D.byId.set(p.id, f);
+      }
+      S3D.fc = fc;
+    })
+    .catch(e => { S3D.loading = null; if (typeof showToast === 'function') showToast('⚠️ Could not load the Damansara Perdana 3D data: ' + e.message, 5000); throw e; });
+  return S3D.loading;
+}
+// A Damansara building as an MPK-like feature, for strataBuilding (mpk-strata.js)
+function strata3dBuilding(bid) { return S3D.byId.get(String(bid)) || null; }
+function strata3dAreaName(k) {
+  if (!k) return '';
+  const id = String(k).replace(/^dp:/, ''), a = dpArea(id);
+  return a ? a.name + ', Damansara Perdana' : (String(k).startsWith('dp:') ? 'Damansara Perdana' : '');
+}
+
+// ---------- Map: building footprints and the GLB model ----------
+function s3dBldData() {
+  if (!S3D.fc) return { type: 'FeatureCollection', features: [] };
+  const schemes = (STRATA.s && STRATA.s.schemes) || {};
+  return { type: 'FeatureCollection', features: S3D.fc.features.map(f => {
+    const sc = schemes[f.properties.id];
+    return { type: 'Feature', geometry: f.geometry, properties: { id: f.properties.id, st: sc ? strataStageIdx(sc) + 1 : 0,
+      on: f.properties.dp_area === S3D.area || dpArea(S3D.area)?.overview ? 1 : 0, plan: f.properties.plan ? 1 : 0 } };
+  }) };
+}
+function strata3dSync() {
+  if (!STRATA.active || typeof map === 'undefined' || !map || !S3D.fc) return;
+  try {
+    if (!map.getSource('s3d-bld')) {
+      map.addSource('s3d-bld', { type: 'geojson', data: s3dBldData() });
+      map.addLayer({ id: 's3d-fill', type: 'fill', source: 's3d-bld', paint: {
+        'fill-color': ['case', ['>', ['get', 'st'], 0], strataStageColor(), '#7E57C2'],
+        'fill-opacity': ['case', ['>', ['get', 'st'], 0], 0.55, ['==', ['get', 'on'], 1], 0.04, 0.22] } });
+      map.addLayer({ id: 's3d-line', type: 'line', source: 's3d-bld', paint: {
+        'line-color': ['case', ['>', ['get', 'st'], 0], '#1E2C44', '#5E35B1'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, ['case', ['>', ['get', 'st'], 0], 2.2, 1]],
+        'line-opacity': ['case', ['==', ['get', 'on'], 1], 0.85, 0.5] } });
+    } else map.getSource('s3d-bld').setData(s3dBldData());
+    if (!map.getLayer('s3d-models')) { map.addLayer(s3dCustomLayer()); S3D.layerOn = true; }
+  } catch (e) { return; }
+  if (!S3D.bound) {
+    S3D.bound = true;
+    map.on('click', 's3d-fill', e => {
+      if (!STRATA.active || STRATA.picking || !e.features.length) return;
+      strataPopup(e.features[0].properties.id, e.lngLat);
+    });
+    map.on('mouseenter', 's3d-fill', () => { if (STRATA.active) map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 's3d-fill', () => { if (STRATA.active) map.getCanvas().style.cursor = 'grab'; });
+  }
+  s3dXrayHide();
+}
+function strata3dRemove() {
+  if (typeof map === 'undefined' || !map) return;
+  for (const id of ['s3d-models', 's3d-line', 's3d-fill']) { try { if (map.getLayer(id)) map.removeLayer(id); } catch (e) {} }
+  try { if (map.getSource('s3d-bld')) map.removeSource('s3d-bld'); } catch (e) {}
+  S3D.layerOn = false;
+}
+// Floor X-ray of a Damansara scheme: the model's own building steps aside for the slabs
+function s3dXrayHide() {
+  if (S3D.hiddenNode) { S3D.hiddenNode.visible = true; S3D.hiddenNode = null; }
+  const sc = STRATA.xray && STRATA.cur && STRATA.s.schemes[STRATA.cur], f = sc && S3D.byId.get(sc.bid);
+  if (!f || !S3D.onMap) return;
+  const node = s3dFindNode(S3D.onMap.gltf.scene, f.properties);
+  if (node) { node.visible = false; S3D.hiddenNode = node; }
+  map.triggerRepaint();
+}
+function s3dFindNode(root, p) {
+  let hit = null;
+  root.traverse(o => {
+    if (hit) return;
+    // GLTFLoader rewrites node names (spaces → _): UZMA Tower is known by its tower extras
+    const u = o.userData || {};
+    if (p.src_id === 'uzma-tower' ? u.storeys && u.shaftWidth : u.id === p.src_id) hit = o;
+  });
+  return hit;
+}
+function s3dLights(scene) {
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9199, 2.1));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+  sun.position.set(-60, 120, 80);
+  scene.add(sun);
+}
+function s3dCustomLayer() {
+  return {
+    id: 's3d-models', type: 'custom', renderingMode: '3d',
+    onAdd(m, gl) {
+      this.camera = new THREE.Camera();
+      this.renderer = new THREE.WebGLRenderer({ canvas: m.getCanvas(), context: gl, antialias: true });
+      this.renderer.autoClear = false;
+      this.mx = new THREE.Matrix4();
+    },
+    render(gl, args) {
+      const o = S3D.onMap;
+      if (!o || !STRATA.active) return;
+      const matrix = args && args.defaultProjectionData ? args.defaultProjectionData.mainMatrix : args;
+      this.camera.projectionMatrix = this.mx.fromArray(matrix).multiply(o.l);
+      this.renderer.resetState();
+      this.renderer.render(o.scene, this.camera);
+    },
+    onRemove() { if (this.renderer) this.renderer.dispose(); },
+  };
+}
+// GLB of an area, loaded once; progress shown in the area card
+function s3dGltf(areaId) {
+  if (S3D.gltf.has(areaId)) return Promise.resolve(S3D.gltf.get(areaId));
+  if (S3D.pending.has(areaId)) return S3D.pending.get(areaId);
+  const a = dpArea(areaId);
+  if (!a) return Promise.reject(new Error('Unknown area ' + areaId));
+  S3D.progress[areaId] = 0;
+  const p = new GLTFLoader().loadAsync(S3D_BASE + a.glb, e => {
+    const pct = e.total ? Math.round(e.loaded / e.total * 100) : Math.min(99, Math.round(e.loaded / (a.mb * 1048576) * 100));
+    if (pct !== S3D.progress[areaId]) { S3D.progress[areaId] = pct; s3dProgressUi(areaId); }
+  }).then(g => { S3D.gltf.set(areaId, g); S3D.pending.delete(areaId); delete S3D.progress[areaId]; return g; })
+    .catch(e => { S3D.pending.delete(areaId); delete S3D.progress[areaId]; throw e; });
+  S3D.pending.set(areaId, p);
+  return p;
+}
+function s3dProgressUi(areaId) {
+  const el = document.querySelector(`[data-s3d-progress="${CSS.escape(areaId)}"]`);
+  if (el) el.textContent = S3D.progress[areaId] != null ? `Loading 3D model… ${S3D.progress[areaId]}%` : '';
+}
+function s3dPutOnMap(areaId) {
+  const a = dpArea(areaId);
+  return s3dGltf(areaId).then(g => {
+    if (S3D.area !== areaId) return;
+    const scene = new THREE.Scene();
+    scene.add(g.scene);
+    s3dLights(scene);
+    const mc = maplibregl.MercatorCoordinate.fromLngLat(a.center, 0), s = mc.meterInMercatorCoordinateUnits();
+    const l = new THREE.Matrix4().makeTranslation(mc.x, mc.y, mc.z).scale(new THREE.Vector3(s, -s, s)).multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+    S3D.onMap = { areaId, gltf: g, scene, l };
+    strata3dSync();
+    if (map) map.triggerRepaint();
+    if (typeof strataRenderPanel === 'function') strataRenderPanel();
+  }).catch(e => { if (typeof showToast === 'function') showToast('⚠️ 3D model did not load: ' + e.message, 5000); strataRenderPanel(); });
+}
+
+// ---------- Area picker ----------
+function s3dKemamanBounds(id) {
+  if (!MPK.data) return null;
+  let w = 180, s = 90, e = -180, n = -90, any = false;
+  for (const f of MPK.data.buildings.features) {
+    const p = f.properties;
+    if (id !== 'mpk-all' && p.kawasan !== id) continue;
+    if (id === 'mpk-all' && !p.kawasan) continue;
+    any = true; w = Math.min(w, p.lng); e = Math.max(e, p.lng); s = Math.min(s, p.lat); n = Math.max(n, p.lat);
+  }
+  return any ? [[w, s], [e, n]] : null;
+}
+function strata3dSelectArea(id, opts = {}) {
+  const fly = opts.fly !== false;
+  S3D.area = id;
+  try { localStorage.setItem('s3d_area', id); } catch (e) {}
+  const kem = S3D_KEMAMAN.find(k => k.id === id);
+  S3D.group = kem ? 'mpk' : 'dp';
+  s3dTitle();
+  if (kem) {
+    S3D.onMap = null;
+    if (S3D.hiddenNode) { S3D.hiddenNode.visible = true; S3D.hiddenNode = null; }
+    const b = s3dKemamanBounds(id);
+    if (fly && b && map) map.fitBounds(b, { padding: 60, pitch: 45, bearing: -15, duration: 1400, maxZoom: 16.5 });
+    strata3dSync();
+    if (map) map.triggerRepaint();
+    strataRenderPanel();
+    return Promise.resolve();
+  }
+  return s3dLoad().then(() => {
+    const a = dpArea(id);
+    if (!a) return;
+    if (S3D.onMap && S3D.onMap.areaId !== id) S3D.onMap = null;
+    if (fly && map) map.fitBounds(a.bounds, { padding: 70, pitch: 58, bearing: -25, duration: 1600, maxZoom: a.overview ? 16 : 18.2 });
+    strata3dSync();
+    strataRenderPanel();
+    return s3dPutOnMap(id);
+  });
+}
+// The page title names the region of the selected area
+function s3dTitle() {
+  const t = document.getElementById('page-title');
+  if (t && STRATA.active) t.textContent = 'Strata Titles — ' + (S3D_KEMAMAN.some(k => k.id === S3D.area) ? 'MPK Kemaman' : 'Damansara Perdana');
+}
+function strata3dSetGroup(g) {
+  S3D.group = g;
+  if (g === 'dp') s3dLoad().then(() => strataRenderPanel()); else strataRenderPanel();
+}
+function strata3dFilter(q) {
+  const t = q.trim().toLowerCase();
+  document.querySelectorAll('#tab-strata .s3d-area[data-name]').forEach(b => { b.hidden = !!t && !b.dataset.name.includes(t); });
+}
+function strata3dPanelHtml() {
+  const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {};
+  const seg = `<div class="strata-seg" role="radiogroup" aria-label="Region">${[['mpk', 'MPK Kemaman'], ['dp', 'Damansara Perdana 3D']].map(([k, l]) =>
+    `<button type="button" role="radio" aria-checked="${g === k}" class="${g === k ? 'on' : ''}" onclick="strata3dSetGroup('${k}')">${l}</button>`).join('')}</div>`;
+  let list = '', detail = '';
+  if (g === 'mpk') {
+    const count = id => MPK.data ? MPK.data.buildings.features.filter(f => id === 'mpk-all' ? f.properties.kawasan : f.properties.kawasan === id).length : 0;
+    list = S3D_KEMAMAN.map(k => `<button type="button" class="s3d-area${S3D.area === k.id ? ' on' : ''}" onclick="strata3dSelectArea('${k.id}')">
+      <b>${esc(k.name)}</b><small>${esc(k.sub)} · ${fmt(count(k.id))} buildings</small></button>`).join('');
+    detail = `<p class="strata-panel-copy">Strata 3D builds each Kemaman building from its footprint and estimated floors. Open a building, then <b>View in 3D</b>.</p>`;
+  } else if (!S3D.cat) {
+    list = '<div class="mpk-reg-empty">Loading the Damansara Perdana areas…</div>';
+  } else {
+    const areas = S3D.cat.areas;
+    list = `<input type="search" class="s3d-search" placeholder="Search an area or building…" aria-label="Search Damansara Perdana areas" oninput="strata3dFilter(this.value)">
+      <div class="s3d-areas">${areas.map(a => {
+        const names = S3D.fc.features.filter(f => f.properties.dp_area === a.id).map(f => f.properties.nama).join(' ');
+        const n = Object.values(schemes).filter(x => x.bld && x.bld.kawasan === 'dp:' + a.id).length;
+        return `<button type="button" class="s3d-area${S3D.area === a.id ? ' on' : ''}" data-name="${esc((a.name + ' ' + names).toLowerCase())}" onclick="strata3dSelectArea('${esc(a.id)}')">
+          <b>${esc(a.name)}${a.uzma ? ' <span class="s3d-tag">UZMA</span>' : ''}</b>
+          <small>${fmt(a.buildings)} buildings · ${a.mb} MB model${n ? ` · ${n} scheme${n > 1 ? 's' : ''}` : ''}</small></button>`; }).join('')}</div>`;
+    const a = dpArea(S3D.area);
+    if (a) {
+      const inArea = S3D.fc.features.filter(f => a.overview || f.properties.dp_area === a.id);
+      const tall = inArea.slice().sort((x, y) => (y.properties.tinggi_m || 0) - (x.properties.tinggi_m || 0)).slice(0, 6);
+      const plans = S3D.cat.plans.filter(p => a.overview || p.area === a.id);
+      const ready = S3D.onMap && S3D.onMap.areaId === a.id;
+      detail = `<div class="s3d-now"><div class="s3d-now-t"><b>${esc(a.name)}</b><span data-s3d-progress="${esc(a.id)}">${S3D.progress[a.id] != null ? `Loading 3D model… ${S3D.progress[a.id]}%` : ready ? '3D model on the map' : ''}</span></div>
+        <p class="strata-panel-copy">Click any outlined building to start a strata scheme or open it in the Strata 3D studio.</p>
+        <div class="s3d-chips">${tall.map(f => { const p = f.properties;
+          return `<button type="button" class="s3d-chip" onclick='strata3dFocus(${JSON.stringify(p.id)})' title="${esc(p.nama)}">${esc(s3dShort(p.nama))}<small>${p.tingkat_est} fl</small></button>`; }).join('')}</div>
+        ${plans.length ? `<div class="s3d-sub">Interior plans</div><div class="s3d-chips">${plans.map(p =>
+          `<button type="button" class="s3d-chip plan" onclick='strata3dOpen({ planId: ${JSON.stringify(p.id)}, mode: "plan" })'>${esc(p.label)}</button>`).join('')}</div>` : ''}
+        <div class="mpk-note">${esc(S3D.cat.note)}<br>${esc(S3D.cat.attribution)}</div></div>`;
+    }
+  }
+  return `<div class="mpk-card s3d-card"><div class="mpk-card-title">Choose an area <span class="s3d-new">3D</span></div>${seg}${list}${detail}</div>`;
+}
+const s3dShort = n => String(n).replace(/\s+\d{6,}$/, '').replace(/^(.{26}).+$/, '$1…');
+function strata3dFocus(bid) {
+  const f = S3D.byId.get(bid);
+  if (!f) return;
+  const p = f.properties;
+  map.flyTo({ center: [p.lng, p.lat], zoom: p.tinggi_m > 60 ? 17.4 : 18.3, pitch: 60, bearing: -25, duration: 1200 });
+  map.once('moveend', () => strataPopup(bid, [p.lng, p.lat]));
+}
+// strataEnter (mpk-strata.js): the remembered area comes back; the map only moves there when it is out of view
+function strata3dOnEnter() {
+  s3dTitle();
+  s3dLoad().then(() => {
+    strata3dSync();
+    const a = S3D.group === 'dp' && dpArea(S3D.area);
+    if (a) strata3dSelectArea(S3D.area, { fly: !map.getBounds().contains(a.center) });
+    else strataRenderPanel();
+  }).catch(() => {});
+}
+// A saved Damansara scheme opens with its area's model on the map
+function strata3dForScheme(sc) {
+  const k = sc && sc.bld && sc.bld.kawasan;
+  if (!k || !String(k).startsWith('dp:')) return;
+  const id = String(k).slice(3);
+  if (S3D.area !== id || !S3D.onMap) strata3dSelectArea(id, { fly: false });
+}
+
+// ============================================================
+// Studio
+// ============================================================
+const ST = { el: null, renderer: null, scene: null, camera: null, controls: null, raf: 0, ro: null, root: null, stack: null, shell: null,
+  bid: null, sc: null, preview: false, mode: 'strata', view: 'stack', floor: 1, gap: 4, color: 'type', model: 'ghost', sel: null,
+  planId: null, planLevel: null, planView: 'floor', planObj: null, room: null, meshes: [], hover: null, origin: null, auto: false };
+
+function s3dLocal(ring, origin) {
+  const o = maplibregl.MercatorCoordinate.fromLngLat(origin, 0), s = o.meterInMercatorCoordinateUnits();
+  const pts = ring.map(([lng, lat]) => { const m = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], 0); return [(m.x - o.x) / s, (m.y - o.y) / s]; });
+  if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
+  return pts;
+}
+const s3dArea = pts => { let a = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a / 2); };
+function s3dCentroid(pts) {
+  let a = 0, x = 0, z = 0;
+  for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length], c = p[0] * q[1] - q[0] * p[1]; a += c; x += (p[0] + q[0]) * c; z += (p[1] + q[1]) * c; }
+  return Math.abs(a) > 1e-9 ? [x / (3 * a), z / (3 * a)] : pts[0];
+}
+// Sutherland–Hodgman against u ≥ lo and u ≤ hi on the rotated long axis
+function s3dClip(pts, lo, hi) {
+  const cut = (poly, keep, at) => {
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length], ip = keep(p), iq = keep(q);
+      if (ip) out.push(p);
+      if (ip !== iq) { const t = (at - p[0]) / (q[0] - p[0]); out.push([at, p[1] + t * (q[1] - p[1])]); }
+    }
+    return out;
+  };
+  let r = cut(pts, p => p[0] >= lo, lo);
+  if (r.length > 2) r = cut(r, p => p[0] <= hi, hi);
+  return r.length > 2 ? r : null;
+}
+// The floor outline cut across its long axis into slices of the given area shares (sum ≤ 1)
+function s3dSlices(pts, shares) {
+  const c = s3dCentroid(pts);
+  let sxx = 0, szz = 0, sxz = 0;
+  for (const [x, z] of pts) { const dx = x - c[0], dz = z - c[1]; sxx += dx * dx; szz += dz * dz; sxz += dx * dz; }
+  const th = 0.5 * Math.atan2(2 * sxz, sxx - szz), cs = Math.cos(th), sn = Math.sin(th);
+  const rot = pts.map(([x, z]) => [(x - c[0]) * cs + (z - c[1]) * sn, -(x - c[0]) * sn + (z - c[1]) * cs]);
+  const back = ([u, v]) => [c[0] + u * cs - v * sn, c[1] + u * sn + v * cs];
+  const us = rot.map(p => p[0]), umin = Math.min(...us), umax = Math.max(...us), total = s3dArea(rot);
+  const areaTo = u => { const r = s3dClip(rot, umin - 1, u); return r ? s3dArea(r) : 0; };
+  const out = [];
+  let acc = 0, prev = umin;
+  shares.forEach((sh, i) => {
+    acc += sh;
+    let at = umax;
+    if (i < shares.length - 1 || acc < 0.999) {
+      let lo = prev, hi = umax;
+      for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (areaTo(mid) < acc * total) lo = mid; else hi = mid; }
+      at = (lo + hi) / 2;
+    }
+    const r = s3dClip(rot, prev, at);
+    out.push(r ? r.map(back) : null);
+    prev = at;
+  });
+  return out;
+}
+function s3dPlate(pts, bottom, depth, material) {
+  const sh = new THREE.Shape();
+  pts.forEach(([x, z], i) => (i ? sh.lineTo(x, -z) : sh.moveTo(x, -z)));
+  sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, steps: 1, curveSegments: 1 });
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, bottom, 0);
+  return new THREE.Mesh(g, material);
+}
+function s3dEdges(mesh, color, opacity) {
+  const l = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 25), new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+  l.userData.edge = true;
+  return l;
+}
+
+// The scheme in the studio: the saved one, or a preview from the building's estimated floors
+function s3dScheme(bid) {
+  const saved = STRATA.s.schemes[bid];
+  if (saved && saved.parcels.length) return { sc: saved, preview: false };
+  const f = strataBuilding(bid), p = f ? f.properties : {};
+  const floors = num(saved && saved.bim.tingkat) || num(p.tingkat_est) || 1, area = num(p.area_m2) || 100;
+  const kind = String(p.kind || '');
+  const type = saved ? saved.kompleks.jenis : isDp(bid) ? (/resid|house|soho|faceted|slab|curved|hillside|apart/.test(kind) ? 'pangsapuri' : /mall|retail|hextar/.test(kind) ? 'runcit' : 'pejabat')
+    : p.kawasan === 'tk' ? 'industri' : 'kedai';
+  const per = Math.max(1, Math.min(12, Math.round(area * STRATA_NET / (type === 'kedai' ? 140 : type === 'industri' ? 400 : 110))));
+  const parcels = strataGenParcels(floors, per, area, type).map((x, i) => ({ ...x, id: 'pv' + i }));
+  const sc = saved ? { ...saved, parcels } : { bid, no: 'Preview', nama: p.nama || 'Building ' + (p.plus_code || bid), parcels, kompleks: { jenis: type, aircond: false, lif: floors > 4 },
+    bim: { tingkat: String(floors), tinggi: p.tinggi_m ? String(p.tinggi_m) : '' }, bld: { area_m2: area }, caj: { kadar: '0.30' }, votes: {}, bills: {}, app: { stage: 'draf' } };
+  return { sc, preview: true };
+}
+function s3dFloors(sc) { return Math.max(1, Math.floor(num(sc.bim.tingkat) || Math.max(1, ...sc.parcels.map(x => num(x.tingkat))))); }
+
+function strata3dOpen(opts = {}) {
+  return s3dLoad().catch(() => {}).then(() => {
+    s3dStudioDom();
+    if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
+    ST.bid = opts.bid != null ? String(opts.bid) : null;
+    ST.sel = null; ST.room = null;
+    const f = ST.bid ? strataBuilding(ST.bid) : null, p = f ? f.properties : {};
+    ST.planId = opts.planId || p.plan || null;
+    ST.mode = opts.mode || (ST.bid ? 'strata' : 'plan');
+    if (ST.mode === 'plan' && !ST.planId) ST.mode = 'strata';
+    ST.model = isDp(ST.bid || '') ? 'ghost' : 'box';
+    ST.view = 'stack';
+    ST.el.hidden = false;
+    document.body.classList.add('s3d-open');
+    s3dStart();
+    return ST.mode === 'plan' ? s3dShowPlan(ST.planId) : s3dShowStrata();
+  });
+}
+function strata3dClose() {
+  if (!ST.el || ST.el.hidden) return;
+  ST.el.hidden = true;
+  document.body.classList.remove('s3d-open');
+  cancelAnimationFrame(ST.raf); ST.raf = 0;
+}
+function s3dStudioDom() {
+  if (ST.el) return;
+  const el = document.createElement('section');
+  el.id = 's3d-studio';
+  el.className = 's3d-studio';
+  el.setAttribute('aria-label', 'Strata 3D studio');
+  el.hidden = true;
+  el.innerHTML = `<header class="s3d-head">
+      <button type="button" class="mpk-btn ghost" onclick="strata3dClose()">← Back</button>
+      <div class="s3d-head-t"><h2 id="s3d-title">Strata 3D</h2><p id="s3d-sub"></p></div>
+      <div class="strata-seg s3d-modes" id="s3d-modes" role="tablist"></div>
+      <button type="button" class="mpk-dpb-x" onclick="strata3dClose()" aria-label="Close">×</button>
+    </header>
+    <div class="s3d-main"><aside class="s3d-side" id="s3d-side"></aside>
+      <div class="s3d-view" id="s3d-view"><div class="s3d-tip" id="s3d-tip" hidden></div><div class="s3d-card" id="s3d-card" hidden></div>
+        <div class="s3d-legend" id="s3d-legend"></div>
+        <div class="s3d-tools">
+          <button type="button" onclick="S3DUI.cam('iso')" title="Perspective">◩</button><button type="button" onclick="S3DUI.cam('front')" title="Front">▭</button>
+          <button type="button" onclick="S3DUI.cam('top')" title="Top">▣</button><button type="button" id="s3d-auto" onclick="S3DUI.auto()" title="Rotate">⟳</button>
+          <button type="button" onclick="S3DUI.png()" title="Save image">⤓</button></div>
+        <div class="s3d-busy" id="s3d-busy" hidden></div></div></div>`;
+  document.getElementById('mapWrapper').appendChild(el);
+  el.addEventListener('keydown', e => { if (e.key === 'Escape') strata3dClose(); });
+  ST.el = el;
+  const view = el.querySelector('#s3d-view');
+  ST.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  ST.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  ST.renderer.localClippingEnabled = true;
+  view.prepend(ST.renderer.domElement);
+  ST.scene = new THREE.Scene();
+  ST.scene.background = new THREE.Color(0xe9edf2);
+  s3dLights(ST.scene);
+  ST.camera = new THREE.PerspectiveCamera(40, 1, 0.5, 6000);
+  ST.controls = new OrbitControls(ST.camera, ST.renderer.domElement);
+  ST.controls.enableDamping = true;
+  ST.controls.maxPolarAngle = Math.PI * 0.495;
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(900, 64), new THREE.MeshStandardMaterial({ color: 0xdfe5ea, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05;
+  const grid = new THREE.GridHelper(600, 60, 0xc5ced8, 0xd3dae2);
+  grid.position.y = -0.03;
+  ST.scene.add(ground, grid);
+  ST.root = new THREE.Group();
+  ST.scene.add(ST.root);
+  ST.ro = new ResizeObserver(() => s3dResize());
+  ST.ro.observe(view);
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+  const hit = e => {
+    const r = ST.renderer.domElement.getBoundingClientRect();
+    ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+    ray.setFromCamera(ptr, ST.camera);
+    const objs = ST.meshes.filter(m => m.visible && s3dShown(m));
+    const h = ray.intersectObjects(objs, false).find(x => !ST.clip || x.point.y <= ST.clip.constant + 0.01 || !x.object.userData.clipped);
+    return h ? h.object : null;
+  };
+  let down = null;
+  ST.renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+  ST.renderer.domElement.addEventListener('pointerup', e => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+    const o = hit(e);
+    if (ST.mode === 'strata') S3DUI.pick(o && o.userData.pid ? o.userData.pid : null);
+    else S3DUI.room(o ? s3dRoomOf(o) : null);
+  });
+  ST.renderer.domElement.addEventListener('pointermove', e => {
+    const o = hit(e), tip = document.getElementById('s3d-tip');
+    const t = o ? (ST.mode === 'strata' ? o.userData.tip : (s3dRoomOf(o) || {}).userData?.label) : null;
+    tip.hidden = !t;
+    if (t) { const r = ST.renderer.domElement.getBoundingClientRect(); tip.textContent = t; tip.style.left = (e.clientX - r.left + 14) + 'px'; tip.style.top = (e.clientY - r.top + 10) + 'px'; }
+    ST.renderer.domElement.style.cursor = o ? 'pointer' : 'grab';
+  });
+}
+const s3dShown = o => { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; };
+function s3dResize() {
+  const v = document.getElementById('s3d-view');
+  if (!v || !v.clientWidth) return;
+  ST.renderer.setSize(v.clientWidth, v.clientHeight, false);
+  ST.camera.aspect = v.clientWidth / v.clientHeight;
+  ST.camera.updateProjectionMatrix();
+}
+function s3dStart() {
+  s3dResize();
+  if (ST.raf) return;
+  const loop = () => {
+    ST.raf = requestAnimationFrame(loop);
+    ST.controls.autoRotate = ST.auto;
+    ST.controls.update();
+    ST.renderer.render(ST.scene, ST.camera);
+  };
+  loop();
+}
+function s3dClear() {
+  for (const c of [...ST.root.children]) {
+    ST.root.remove(c);
+    c.traverse(o => { if (o.userData.own) { o.geometry && o.geometry.dispose(); } });
+  }
+  ST.meshes = []; ST.stack = null; ST.shell = null; ST.planObj = null; ST.clip = null;
+}
+function s3dBusy(t) { const b = document.getElementById('s3d-busy'); b.hidden = !t; b.textContent = t || ''; }
+function s3dFrame(box, dir = 'iso') {
+  const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()), r = Math.max(size.x, size.y, size.z, 8);
+  ST.controls.target.copy(c);
+  const d = r * 1.55;
+  const off = dir === 'top' ? new THREE.Vector3(0.001, d * 1.1, 0.001) : dir === 'front' ? new THREE.Vector3(0, size.y * 0.15, d) : new THREE.Vector3(d * 0.75, d * 0.6, d * 0.85);
+  ST.camera.position.copy(c).add(off);
+  ST.camera.near = Math.max(0.1, r / 200); ST.camera.far = r * 60;
+  ST.camera.updateProjectionMatrix();
+  ST.controls.update();
+}
+function s3dModes() {
+  const f = ST.bid ? strataBuilding(ST.bid) : null, plans = s3dPlansFor(f);
+  const m = [['strata', 'Strata stack', !!ST.bid], ['plan', 'Interior plan', plans.length > 0]].filter(x => x[2]);
+  document.getElementById('s3d-modes').innerHTML = m.length > 1 ? m.map(([k, l]) =>
+    `<button type="button" role="tab" aria-selected="${ST.mode === k}" class="${ST.mode === k ? 'on' : ''}" onclick="S3DUI.mode('${k}')">${l}</button>`).join('') : '';
+}
+function s3dPlansFor(f) {
+  if (!S3D.cat) return [];
+  const p = f ? f.properties : null;
+  if (!p) return ST.planId ? S3D.cat.plans.filter(x => x.id === ST.planId || x.area === (dpPlan(ST.planId) || {}).area) : [];
+  return S3D.cat.plans.filter(x => x.id === p.plan || (p.dp_area && x.area === p.dp_area && (x.kind !== 'unit-template' || x.id === p.plan) && x.id !== 'uzma') || (x.id === 'uzma' && p.plan === 'uzma'));
+}
+
+// ---------- Strata stack ----------
+function s3dShowStrata() {
+  ST.mode = 'strata';
+  s3dClear();
+  const f = strataBuilding(ST.bid);
+  if (!f) { s3dBusy('Building not found'); return; }
+  const p = f.properties, { sc, preview } = s3dScheme(ST.bid);
+  ST.sc = sc; ST.preview = preview;
+  if (preview && !['type', 'su'].includes(ST.color)) ST.color = 'type';
+  const area = isDp(ST.bid) ? dpArea(p.dp_area) : null;
+  ST.origin = area ? area.center : [p.lng, p.lat];
+  const ring = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates[0][0] : f.geometry.coordinates[0];
+  const pts = s3dLocal(ring, ST.origin);
+  ST.pts = pts;
+  const floors = s3dFloors(sc), H = strataHeight(sc.bim) || floors * STRATA_FLOOR_M, fh = H / floors;
+  ST.floors = floors; ST.fh = fh;
+  ST.floor = Math.min(Math.max(1, ST.floor), floors);
+  const su = strataShareUnits(sc.parcels, sc.kompleks);
+  ST.su = su;
+  const maxSu = Math.max(1, ...su.su);
+  const floorArea = s3dArea(pts);
+  const stack = new THREE.Group();
+  stack.name = (sc.no || 'Strata') + ' parcels';
+  const slabMat = new THREE.MeshStandardMaterial({ color: 0xb8c2cc, roughness: 0.85 });
+  const commonMat = new THREE.MeshStandardMaterial({ color: 0xdde3e8, roughness: 0.9, transparent: true, opacity: 0.6 });
+  for (let fl = 1; fl <= floors; fl++) {
+    const g = new THREE.Group();
+    g.name = 'Floor ' + fl;
+    g.userData = { floor: fl, base: (fl - 1) * fh };
+    const slab = s3dPlate(pts, 0, 0.3, slabMat);
+    slab.userData = { own: true, slab: true, floor: fl };
+    g.add(slab, s3dEdges(slab, 0x5f6f7f, 0.5));
+    const on = sc.parcels.map((x, i) => ({ x, i })).filter(o => Math.floor(num(o.x.tingkat)) === fl);
+    const sum = on.reduce((a, o) => a + num(o.x.luas), 0);
+    const basis = Math.max(sum, floorArea * (sum > 0 ? 1 : 0), 1);
+    let shares = on.map(o => (sum > 0 ? num(o.x.luas) / basis : 1 / on.length));
+    const commonShare = Math.max(0, 1 - shares.reduce((a, b) => a + b, 0));
+    const half = Math.ceil(on.length / 2);
+    const order = [...on.slice(0, half).map(o => ({ o })), ...(commonShare > 0.01 ? [{ common: true }] : []), ...on.slice(half).map(o => ({ o }))];
+    shares = order.map(r => (r.common ? commonShare : (sum > 0 ? num(r.o.x.luas) / basis : (1 - commonShare) / on.length)));
+    const parts = order.length ? s3dSlices(pts, shares) : [];
+    const ph = Math.max(0.6, fh * 0.84 - 0.3);
+    order.forEach((r, k) => {
+      const poly = parts[k];
+      if (!poly) return;
+      if (r.common) {
+        const m = s3dPlate(poly, 0.3, ph * 0.12, commonMat);
+        m.userData = { own: true, common: true, floor: fl, tip: `Common property · Floor ${fl}` };
+        g.add(m);
+        return;
+      }
+      const x = r.o.x, i = r.o.i;
+      const mat = new THREE.MeshStandardMaterial({ color: s3dParcelColor(sc, x, i, maxSu), roughness: 0.55, metalness: 0.05, transparent: true, opacity: 0.94 });
+      const m = s3dPlate(poly, 0.3, ph, mat);
+      m.scale.set(0.985, 1, 0.985);
+      const cc = s3dCentroid(poly);
+      m.position.set(cc[0] * 0.015, 0, cc[1] * 0.015);
+      m.userData = { own: true, pid: x.id, idx: i, floor: fl, tip: `${x.petak} · ${fmt(num(x.luas))} m² · ${fmt(su.su[i])} share units` };
+      g.add(m, s3dEdges(m, 0x1e2c44, 0.55));
+      ST.meshes.push(m);
+    });
+    stack.add(g);
+  }
+  // roof plate
+  const roof = s3dPlate(pts, floors * fh, 0.25, slabMat);
+  roof.userData = { own: true, roof: true };
+  stack.add(roof);
+  stack.userData = { strata: true, units: 'metres', origin: { longitude: ST.origin[0], latitude: ST.origin[1] } };
+  ST.stack = stack;
+  ST.root.add(stack);
+  s3dShell(p, H);
+  s3dLayout();
+  s3dFrame(new THREE.Box3().setFromObject(stack));
+  s3dModes();
+  s3dHead();
+  s3dStrataSide();
+  s3dLegend();
+  S3DUI.pick(ST.sel, true);
+}
+// The building around the stack: its GLB (Damansara) as glass or a cut solid, else an outline box
+function s3dShell(p, H) {
+  if (!isDp(ST.bid)) {
+    const m = s3dPlate(ST.pts, 0, H, new THREE.MeshBasicMaterial({ visible: false }));
+    m.userData.own = true;
+    const box = s3dEdges(m, 0x5e35b1, 0.35);
+    box.userData.box = true;
+    ST.shell = new THREE.Group(); ST.shell.add(box);
+    ST.root.add(ST.shell);
+    return;
+  }
+  s3dBusy('Loading the building model…');
+  s3dGltf(p.dp_area).then(g => {
+    s3dBusy('');
+    if (ST.mode !== 'strata' || ST.bid !== p.id) return;
+    g.scene.updateMatrixWorld(true);
+    const node = s3dFindNode(g.scene, p);
+    if (!node) return;
+    const c = node.clone(true);
+    node.matrixWorld.decompose(c.position, c.quaternion, c.scale);
+    c.visible = true;
+    const ghost = new THREE.MeshStandardMaterial({ color: 0xd7e3f0, transparent: true, opacity: 0.2, depthWrite: false, roughness: 0.2, side: THREE.DoubleSide });
+    c.traverse(o => {
+      if (!o.isMesh) return;
+      const src = Array.isArray(o.material) ? o.material : [o.material];
+      o.userData.solid = src.map(m => { const k = m.clone(); k.clippingPlanes = []; return k; });
+      o.userData.ghost = ghost;
+      o.userData.clipped = true;
+      o.raycast = () => {};
+    });
+    ST.shell = c;
+    ST.root.add(c);
+    s3dLayout();
+  }).catch(e => s3dBusy('Model not loaded: ' + e.message));
+}
+function s3dParcelColor(sc, x, i, maxSu) {
+  switch (ST.color) {
+    case 'su': { const t = (ST.su.su[i] || 0) / maxSu; return new THREE.Color(0xede7f6).lerp(new THREE.Color(0x4527a0), Math.pow(t, 0.8)); }
+    case 'owner': return x.pemilik ? 0x43a047 : 0xffb300;
+    case 'vote': { const v = (sc.votes || {})[x.id] || ''; return v === 'ya' ? 0x2e7d32 : v === 'tidak' ? 0xc62828 : 0xb0bec5; }
+    case 'bill': { const b = ((sc.bills || {})[STRATA.year] || {})[x.id]; return !b ? 0xb0bec5 : b.p1 && b.p2 ? 0x2e7d32 : b.p1 || b.p2 ? 0xffb300 : 0xe53935; }
+    default: return STRATA_TYPE_COLOR[x.jenis] || 0x90a4ae;
+  }
+}
+// Floors in place (stack), cut away above a floor (cut), or pulled apart (exploded); the shell follows
+function s3dLayout() {
+  if (!ST.stack) return;
+  const sel = ST.floor, view = ST.view;
+  ST.stack.children.forEach(g => {
+    if (g.userData.roof) { g.visible = view !== 'cut'; g.position.y = view === 'exploded' ? ST.floors * ST.gap : 0; return; }
+    const fl = g.userData.floor;
+    if (!fl) return;
+    g.visible = view !== 'cut' || fl <= sel;
+    g.position.y = g.userData.base + (view === 'exploded' ? (fl - 1) * ST.gap : 0);
+    g.traverse(o => {
+      if (!o.material || o.userData.edge) return;
+      const dim = view === 'cut' && fl < sel;
+      if (o.userData.pid) { o.material.opacity = dim ? 0.25 : 0.94; o.material.depthWrite = !dim; }
+    });
+  });
+  const top = sel * ST.fh - 0.05;
+  ST.clip = view === 'cut' ? new THREE.Plane(new THREE.Vector3(0, -1, 0), top) : null;
+  if (ST.shell) {
+    const show = ST.model !== 'off' && view !== 'exploded';
+    ST.shell.visible = show;
+    ST.shell.traverse(o => {
+      if (!o.isMesh || !o.userData.solid) return;
+      const solid = ST.model === 'solid';
+      o.material = solid ? (o.userData.solid.length > 1 ? o.userData.solid : o.userData.solid[0]) : o.userData.ghost;
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.clippingPlanes = ST.clip && solid ? [ST.clip] : []; m.needsUpdate = true; });
+    });
+    if (ST.model === 'ghost' && ST.clip) ST.shell.visible = false;
+  }
+}
+function s3dHead() {
+  const f = ST.bid && strataBuilding(ST.bid), p = f ? f.properties : {};
+  const sc = ST.sc, area = p.dp_area ? dpArea(p.dp_area) : null;
+  document.getElementById('s3d-title').textContent = ST.mode === 'plan' && !ST.bid ? (dpPlan(ST.planId) || {}).label || 'Interior plan'
+    : (sc && !ST.preview ? sc.no + ' · ' + sc.nama : (p.nama || 'Building ' + (p.plus_code || '')));
+  document.getElementById('s3d-sub').textContent = [p.plus_code, area ? area.name + ', Damansara Perdana' : (MPK_AREAS[p.kawasan] || {}).name,
+    p.area_m2 ? fmt(p.area_m2) + ' m² footprint' : '', p.tinggi_m ? p.tinggi_m + ' m' : ''].filter(Boolean).join(' · ');
+}
+function s3dStrataSide() {
+  const sc = ST.sc, su = ST.su, floors = ST.floors;
+  const st = !ST.preview ? STRATA_STAGES[strataStageIdx(sc)] : null;
+  const perFloor = Array.from({ length: floors }, (_, i) => {
+    const on = sc.parcels.map((x, k) => ({ x, k })).filter(o => Math.floor(num(o.x.tingkat)) === i + 1);
+    return { n: on.length, su: on.reduce((a, o) => a + su.su[o.k], 0), area: on.reduce((a, o) => a + num(o.x.luas), 0) };
+  });
+  const seg = (name, cur, opts, fn) => `<div class="strata-seg small" role="radiogroup" aria-label="${name}">${opts.map(([k, l]) =>
+    `<button type="button" role="radio" aria-checked="${cur === k}" class="${cur === k ? 'on' : ''}" onclick="S3DUI.${fn}('${k}')">${l}</button>`).join('')}</div>`;
+  const dp = isDp(ST.bid);
+  document.getElementById('s3d-side').innerHTML = `
+    ${ST.preview ? `<div class="s3d-preview"><b>Preview</b><span>${fmt(sc.parcels.length)} parcels estimated from ${floors} floor${floors > 1 ? 's' : ''} and the footprint. Start a scheme to record the real parcels.</span>
+      <button type="button" class="mpk-btn" onclick='S3DUI.scheme()'>${STRATA.s.schemes[ST.bid] ? 'Create parcels in Step 2' : 'Start strata scheme'}</button></div>`
+      : `<div class="s3d-sum"><span class="strata-badge" style="--c:${st.color}">${esc(st.label)}</span>
+      <div class="s3d-kpis"><div><b>${fmt(sc.parcels.length)}</b><span>parcels</span></div><div><b>${fmt(su.total)}</b><span>share units</span></div>
+        <div><b>${floors}</b><span>floors</span></div><div><b>${fmt(strataCommon(sc))}</b><span>m² common</span></div></div>
+      <button type="button" class="mpk-btn ghost strata-wide" onclick="S3DUI.scheme()">Open scheme · Step 2 parcels</button></div>`}
+    <div class="s3d-group"><div class="s3d-label">View</div>${seg('View', ST.view, [['stack', 'Full stack'], ['cut', 'Cut at floor'], ['exploded', 'Exploded']], 'view')}
+      ${ST.view === 'exploded' ? `<label class="s3d-range">Floor gap <output>${ST.gap} m</output><input type="range" min="1" max="15" step="0.5" value="${ST.gap}" oninput="S3DUI.gap(this.value, this)"></label>` : ''}</div>
+    <div class="s3d-group"><div class="s3d-label">Colour parcels by</div>${seg('Colour', ST.color, ST.preview ? S3D_COLOR_BY.slice(0, 2) : S3D_COLOR_BY, 'color')}</div>
+    <div class="s3d-group"><div class="s3d-label">${dp ? 'Building model' : 'Building outline'}</div>${seg('Model', ST.model, dp ? [['ghost', 'Glass'], ['solid', 'Solid'], ['off', 'Hide']] : [['box', 'Outline'], ['off', 'Hide']], 'model')}
+      ${dp ? '<p class="s3d-hint">Solid + <b>Cut at floor</b> slices the real model at the chosen floor.</p>' : ''}</div>
+    <div class="s3d-group"><div class="s3d-label">Floors <small>click to cut there</small></div>
+      <div class="s3d-floors">${perFloor.map((x, i) => i + 1).reverse().map(fl => { const x = perFloor[fl - 1];
+        return `<button type="button" class="${ST.floor === fl && ST.view === 'cut' ? 'on' : ''}" onclick="S3DUI.floor(${fl})"><b>${fl === 1 ? 'G' : fl}</b>
+          <span>${x.n ? `${x.n} parcel${x.n > 1 ? 's' : ''} · ${fmt(x.area)} m²` : 'common / no parcels'}</span><small>${x.su ? fmt(x.su) + ' SU' : ''}</small></button>`; }).join('')}</div></div>
+    <div class="s3d-group s3d-dl"><button type="button" class="mpk-btn" onclick="S3DUI.glb()">Download strata .GLB</button>
+      <p class="s3d-hint">Parcels, share units and the building's location go into the GLB. Shapes split the footprint by parcel area: they show proportions, not surveyed parcel boundaries.</p></div>`;
+}
+function s3dLegend() {
+  const el = document.getElementById('s3d-legend');
+  if (ST.mode !== 'strata') { el.innerHTML = ''; return; }
+  const items = ST.color === 'type' ? [...new Set(ST.sc.parcels.map(x => x.jenis))].map(t => [STRATA_TYPE_COLOR[t], (STRATA_WF1[t] || ['Other'])[0]])
+    : ST.color === 'owner' ? [['#43A047', 'Owner recorded'], ['#FFB300', 'No owner yet']]
+    : ST.color === 'vote' ? [['#2E7D32', 'For'], ['#C62828', 'Against'], ['#B0BEC5', 'Absent / not voted']]
+    : ST.color === 'bill' ? [['#2E7D32', STRATA.year + ' paid'], ['#FFB300', 'Half paid'], ['#E53935', 'Unpaid'], ['#B0BEC5', 'No bill']]
+    : null;
+  el.innerHTML = items ? items.map(([c, l]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join('') + '<span><i class="common"></i>Common property</span>'
+    : '<div class="s3d-ramp"></div><div class="s3d-ramp-l"><span>fewer</span><span>share units</span><span>more</span></div>';
+}
+
+// ---------- Interior plan ----------
+function s3dRoomOf(o) { for (let x = o; x; x = x.parent) if (x.userData && x.userData.role === 'room') return x; return null; }
+function s3dShowPlan(planId) {
+  ST.mode = 'plan';
+  ST.planId = planId;
+  s3dClear();
+  s3dModes(); s3dHead(); s3dLegend();
+  document.getElementById('s3d-card').hidden = true;
+  const plan = dpPlan(planId);
+  if (!plan) return;
+  ST.planLevel = ST.planLevel && plan.levels.some(l => l.id === ST.planLevel) ? ST.planLevel : (plan.levels.find(l => l.plan) || plan.levels[0]).id;
+  s3dPlanSide();
+  s3dBusy('Loading the interior…');
+  return new GLTFLoader().loadAsync(S3D_BASE + plan.glb).then(g => {
+    s3dBusy('');
+    if (ST.mode !== 'plan' || ST.planId !== planId) return;
+    const obj = g.scene;
+    obj.traverse(o => {
+      if (o.userData && o.userData.levelId && o.userData.baseElevation != null && !o.userData.role) o.userData.levelGroup = true;
+      if (o.isMesh && o.userData.role === 'space') { o.material = o.material.clone(); o.userData.base = o.material.color.clone(); }
+      if (o.isMesh && o.userData.role !== 'placeholder-envelope') ST.meshes.push(o);
+    });
+    ST.planObj = obj;
+    ST.levels = [];
+    obj.traverse(o => { if (o.userData.levelGroup) { o.userData.y0 = o.position.y; ST.levels.push(o); } });
+    ST.root.add(obj);
+    s3dPlanLayout(true);
+  }).catch(e => s3dBusy('Interior not loaded: ' + e.message));
+}
+function s3dPlanLayout(frame) {
+  if (!ST.planObj) return;
+  const v = ST.planView, levels = ST.levels;
+  levels.forEach((g, i) => {
+    g.visible = v !== 'floor' || g.userData.levelId === ST.planLevel;
+    g.position.y = g.userData.y0 + (v === 'exploded' ? i * ST.gap : 0);
+  });
+  if (frame) {
+    const target = v === 'floor' ? levels.find(g => g.userData.levelId === ST.planLevel) : ST.planObj;
+    if (target) s3dFrame(new THREE.Box3().setFromObject(target), v === 'floor' ? 'iso' : 'iso');
+  }
+}
+function s3dPlanSide() {
+  const plan = dpPlan(ST.planId), lv = plan.levels.find(l => l.id === ST.planLevel) || plan.levels[0];
+  const f = ST.bid && strataBuilding(ST.bid), plans = s3dPlansFor(f);
+  const seg = (cur, opts, fn) => `<div class="strata-seg small">${opts.map(([k, l]) => `<button type="button" class="${cur === k ? 'on' : ''}" onclick="S3DUI.${fn}('${k}')">${l}</button>`).join('')}</div>`;
+  const kind = { building: 'Building floors', 'unit-template': 'Unit type (template)', 'house-template': 'House type (template)', 'floor-template': 'Partial floor plan' }[plan.kind] || plan.kind;
+  document.getElementById('s3d-side').innerHTML = `
+    ${plans.length > 1 ? `<div class="s3d-group"><div class="s3d-label">Plan</div><select class="s3d-select" onchange="S3DUI.plan(this.value)">${plans.map(x =>
+      `<option value="${esc(x.id)}"${x.id === plan.id ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>` : ''}
+    <div class="s3d-sum"><b>${esc(plan.label)}</b><span class="s3d-hint">${esc(kind)}${plan.sqft ? ' · ' + fmt(plan.sqft) + ' sq ft published' : ''}</span></div>
+    <div class="s3d-group"><div class="s3d-label">View</div>${seg(ST.planView, [['floor', 'Selected level'], ['stacked', 'All levels'], ['exploded', 'Exploded']], 'planView')}</div>
+    <div class="s3d-group"><div class="s3d-label">Levels</div><div class="s3d-floors">${plan.levels.slice().reverse().map(l =>
+      `<button type="button" class="${l.id === ST.planLevel ? 'on' : ''}" onclick='S3DUI.level(${JSON.stringify(l.id)})'><b>${esc(l.label.replace(/ ·.*$/, ''))}</b><span>${l.plan ? 'Room plan' : 'Outline only'}</span></button>`).join('')}</div></div>
+    ${lv.svg ? `<div class="s3d-group"><div class="s3d-label">2D plan</div><a href="${S3D_BASE + lv.svg}" target="_blank" rel="noopener"><img class="s3d-svg" src="${S3D_BASE + lv.svg}" alt="Floor plan ${esc(lv.label)}"></a></div>` : ''}
+    <div class="s3d-group s3d-dl"><a class="mpk-btn" href="${S3D_BASE + plan.glb}" download>Download interior .GLB</a>
+      ${lv.csv ? `<a class="mpk-btn ghost" href="${S3D_BASE + lv.csv}" download>Room schedule .CSV</a>` : ''}
+      <p class="s3d-hint">${esc(plan.scope)}</p>
+      ${plan.sources.map(s => `<a class="s3d-src" href="${esc(s.url)}${s.page ? '#page=' + s.page : ''}" target="_blank" rel="noopener">${esc(s.publisher)} · ${esc(s.title)}${s.page ? ', p.' + s.page : ''} ↗</a>`).join('')}</div>`;
+}
+
+// ---------- UI handlers (onclick) ----------
+const S3DUI = {
+  mode(m) { if (m === 'plan') { const f = ST.bid && strataBuilding(ST.bid); s3dShowPlan(ST.planId || (s3dPlansFor(f)[0] || {}).id); } else s3dShowStrata(); },
+  view(v) { ST.view = v; s3dLayout(); s3dStrataSide(); if (v === 'exploded') s3dFrame(new THREE.Box3().setFromObject(ST.stack)); },
+  gap(v, el) { ST.gap = Number(v); if (el) el.previousElementSibling.textContent = v + ' m'; if (ST.mode === 'plan') s3dPlanLayout(false); else s3dLayout(); },
+  color(c) { ST.color = c; s3dShowStrata(); },
+  model(m) { ST.model = m; s3dLayout(); s3dStrataSide(); },
+  floor(fl) { ST.floor = fl; ST.view = 'cut'; s3dLayout(); s3dStrataSide(); },
+  pick(pid, keep) {
+    ST.sel = pid;
+    ST.meshes.forEach(m => { if (m.userData.pid && m.material.emissive) { m.material.emissive.set(m.userData.pid === pid ? 0x7e57c2 : 0x000000); m.material.emissiveIntensity = m.userData.pid === pid ? 0.55 : 0; } });
+    const card = document.getElementById('s3d-card'), sc = ST.sc;
+    const i = pid ? sc.parcels.findIndex(x => x.id === pid) : -1;
+    if (i < 0) { card.hidden = true; return; }
+    const x = sc.parcels[i], su = ST.su.su[i], ch = strataCharges(su, sc.caj && sc.caj.kadar), tax = strataTax(x, STRATA.s);
+    const vote = (sc.votes || {})[x.id], bill = ((sc.bills || {})[STRATA.year] || {})[x.id];
+    const row = (k, v) => v !== '' && v != null ? `<tr><th>${k}</th><td>${v}</td></tr>` : '';
+    card.innerHTML = `<button type="button" class="s3d-card-x" onclick="S3DUI.pick(null)" aria-label="Close">×</button>
+      <div class="s3d-card-h" style="--c:${STRATA_TYPE_COLOR[x.jenis] || '#90A4AE'}"><small>Parcel (petak)${ST.preview ? ' · preview' : ''}</small><b>${esc(x.petak)}</b></div>
+      <table>${row('Floor', esc(x.tingkat))}${row('Use', esc((STRATA_WF1[x.jenis] || [''])[0]))}${row('Area', fmt(num(x.luas)) + ' m²')}
+        ${row('Share units', `<b>${fmt(su)}</b> · ${ST.su.pct[i].toFixed(2)}%`)}${row('Charges', strataRM(ch.caj) + ' / month')}${row('Sinking fund', strataRM(ch.sinking) + ' / month')}
+        ${row('Assessment tax', strataRM(tax) + ' / year')}${row('Owner', esc(x.pemilik) || '<i>not recorded</i>')}
+        ${x.aks_no ? row('Accessory', esc(x.aks_no) + ' · ' + fmt(num(x.aks_luas)) + ' m²') : ''}
+        ${!ST.preview ? row('AGM vote', vote === 'ya' ? 'For' : vote === 'tidak' ? 'Against' : '—') + row(STRATA.year + ' bill', bill ? (bill.p1 && bill.p2 ? 'Paid' : bill.p1 || bill.p2 ? 'Half paid' : 'Unpaid') : '—') : ''}</table>
+      ${!ST.preview ? '<button type="button" class="mpk-btn ghost strata-wide" onclick="S3DUI.scheme()">Edit in Step 2</button>' : ''}`;
+    card.hidden = false;
+    if (!keep) { ST.floor = Math.floor(num(x.tingkat)) || ST.floor; }
+  },
+  room(o) {
+    ST.meshes.forEach(m => { if (m.userData.role === 'space' && m.userData.base) { m.material.emissive.set(0x000000); m.material.emissiveIntensity = 0; } });
+    const card = document.getElementById('s3d-card');
+    if (!o) { card.hidden = true; return; }
+    o.traverse(m => { if (m.isMesh && m.userData.role === 'space') { m.material.emissive.set(0x487c8d); m.material.emissiveIntensity = 0.45; } });
+    const u = o.userData;
+    card.innerHTML = `<button type="button" class="s3d-card-x" onclick="S3DUI.room(null)" aria-label="Close">×</button>
+      <div class="s3d-card-h" style="--c:#487C8D"><small>Room · ${esc(u.levelId)}</small><b>${esc(u.label)}</b></div>
+      <table><tr><th>Use</th><td>${esc(u.kind)}</td></tr><tr><th>Model area</th><td>${u.area ? u.area.toFixed(1) + ' m²' : '—'}</td></tr>
+      ${u.printedArea ? `<tr><th>Printed area</th><td>${u.printedArea} m²</td></tr>` : ''}</table>
+      <p class="s3d-hint">Room boundaries and furniture are interpreted from the published or supplied plan. Not a strata parcel.</p>`;
+    card.hidden = false;
+  },
+  plan(id) { ST.planLevel = null; s3dShowPlan(id); },
+  planView(v) { ST.planView = v; s3dPlanLayout(true); s3dPlanSide(); },
+  level(id) { ST.planLevel = id; if (ST.planView === 'stacked') ST.planView = 'floor'; s3dPlanLayout(true); s3dPlanSide(); },
+  cam(dir) {
+    const o = ST.mode === 'plan' ? ST.planObj : ST.stack;
+    if (o) s3dFrame(new THREE.Box3().setFromObject(o), dir);
+  },
+  auto() { ST.auto = !ST.auto; document.getElementById('s3d-auto').classList.toggle('on', ST.auto); },
+  png() {
+    ST.renderer.render(ST.scene, ST.camera);
+    const a = document.createElement('a');
+    a.href = ST.renderer.domElement.toDataURL('image/png');
+    a.download = (ST.mode === 'plan' ? ST.planId : (ST.sc && ST.sc.no) || 'strata') + '-3d.png';
+    a.click();
+  },
+  scheme() {
+    const bid = ST.bid;
+    strata3dClose();
+    if (!STRATA.s.schemes[bid]) { strataOpen(bid); return; }
+    strataOpen(bid);
+    strataStep(2);
+  },
+  glb() {
+    if (!ST.stack) return;
+    const sc = ST.sc, su = ST.su, group = ST.stack.clone(true);
+    ST.stack.children.forEach((g, i) => { group.children[i].position.y = g.userData.base || 0; group.children[i].visible = true; });
+    const edges = [];
+    group.traverse(o => { if (o.userData.edge) edges.push(o); });
+    edges.forEach(o => o.parent.remove(o));
+    const f = strataBuilding(ST.bid), p = f ? f.properties : {};
+    group.userData = { name: (sc.no || 'Strata') + ' · ' + sc.nama, units: 'metres', up: '+Y', east: '+X', south: '+Z',
+      coordinates: { longitude: ST.origin[0], latitude: ST.origin[1] }, building: { id: ST.bid, plus_code: p.plus_code, footprint_m2: p.area_m2 },
+      preview: ST.preview, floors: ST.floors, floorHeight: ST.fh, shareUnitsTotal: su.total,
+      parcels: sc.parcels.map((x, i) => ({ petak: x.petak, floor: x.tingkat, use: x.jenis, area_m2: num(x.luas), shareUnits: su.su[i], sharePct: +su.pct[i].toFixed(4), owner: x.pemilik || '' })),
+      note: 'Parcel shapes split the footprint by recorded parcel area (proportional, not surveyed boundaries). Share units per Act 757 First Schedule as entered in Strata, MPK.' };
+    new GLTFExporter().parseAsync(group, { binary: true }).then(buf => {
+      const url = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
+      const a = document.createElement('a'); a.href = url; a.download = String(sc.no || 'strata').replace(/[^\w-]+/g, '-') + '-strata.glb'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }).catch(e => showToast('⚠️ GLB export failed: ' + e.message, 5000));
+  },
+};
+
+Object.assign(window, { strata3dBuilding, strata3dAreaName, strata3dSync, strata3dRemove, strata3dSelectArea, strata3dSetGroup, strata3dFilter,
+  strata3dPanelHtml, strata3dFocus, strata3dOnEnter, strata3dForScheme, strata3dOpen, strata3dClose, S3DUI });
+// Strata may already be on (restored mode) before this module ran
+if (typeof STRATA !== 'undefined' && STRATA.active) strata3dOnEnter();

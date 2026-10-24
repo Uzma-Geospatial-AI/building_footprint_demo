@@ -49,6 +49,8 @@ building_footprint_demo/
 ├── mpk-daftar.js            # MPK building plan registration form, Registrations tab, Tr. P.U. 9/2026 guideline
 ├── mpk-edit.js              # building popup: pencil edit of the details, status dropdown with its required form
 ├── mpk-strata.js            # Strata mode: map → parcels & 3D → share units → strata title → tax & charges; cemeteries
+├── mpk-strata3d.js(.css)    # Strata 3D: area picker, Damansara Perdana GLB models on the map, three.js strata studio
+├── strata3d/                # Strata 3D models, interior plans, catalog.json, buildings.geojson (tools/build_strata3d.mjs)
 ├── mpk/                     # MPK data (buildings, lots, boundary, corridors, imagery indexes)
 ├── tools/                   # data builders (Python) and logic tests (Node)
 ├── uzma-dashboard.css       # legacy standalone stylesheet
@@ -359,6 +361,27 @@ lots in use; Tr. P.U. 9/2026 fee RM 500) live here too. Assessment rates (6 / 9 
 month), RM 0.30 a share unit and the first capital works are assumptions. Kept in this browser's localStorage (`mpk_strata_v2`;
 earlier `mpk_strata_v1` / `mpk_harta_v1` data carries over), with CSV / JSON export and JSON import.
 
+**Strata 3D** (`mpk-strata3d.js`, `mpk-strata3d.css`, data in `strata3d/`): the UZMA Spatial Studio models
+(`UzmaTower3D_Model`) brought into Strata mode. **Choose an area** at the top of the Strata panel picks *MPK Kemaman* (all
+study areas, Teluk Kalong, Binjai – Chukai) or one of 20 *Damansara Perdana 3D* areas (searchable by area or building name;
+the choice is remembered in this browser). A Damansara area puts its GLB model on the map (a MapLibre custom layer drawn with
+three.js 0.180 from jsDelivr, georeferenced by the area centre in the GLB) and outlines its buildings; each of the 634 modelled
+buildings (UZMA Tower included) takes a strata scheme like an MPK building (`dp:<area>` in the scheme, Mukim Sungai Buloh, Daerah
+Petaling in the report), and the floor X-ray swaps the model's own building for the slabs. *View in 3D* (building popup, workspace
+header, Step 2) opens the **Strata 3D studio**:
+- *Strata stack*: every floor cut across its long axis into its parcels (by recorded area) and common property; full stack, cut at a
+  floor, or exploded with a floor gap; coloured by parcel type, share units, owner, AGM vote or this year's assessment bill; click a
+  parcel for its share units, Charges, sinking fund, tax, owner and vote. Without parcels yet it shows a preview from the estimated
+  floors and footprint. Damansara buildings sit inside their real model, as glass or as a solid cut at the chosen floor. Downloads:
+  the stack as GLB (parcels, share units and location in its extras) and a PNG.
+- *Interior plan*: UZMA Tower's 19 levels (Level 6 rooms traced from the supplied plan, the others outlines) and the published
+  D'Cosmos, D'Clover, D'Quince, D'Terra, D'Tessera, Rafflesia and Empire Heritage Lane layouts, by level, all levels or exploded, with
+  the 2D plan, room schedule CSV and GLB. These are layout studies, not registered strata plans.
+
+Refresh after the 3D project changes: `node tools/build_strata3d.mjs C:\Users\User\Desktop\UzmaTower3D_Model` copies every GLB
+(~114 MB, the 23 MB district overview included) and interior plan, and writes `strata3d/catalog.json` and
+`strata3d/buildings.geojson` from the GLB node extras; `node tools/test_strata3d_data.js` checks the result.
+
 **Building heights** (study areas, `tinggi_m`, `tingkat_est`, `tinggi_src` in `mpk_buildings.geojson`, `tools/build_heights.py`):
 no survey of heights exists for Kemaman, so each building takes OpenStreetMap's mapped height or levels (× 3.5 m) where a mapped
 building's centre lies in it (3), else the JRC GHSL Built-H 2018 average net building height of its ~90 m cell (1,924), else one
@@ -425,6 +448,7 @@ node tools/test_mpk_features2.js                                       # Feature
 node tools/test_mpk_features3.js                                       # Features tools 2, 3, 5, 8, 10
 node tools/test_mpk_daftar.js                                          # registration form fees
 node tools/test_mpk_strata.js                                          # strata share units (Act 757), deadlines, votes, sinking fund
+node tools/test_strata3d_data.js                                       # Strata 3D catalog, footprints, model and plan files
 ```
 
 The MPK source map image is client material and is not committed.

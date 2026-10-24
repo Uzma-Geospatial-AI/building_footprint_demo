@@ -20,6 +20,8 @@
 //   6 PDF report             the whole scheme as an A4 report to download
 // and ten tools (strata potential, building heights in 3D, floor X-ray, share-unit what-if, AGM vote,
 // deadline radar, sinking fund forecast, parcel passports with QR, owner statements, pipeline).
+// Strata 3D (mpk-strata3d.js) adds the area picker (MPK Kemaman or the Damansara Perdana 3D models), the
+// Damansara buildings as strata buildings, and the three.js studio (parcel stack, real model, interior plans).
 // Assessment rates, rents, the maintenance rate and the capital works plan are assumptions.
 // Kept in this browser (localStorage); Export / Import moves it.
 // ============================================================
@@ -271,10 +273,16 @@ const strataRM0 = v => (v || 0).toLocaleString('en-MY', { minimumFractionDigits:
 const strataStageIdx = sc => Math.max(0, STRATA_STAGES.findIndex(st => st.k === (sc.app && sc.app.stage)));
 const strataToday = () => new Date().toISOString().slice(0, 10);
 const strataDate = d => d ? mpkPlanDateLabel(d) : '—';
+// Area of a building or scheme: an MPK study area, else a Damansara Perdana area (dp:<id>, mpk-strata3d.js)
+const strataDp = k => String(k || '').startsWith('dp:');
+function strataAreaName(k) {
+  return (MPK_AREAS[k] || {}).short || (typeof strata3dAreaName === 'function' && strata3dAreaName(k)) || 'Outside the study areas';
+}
 function strataBuilding(bid) {
   if (!MPK.data) return null;
   return MPK.data.buildings.features.find(f => String(f.properties.id) === String(bid))
-    || (MPK.data.others && MPK.data.others.features.find(f => String(f.properties.id) === String(bid))) || null;
+    || (MPK.data.others && MPK.data.others.features.find(f => String(f.properties.id) === String(bid)))
+    || (typeof strata3dBuilding === 'function' && strata3dBuilding(bid)) || null;
 }
 
 // ---------- Mode on / off (mpkSetMode in mpk.js) ----------
@@ -298,6 +306,7 @@ function strataEnter() {
   strataLayers();
   strataHideMpk();
   strataRenderPanel();
+  if (typeof strata3dOnEnter === 'function') strata3dOnEnter();
   addActivityLog('Strata mode', 'Strata titles');
 }
 function strataLeave() {
@@ -305,6 +314,7 @@ function strataLeave() {
   document.body.classList.remove('strata-mode');
   strataCloseWs();
   strataCloseTool();
+  if (typeof strata3dClose === 'function') strata3dClose();
   if (MPK.popup) { MPK.popup.remove(); MPK.popup = null; }
   strataRemoveLayers();
   if (STRATA.prevTitle) {
@@ -382,6 +392,7 @@ function strataLayers() {
     } else map.getSource('strata-kubur').setData(strataKuburData());
     strataApplyView();
   } catch (e) { return; }
+  if (typeof strata3dSync === 'function') strata3dSync();
   if (!STRATA.bound) {
     STRATA.bound = true;
     map.on('click', 'strata-fill', e => {
@@ -420,6 +431,7 @@ function strataSetView(v) {
 }
 function strataRemoveLayers() {
   if (!map) return;
+  if (typeof strata3dRemove === 'function') strata3dRemove();
   STRATA_LAYERS.forEach(id => { try { if (map.getLayer(id)) map.removeLayer(id); } catch (e) {} });
   ['strata-kubur', 'strata-xray', 'strata-bld'].forEach(id => { try { if (map.getSource(id)) map.removeSource(id); } catch (e) {} });
 }
@@ -434,21 +446,24 @@ function strataPopup(bid, lngLat) {
   const p = f.properties, sc = STRATA.s.schemes[bid];
   const row = (k, v) => v ? `<div class="popup-row"><span class="popup-k">${k}</span><span class="popup-v">${v}</span></div>` : '';
   const st = sc ? STRATA_STAGES[strataStageIdx(sc)] : null;
-  const study = !!p.kawasan;
+  const study = !!p.kawasan, dp = !!p.dp_area;
   const html = `
     <div class="popup-header" style="background:${st ? st.color : '#546E7A'}">
       <div class="popup-fc">${sc ? 'Strata scheme · ' + strataEsc(st.label) : 'Building · no strata scheme yet'}</div>
-      <div class="popup-name">${strataEsc(sc ? sc.nama : p.plus_code)}</div>
+      <div class="popup-name">${strataEsc(sc ? sc.nama : dp ? p.nama : p.plus_code)}</div>
     </div>
     <div class="popup-body">
       ${row('Plus Code', strataEsc(p.plus_code))}
-      ${row('Area', strataEsc((MPK_AREAS[p.kawasan] || {}).short || 'Outside the study areas'))}
+      ${row('Area', strataEsc(strataAreaName(dp ? 'dp:' + p.dp_area : p.kawasan)))}
       ${row('Lot no.', strataEsc(p.lot || 'no cadastral lot'))}
       ${row('Footprint', mpkNum(p.area_m2) + ' m²')}
-      ${study && p.tinggi_m ? row('Height', `${p.tinggi_m} m · ${p.tingkat_est} floor${p.tingkat_est > 1 ? 's' : ''} <small>(${strataEsc(p.tinggi_src)})</small>`) : ''}
+      ${dp ? row('3D model', 'UZMA Spatial Studio' + (p.plan ? ' · interior plan' : '')) : ''}
+      ${(study || dp) && p.tinggi_m ? row('Height', `${p.tinggi_m} m · ${p.tingkat_est} floor${p.tingkat_est > 1 ? 's' : ''} <small>(${strataEsc(p.tinggi_src)})</small>`) : ''}
       ${study ? row('Strata potential', strataPotential(p, mpkStatus(p, MPK.settings)) + ' / 100') : ''}
       ${sc ? row('Scheme', strataEsc(sc.no)) + row('Parcels', mpkNum(sc.parcels.length) + ' · ' + mpkNum(strataShareUnits(sc.parcels, sc.kompleks).total) + ' share units') : ''}
-      <div class="mpk-dpb-pop"><button type="button" class="mpk-btn mpk-dpb-pop-btn" onclick='strataOpen(${JSON.stringify(String(bid))})'>${sc ? 'Open strata scheme' : 'Start strata scheme'}</button></div>
+      <div class="mpk-dpb-pop"><button type="button" class="mpk-btn mpk-dpb-pop-btn" onclick='strataOpen(${JSON.stringify(String(bid))})'>${sc ? 'Open strata scheme' : 'Start strata scheme'}</button>
+        ${typeof strata3dOpen === 'function' ? `<button type="button" class="mpk-btn ghost mpk-dpb-pop-btn" onclick='strata3dOpen({ bid: ${JSON.stringify(String(bid))} })'>View in 3D</button>` : ''}
+        ${dp && p.plan && typeof strata3dOpen === 'function' ? `<button type="button" class="mpk-btn ghost mpk-dpb-pop-btn" onclick='strata3dOpen({ bid: ${JSON.stringify(String(bid))}, mode: "plan" })'>Interior plan</button>` : ''}</div>
     </div>`;
   if (MPK.popup) MPK.popup.remove();
   MPK.popup = new maplibregl.Popup({ maxWidth: '300px', focusAfterOpen: false }).setLngLat(lngLat).setHTML(html).addTo(map);
@@ -506,6 +521,7 @@ function strataRenderPanel() {
     : STRATA.view === 'tinggi' ? `<div class="strata-ramp ht"></div><div class="strata-ramp-l"><span>1 floor</span><span>estimated floors</span><span>8+</span></div>`
     : `<div class="strata-legend">${STRATA_STAGES.map(st => `<span><i style="background:${st.color}"></i>${st.label}</span>`).join('')}<span><i style="background:#90A4AE"></i>No scheme</span></div>`;
   el.innerHTML = `
+    ${typeof strata3dPanelHtml === 'function' ? strata3dPanelHtml() : ''}
     <div class="mpk-card strata-intro">
       <div class="mpk-card-title">Start with a building</div>
       <p class="strata-panel-copy">Click a building on the map, then choose <b>Start strata scheme</b>. We will guide you through the details, one step at a time.</p>
@@ -568,11 +584,12 @@ function strataRenderPanel() {
 function strataNewScheme(bid) {
   const f = strataBuilding(bid);
   if (!f) return null;
-  const p = f.properties, now = new Date().toISOString();
+  const p = f.properties, now = new Date().toISOString(), dp = !!p.dp_area;
   const floors = strataNum(p.tingkat_est) || '', h = strataNum(p.tinggi_m) || '';
   return strataNormalise({ bid: String(bid), no: strataNextNo(Object.values(STRATA.s.schemes).map(x => x.no), 'STR', new Date().getFullYear()),
-    nama: 'Skim strata ' + p.plus_code, pemaju: '', hakmilik_induk: '', alamat: '', mukim: 'Mukim Kemaman', created: now, updated: now,
-    bld: { plus_code: p.plus_code, kawasan: p.kawasan || '', lot: p.lot || '', upi: p.upi || '', area_m2: p.area_m2, lng: p.lng, lat: p.lat },
+    nama: 'Skim strata ' + (dp ? p.nama : p.plus_code), pemaju: '', hakmilik_induk: '', alamat: '', mukim: dp ? 'Mukim Sungai Buloh' : 'Mukim Kemaman',
+    created: now, updated: now,
+    bld: { plus_code: p.plus_code, kawasan: dp ? 'dp:' + p.dp_area : p.kawasan || '', lot: p.lot || '', upi: p.upi || '', area_m2: p.area_m2, lng: p.lng, lat: p.lat },
     bim: { tingkat: floors ? String(floors) : '', tinggi: h ? String(h) : '', lod: floors ? 200 : 100, disahkan: false, src: p.tinggi_src || '' },
     syarat: { sempadan: !!p.lot }, parcels: [], common: '', app: { stage: 'draf', docs: {} }, urus: {}, caj: { kadar: '0.30' }, bills: {} });
 }
@@ -606,6 +623,7 @@ function strataOpen(bid) {
 function strataGo(bid) {
   const sc = STRATA.s.schemes[bid];
   if (sc && map && sc.bld.lng != null) map.jumpTo({ center: [sc.bld.lng, sc.bld.lat], zoom: 18 });
+  if (sc && typeof strata3dForScheme === 'function') strata3dForScheme(sc);
   strataOpen(bid);
 }
 function strataCloseWs() {
@@ -669,8 +687,9 @@ function strataRenderWs() {
     <div class="strata-ws-head">
       <button type="button" class="mpk-btn ghost" onclick="strataBackToMap()">← Back to map</button>
       <div class="strata-ws-t"><h2>${strataEsc(sc.no)} · ${strataEsc(sc.nama)}</h2>
-        <p>${[sc.bld.plus_code, (MPK_AREAS[sc.bld.kawasan] || {}).short || 'Outside the study areas', sc.bld.lot ? 'Lot ' + sc.bld.lot : '', mpkNum(sc.bld.area_m2) + ' m² footprint',
+        <p>${[sc.bld.plus_code, strataAreaName(sc.bld.kawasan), sc.bld.lot ? 'Lot ' + sc.bld.lot : '', mpkNum(sc.bld.area_m2) + ' m² footprint',
           sc.bim.tingkat ? sc.bim.tingkat + ' floors' : ''].filter(Boolean).map(strataEsc).join(' · ')}</p></div>
+      ${typeof strata3dOpen === 'function' ? `<button type="button" class="mpk-btn ghost" onclick='strata3dOpen({ bid: ${JSON.stringify(String(sc.bid))} })'>3D studio</button>` : ''}
       <button type="button" class="mpk-btn ghost" onclick="strataStep(6)">Review report</button>
       <span class="strata-badge big" style="--c:${st.color}">${st.label}</span>
     </div>
@@ -724,7 +743,7 @@ function strataStep1(sc) {
         ${sc.tempoh === 'Pajakan' && strataNum(sc.baki_pajakan) && strataNum(sc.baki_pajakan) < 21 ? '<br><b class="strata-bad">Less than 21 years of lease left.</b>' : ''}</div>
     </section>
     <section class="mpk-h-card"><h4>The building on the map</h4>
-      <table class="strata-facts">${row('Plus Code', strataEsc(sc.bld.plus_code))}${row('Area', strataEsc((MPK_AREAS[sc.bld.kawasan] || {}).short || 'Outside the study areas'))}
+      <table class="strata-facts">${row('Plus Code', strataEsc(sc.bld.plus_code))}${row('Area', strataEsc(strataAreaName(sc.bld.kawasan)))}
         ${row('Cadastral lot', strataEsc(sc.bld.lot || 'none on the lot map') + (sc.bld.upi ? ' · UPI ' + strataEsc(sc.bld.upi) : ''))}${row('Footprint', mpkNum(sc.bld.area_m2) + ' m²')}
         ${p.tinggi_m ? row('Height', `${p.tinggi_m} m · ${p.tingkat_est} floors (${strataEsc(p.tinggi_src)})`) : ''}
         ${p.kawasan ? row('MPK status', MPK_STATUS[mpkStatus(p, MPK.settings)].label) : ''}
@@ -786,7 +805,7 @@ function strataStep2(sc) {
           <tbody>${sc.parcels.map((x, i) => `<tr><td><b>${strataEsc(x.petak)}</b></td><td>${pSel(i, 'wf2', x.wf2, STRATA_WF2)}</td><td>${pIn(i, 'aks_no', x.aks_no)}</td><td>${pIn(i, 'aks_luas', x.aks_luas)}</td><td>${pSel(i, 'aks_lokasi', x.aks_lokasi, STRATA_WF3)}</td></tr>`).join('')}</tbody></table></div>
         </details>` : '<div class="strata-empty"><b>No parcels added yet</b><p>Choose the building use and floor counts above, then select <strong>Create parcels</strong>. For an irregular layout, add one parcel at a time.</p></div>'}
       </section>
-      <section class="mpk-h-card"><div class="strata-section-head"><h4>Floor preview</h4><button type="button" class="mpk-btn ghost" onclick="strataXray()">${STRATA.xray ? 'Hide' : 'View'} floors in 3D</button></div>
+      <section class="mpk-h-card"><div class="strata-section-head"><h4>Floor preview</h4><span class="strata-row-btns">${typeof strata3dOpen === 'function' ? `<button type="button" class="mpk-btn" onclick='strata3dOpen({ bid: ${JSON.stringify(String(sc.bid))} })'>Open 3D studio</button>` : ''}<button type="button" class="mpk-btn ghost" onclick="strataXray()">${STRATA.xray ? 'Hide' : 'Show'} floors on map</button></span></div>
         <p class="mpk-h-hint">${sc.parcels.length ? 'Each coloured block is a parcel. Striped areas show the remaining shared space.' : 'Your parcels will appear here after you create them.'}</p>
         <div class="strata-stack">${stack.join('')}<div class="strata-ground"></div></div>
         <div class="strata-legend small">${types.map(t => `<span><i style="background:${STRATA_TYPE_COLOR[t]}"></i>${strataEsc((STRATA_WF1[t] || ['Other'])[0])}</span>`).join('')}<span><i class="common"></i>Shared space (common property)</span></div>
@@ -1306,7 +1325,7 @@ async function strataPdf() {
     k.section(1, 'Maklumat skim dan bangunan');
     k.table([{ t: 'Perkara', w: 52 }, { t: '', w: k.CW - 52 }], [
       ['Tuan punya / pemaju', sc.pemaju || '-'], ['Hakmilik induk', sc.hakmilik_induk || '-'], ['Lot / UPI', [sc.bld.lot || '-', sc.bld.upi].filter(Boolean).join(' · ')],
-      ['Mukim / daerah', `${sc.mukim || 'Mukim Kemaman'}, Daerah Kemaman, Terengganu`], ['Alamat', sc.alamat || '-'],
+      ['Mukim / daerah', strataDp(sc.bld.kawasan) ? `${sc.mukim || 'Mukim Sungai Buloh'}, Daerah Petaling, Selangor` : `${sc.mukim || 'Mukim Kemaman'}, Daerah Kemaman, Terengganu`], ['Alamat', sc.alamat || '-'],
       ['Pegangan', (sc.tempoh || 'Kekal') === 'Kekal' ? 'Pegangan kekal' : `Pajakan, baki ${sc.baki_pajakan || '-'} tahun`],
       ['Jenis permohonan', STRATA_PECAH[sc.jenis_pecah]], ['Jenis skim', STRATA_SCHEME_TYPES[sc.kompleks.jenis] || '-'],
       ['Lokasi (Plus Code)', `${sc.bld.plus_code} · ${(+sc.bld.lat).toFixed(6)}, ${(+sc.bld.lng).toFixed(6)}`],

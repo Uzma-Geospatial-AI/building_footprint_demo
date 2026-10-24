@@ -1,0 +1,226 @@
+[
+  {
+    "id": "dcosmos-type-a1",
+    "label": "D’Cosmos Residences · Type A1",
+    "development": "D’Cosmos Residences",
+    "kind": "unit-template",
+    "scope": "One published Type A1 unit layout from D’Cosmos Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": 1100,
+    "sources": [
+      {
+        "url": "https://exsim.com.my/e-brochure/DCosmos_eBrochure.pdf",
+        "title": "D’Cosmos Residences e-Brochure",
+        "publisher": "EXSIM Group",
+        "page": 6
+      }
+    ],
+    "glb": "Dcosmos-Type-A1-Interior.glb",
+    "levels": [
+      {
+        "id": "dcosmos-type-a1-unit",
+        "label": "Type A1 · unit template",
+        "svg": "dcosmos-type-a1-unit.svg",
+        "csv": "dcosmos-type-a1-unit.csv"
+      }
+    ]
+  },
+  {
+    "id": "dclover-type-a1",
+    "label": "D’Clover Residences · Type A1",
+    "development": "D’Clover Residences",
+    "kind": "unit-template",
+    "scope": "One published Type A1 unit layout from D’Clover Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": 1210,
+    "sources": [
+      {
+        "url": "https://exsim.com.my/e-brochure/DClover_E-Brochure.pdf",
+        "title": "D’Clover Residences e-Brochure",
+        "publisher": "EXSIM Group",
+        "page": 6
+      }
+    ],
+    "glb": "Dclover-Type-A1-Interior.glb",
+    "levels": [
+      {
+        "id": "dclover-type-a1-unit",
+        "label": "Type A1 · unit template",
+        "svg": "dclover-type-a1-unit.svg",
+        "csv": "dclover-type-a1-unit.csv"
+      }
+    ]
+  },
+  {
+    "id": "dquince-type-c",
+    "label": "D’Quince Residences · Type C",
+    "development": "D’Quince Residences",
+    "kind": "unit-template",
+    "scope": "One published Type C unit layout from D’Quince Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": 550,
+    "sources": [
+      {
+        "url": "https://exsim.com.my/e-brochure/DQuince_eBrochure.pdf",
+        "title": "D’Quince Residences e-Brochure",
+        "publisher": "EXSIM Group",
+        "page": 10
+      }
+    ],
+    "glb": "Dquince-Type-C-Interior.glb",
+    "levels": [
+      {
+        "id": "dquince-type-c-unit",
+        "label": "Type C · unit template",
+        "svg": "dquince-type-c-unit.svg",
+        "csv": "dquince-type-c-unit.csv"
+      }
+    ]
+  },
+  {
+    "id": "dterra-type-a1",
+    "label": "D’Terra Residences · Type A1",
+    "development": "D’Terra Residences",
+    "kind": "unit-template",
+    "scope": "One published Type A1 unit layout from D’Terra Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": 956,
+    "sources": [
+      {
+        "url": "https://exsim.com.my/e-brochure/DTerra_E-Brochure.pdf",
+        "title": "D’Terra Residences e-Brochure",
+        "publisher": "EXSIM Group",
+        "page": 7
+      }
+    ],
+    "glb": "Dterra-Type-A1-Interior.glb",
+    "levels": [
+      {
+        "id": "dterra-type-a1-unit",
+        "label": "Type A1 · unit template",
+        "svg": "dterra-type-a1-unit.svg",
+        "csv": "dterra-type-a1-unit.csv"
+      }
+    ]
+  },
+  {
+    "id": "dtessera-type-a1",
+    "label": "D’Tessera Residences · Type A1",
+    "development": "D’Tessera Residences",
+    "kind": "unit-template",
+    "scope": "One published Type A1 unit layout from D’Tessera Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": 1100,
+    "sources": [
+      {
+        "url": "https://exsim.com.my/e-brochure/DTessera_E-Brochure.pdf",
+        "title": "D’Tessera Residences e-Brochure",
+        "publisher": "EXSIM Group",
+        "page": 5
+      }
+    ],
+    "glb": "Dtessera-Type-A1-Interior.glb",
+    "levels": [
+      {
+        "id": "dtessera-type-a1-unit",
+        "label": "Type A1 · unit template",
+        "svg": "dtessera-type-a1-unit.svg",
+        "csv": "dtessera-type-a1-unit.csv"
+      }
+    ]
+  },
+  {
+    "id": "rafflesia-type-g",
+    "label": "Rafflesia · Type G house",
+    "development": "The Rafflesia, Damansara Perdana",
+    "kind": "house-template",
+    "scope": "Three levels of one semi-detached house, traced from the left-hand half of the developer Type G/G1 drawing. The brochure shows a mirrored pair; this is one house, not the pair or an entire street. It is not assigned to a particular existing house or strata parcel.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": 3877,
+    "sources": [
+      {
+        "url": "https://therafflesia.com.my/assets/img/Rafflesia_Brochure.pdf",
+        "title": "Rafflesia brochure — Type G & G1",
+        "publisher": "Saujana Triangle / MK Land",
+        "page": 9
+      },
+      {
+        "url": "https://therafflesia.com.my/",
+        "title": "Developer project and floor-plan page",
+        "publisher": "Saujana Triangle / MK Land"
+      }
+    ],
+    "glb": "Rafflesia-Type-G-Interior.glb",
+    "levels": [
+      {
+        "id": "rafflesia-type-g-ground",
+        "label": "Ground floor",
+        "svg": "rafflesia-type-g-ground.svg",
+        "csv": "rafflesia-type-g-ground.csv"
+      },
+      {
+        "id": "rafflesia-type-g-first",
+        "label": "First floor",
+        "svg": "rafflesia-type-g-first.svg",
+        "csv": "rafflesia-type-g-first.csv"
+      },
+      {
+        "id": "rafflesia-type-g-second",
+        "label": "Second floor",
+        "svg": "rafflesia-type-g-second.svg",
+        "csv": "rafflesia-type-g-second.csv"
+      }
+    ]
+  },
+  {
+    "id": "empire-heritage-lower-ground",
+    "label": "Empire · Heritage Lane retail section",
+    "development": "Empire Damansara",
+    "kind": "floor-template",
+    "scope": "Partial lower-ground floor only: the four adjacent rectangular retail bays on the eastern side of Heritage Lane and the walkway immediately in front. Bay numbers are interpreted labels, not published lot or tenancy numbers. The remaining complex, theatre, other offices and all upper floors are outside this trace.",
+    "assignment": {
+      "floor": null,
+      "unit": null
+    },
+    "publishedAreaSqFt": null,
+    "sources": [
+      {
+        "url": "https://www.archdaily.com/490178/empire-damansara-ong-and-ong",
+        "title": "Empire Damansara / Ong & Ong — PELAN ARAS TANAH BAWAH",
+        "publisher": "ONG&ONG, published by ArchDaily"
+      },
+      {
+        "url": "https://images.adsttc.com/media/images/5332/5128/c07a/80cb/6b00/0094/large_jpg/PELAN_ARAS_TANAH_BAWAH.jpg?1395806473",
+        "title": "Architect lower-ground drawing",
+        "publisher": "ONG&ONG, published by ArchDaily"
+      }
+    ],
+    "glb": "Empire-Heritage-Lower-Ground-Interior.glb",
+    "levels": [
+      {
+        "id": "empire-heritage-lower-ground-lower-ground-section",
+        "label": "Lower ground · retail section",
+        "svg": "empire-heritage-lower-ground-lower-ground-section.svg",
+        "csv": "empire-heritage-lower-ground-lower-ground-section.csv"
+      }
+    ]
+  }
+]

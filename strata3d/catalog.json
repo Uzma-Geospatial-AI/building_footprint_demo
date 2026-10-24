@@ -1,0 +1,839 @@
+{
+ "generated": "2026-10-24",
+ "source": "UZMA Spatial Studio (UzmaTower3D_Model)",
+ "note": "Damansara Perdana, Petaling Jaya. Buildings from OpenStreetMap and Microsoft footprints with estimated heights; UZMA Tower is a photo-informed reconstruction. Not a surveyed digital twin, and the interior plans are not registered strata plans.",
+ "attribution": "Building footprints © OpenStreetMap contributors (ODbL 1.0) · Microsoft Global ML Building Footprints (CDLA Permissive 2.0)",
+ "uzma": {
+  "glb": "models/UZMA-Tower.glb",
+  "building": "dp-uzma-tower"
+ },
+ "areas": [
+  {
+   "id": "damansara",
+   "name": "Seluruh Damansara Perdana",
+   "glb": "models/Damansara-Perdana.glb",
+   "mb": 22.79,
+   "center": [
+    101.6103643,
+    3.1731484
+   ],
+   "bounds": [
+    [
+     101.6018845,
+     3.1638605
+    ],
+    [
+     101.6188277,
+     3.182468
+    ]
+   ],
+   "overview": true,
+   "buildings": 633,
+   "uzma": true
+  },
+  {
+   "id": "armanee",
+   "name": "Armanee Terrace I / II",
+   "glb": "models/armanee.glb",
+   "mb": 4.54,
+   "center": [
+    101.6039543,
+    3.1726491
+   ],
+   "bounds": [
+    [
+     101.6024964,
+     3.1715946
+    ],
+    [
+     101.6051332,
+     3.1738127
+    ]
+   ],
+   "overview": false,
+   "buildings": 4,
+   "uzma": false
+  },
+  {
+   "id": "central-park",
+   "name": "Central Park Damansara",
+   "glb": "models/central-park.glb",
+   "mb": 21.08,
+   "center": [
+    101.6157081,
+    3.1731074
+   ],
+   "bounds": [
+    [
+     101.6135234,
+     3.1706746
+    ],
+    [
+     101.6186284,
+     3.1753226
+    ]
+   ],
+   "overview": false,
+   "buildings": 26,
+   "uzma": false
+  },
+  {
+   "id": "perdana-central",
+   "name": "Damansara Perdana central",
+   "glb": "models/perdana-central.glb",
+   "mb": 3.11,
+   "center": [
+    101.6083273,
+    3.1682451
+   ],
+   "bounds": [
+    [
+     101.603721,
+     3.1638605
+    ],
+    [
+     101.6129337,
+     3.1726296
+    ]
+   ],
+   "overview": false,
+   "buildings": 39,
+   "uzma": false
+  },
+  {
+   "id": "desa-temuan",
+   "name": "Desa Temuan",
+   "glb": "models/desa-temuan.glb",
+   "mb": 5.02,
+   "center": [
+    101.6035567,
+    3.1677881
+   ],
+   "bounds": [
+    [
+     101.6019559,
+     3.1651736
+    ],
+    [
+     101.6051061,
+     3.1704436
+    ]
+   ],
+   "overview": false,
+   "buildings": 158,
+   "uzma": false
+  },
+  {
+   "id": "emerald",
+   "name": "Emerald Perdana",
+   "glb": "models/emerald.glb",
+   "mb": 3.3,
+   "center": [
+    101.6087981,
+    3.1644447
+   ],
+   "bounds": [
+    [
+     101.6082359,
+     3.16392
+    ],
+    [
+     101.609681,
+     3.1649288
+    ]
+   ],
+   "overview": false,
+   "buildings": 4,
+   "uzma": false
+  },
+  {
+   "id": "empire-residential",
+   "name": "Empire Damansara Residential",
+   "glb": "models/empire-residential.glb",
+   "mb": 3.37,
+   "center": [
+    101.6064219,
+    3.1720064
+   ],
+   "bounds": [
+    [
+     101.6051819,
+     3.1684461
+    ],
+    [
+     101.6076593,
+     3.1748671
+    ]
+   ],
+   "overview": false,
+   "buildings": 62,
+   "uzma": false
+  },
+  {
+   "id": "flora",
+   "name": "Flora Damansara",
+   "glb": "models/flora.glb",
+   "mb": 8.85,
+   "center": [
+    101.617546,
+    3.1760751
+   ],
+   "bounds": [
+    [
+     101.6164304,
+     3.1746992
+    ],
+    [
+     101.6186033,
+     3.177638
+    ]
+   ],
+   "overview": false,
+   "buildings": 8,
+   "uzma": false
+  },
+  {
+   "id": "foresthill",
+   "name": "ForestHill Damansara",
+   "glb": "models/foresthill.glb",
+   "mb": 0.98,
+   "center": [
+    101.61817,
+    3.1801746
+   ],
+   "bounds": [
+    [
+     101.6178414,
+     3.1784555
+    ],
+    [
+     101.6188277,
+     3.182468
+    ]
+   ],
+   "overview": false,
+   "buildings": 23,
+   "uzma": false
+  },
+  {
+   "id": "hextar",
+   "name": "Hextar Mall / Empire City",
+   "glb": "models/Hextar-Mall-Empire-City.glb",
+   "mb": 2.4,
+   "center": [
+    101.61565,
+    3.1681
+   ],
+   "bounds": [
+    [
+     101.6146398,
+     3.1658813
+    ],
+    [
+     101.6169554,
+     3.1700518
+    ]
+   ],
+   "overview": false,
+   "buildings": 16,
+   "uzma": false
+  },
+  {
+   "id": "hillside-compound",
+   "name": "Hillside villa compound",
+   "glb": "models/Hillside-Villa-Compound.glb",
+   "mb": 0.33,
+   "center": [
+    101.6114464,
+    3.1745874
+   ],
+   "bounds": [
+    [
+     101.6110012,
+     3.1737384
+    ],
+    [
+     101.6119373,
+     3.1754015
+    ]
+   ],
+   "overview": false,
+   "buildings": 15,
+   "uzma": false
+  },
+  {
+   "id": "masjid-damansara",
+   "name": "Masjid Damansara Perdana",
+   "glb": "models/masjid-damansara.glb",
+   "mb": 0.08,
+   "center": [
+    101.61781,
+    3.173257
+   ],
+   "bounds": [
+    [
+     101.617373,
+     3.1728627
+    ],
+    [
+     101.6182469,
+     3.1736512
+    ]
+   ],
+   "overview": false,
+   "buildings": 1,
+   "uzma": false
+  },
+  {
+   "id": "metropolitan",
+   "name": "Metropolitan Square",
+   "glb": "models/Metropolitan-Square.glb",
+   "mb": 8.98,
+   "center": [
+    101.60975,
+    3.16578
+   ],
+   "bounds": [
+    [
+     101.6081339,
+     3.1649496
+    ],
+    [
+     101.6113103,
+     3.1666586
+    ]
+   ],
+   "overview": false,
+   "buildings": 14,
+   "uzma": false
+  },
+  {
+   "id": "neo",
+   "name": "Neo Damansara",
+   "glb": "models/neo.glb",
+   "mb": 3.09,
+   "center": [
+    101.6129935,
+    3.1644642
+   ],
+   "bounds": [
+    [
+     101.6118292,
+     3.1638883
+    ],
+    [
+     101.6141823,
+     3.1650637
+    ]
+   ],
+   "overview": false,
+   "buildings": 8,
+   "uzma": false
+  },
+  {
+   "id": "perdana",
+   "name": "Perdana Business Centre (Burger King area)",
+   "glb": "models/Perdana-Business-Centre.glb",
+   "mb": 2.7,
+   "center": [
+    101.60645,
+    3.16565
+   ],
+   "bounds": [
+    [
+     101.6050953,
+     3.1643609
+    ],
+    [
+     101.607798,
+     3.1669533
+    ]
+   ],
+   "overview": false,
+   "buildings": 16,
+   "uzma": false
+  },
+  {
+   "id": "perdana-exclusive",
+   "name": "Perdana Exclusive",
+   "glb": "models/perdana-exclusive.glb",
+   "mb": 2.65,
+   "center": [
+    101.6051438,
+    3.1689863
+   ],
+   "bounds": [
+    [
+     101.6044733,
+     3.1679484
+    ],
+    [
+     101.6056539,
+     3.1700834
+    ]
+   ],
+   "overview": false,
+   "buildings": 5,
+   "uzma": false
+  },
+  {
+   "id": "perdana-view",
+   "name": "Perdana View",
+   "glb": "models/perdana-view.glb",
+   "mb": 2.28,
+   "center": [
+    101.6032274,
+    3.1708064
+   ],
+   "bounds": [
+    [
+     101.6021996,
+     3.1705296
+    ],
+    [
+     101.6042762,
+     3.1710486
+    ]
+   ],
+   "overview": false,
+   "buildings": 3,
+   "uzma": false
+  },
+  {
+   "id": "rafflesia",
+   "name": "Rafflesia",
+   "glb": "models/rafflesia.glb",
+   "mb": 5.59,
+   "center": [
+    101.6049956,
+    3.1785536
+   ],
+   "bounds": [
+    [
+     101.6018845,
+     3.176594
+    ],
+    [
+     101.6079141,
+     3.1806553
+    ]
+   ],
+   "overview": false,
+   "buildings": 204,
+   "uzma": false
+  },
+  {
+   "id": "ritze",
+   "name": "Ritze Perdana / Ritze 2",
+   "glb": "models/ritze.glb",
+   "mb": 7.61,
+   "center": [
+    101.6078538,
+    3.1659215
+   ],
+   "bounds": [
+    [
+     101.6044593,
+     3.1639057
+    ],
+    [
+     101.611386,
+     3.168043
+    ]
+   ],
+   "overview": false,
+   "buildings": 10,
+   "uzma": false
+  },
+  {
+   "id": "empire",
+   "name": "UZMA / Empire Damansara",
+   "glb": "models/Empire-Damansara.glb",
+   "mb": 4.09,
+   "center": [
+    101.61265,
+    3.1671
+   ],
+   "bounds": [
+    [
+     101.6118028,
+     3.165721
+    ],
+    [
+     101.6135891,
+     3.1683626
+    ]
+   ],
+   "overview": false,
+   "buildings": 17,
+   "uzma": true
+  }
+ ],
+ "plans": [
+  {
+   "id": "uzma",
+   "label": "UZMA Tower · 19 levels",
+   "development": "UZMA Tower",
+   "kind": "building",
+   "area": "empire",
+   "glb": "interiors/UZMA-Strata-Interiors.glb",
+   "scope": "B5 – Level 12, 19 user-confirmed levels. Level 6 is traced from a photographed fire-equipment plan; the other levels are floor outlines only. Not a registered strata plan.",
+   "sources": [],
+   "georef": true,
+   "levels": [
+    {
+     "id": "B5",
+     "label": "B5",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "B4",
+     "label": "B4",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "B3",
+     "label": "B3",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "B2",
+     "label": "B2",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "B1",
+     "label": "B1",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "LG",
+     "label": "LG",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "G",
+     "label": "G",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L01",
+     "label": "Level 1",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L02",
+     "label": "Level 2",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L03",
+     "label": "Level 3",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L04",
+     "label": "Level 4",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L05",
+     "label": "Level 5",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L06",
+     "label": "Level 6",
+     "plan": true,
+     "svg": "interiors/UZMA-Level-6-Floor-Plan.svg",
+     "csv": "interiors/UZMA-Level-6-Room-Schedule.csv"
+    },
+    {
+     "id": "L07",
+     "label": "Level 7",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L08",
+     "label": "Level 8",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L09",
+     "label": "Level 9",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L10",
+     "label": "Level 10",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L11",
+     "label": "Level 11",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    },
+    {
+     "id": "L12",
+     "label": "Level 12",
+     "plan": false,
+     "svg": null,
+     "csv": null
+    }
+   ]
+  },
+  {
+   "id": "dcosmos-type-a1",
+   "label": "D’Cosmos Residences · Type A1",
+   "development": "D’Cosmos Residences",
+   "kind": "unit-template",
+   "area": "central-park",
+   "glb": "interiors/Dcosmos-Type-A1-Interior.glb",
+   "scope": "One published Type A1 unit layout from D’Cosmos Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+   "sources": [
+    {
+     "url": "https://exsim.com.my/e-brochure/DCosmos_eBrochure.pdf",
+     "title": "D’Cosmos Residences e-Brochure",
+     "publisher": "EXSIM Group",
+     "page": 6
+    }
+   ],
+   "sqft": 1100,
+   "georef": false,
+   "levels": [
+    {
+     "id": "dcosmos-type-a1-unit",
+     "label": "Type A1 · unit template",
+     "plan": true,
+     "svg": "interiors/dcosmos-type-a1-unit.svg",
+     "csv": "interiors/dcosmos-type-a1-unit.csv"
+    }
+   ]
+  },
+  {
+   "id": "dclover-type-a1",
+   "label": "D’Clover Residences · Type A1",
+   "development": "D’Clover Residences",
+   "kind": "unit-template",
+   "area": "central-park",
+   "glb": "interiors/Dclover-Type-A1-Interior.glb",
+   "scope": "One published Type A1 unit layout from D’Clover Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+   "sources": [
+    {
+     "url": "https://exsim.com.my/e-brochure/DClover_E-Brochure.pdf",
+     "title": "D’Clover Residences e-Brochure",
+     "publisher": "EXSIM Group",
+     "page": 6
+    }
+   ],
+   "sqft": 1210,
+   "georef": false,
+   "levels": [
+    {
+     "id": "dclover-type-a1-unit",
+     "label": "Type A1 · unit template",
+     "plan": true,
+     "svg": "interiors/dclover-type-a1-unit.svg",
+     "csv": "interiors/dclover-type-a1-unit.csv"
+    }
+   ]
+  },
+  {
+   "id": "dquince-type-c",
+   "label": "D’Quince Residences · Type C",
+   "development": "D’Quince Residences",
+   "kind": "unit-template",
+   "area": "central-park",
+   "glb": "interiors/Dquince-Type-C-Interior.glb",
+   "scope": "One published Type C unit layout from D’Quince Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+   "sources": [
+    {
+     "url": "https://exsim.com.my/e-brochure/DQuince_eBrochure.pdf",
+     "title": "D’Quince Residences e-Brochure",
+     "publisher": "EXSIM Group",
+     "page": 10
+    }
+   ],
+   "sqft": 550,
+   "georef": false,
+   "levels": [
+    {
+     "id": "dquince-type-c-unit",
+     "label": "Type C · unit template",
+     "plan": true,
+     "svg": "interiors/dquince-type-c-unit.svg",
+     "csv": "interiors/dquince-type-c-unit.csv"
+    }
+   ]
+  },
+  {
+   "id": "dterra-type-a1",
+   "label": "D’Terra Residences · Type A1",
+   "development": "D’Terra Residences",
+   "kind": "unit-template",
+   "area": "central-park",
+   "glb": "interiors/Dterra-Type-A1-Interior.glb",
+   "scope": "One published Type A1 unit layout from D’Terra Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+   "sources": [
+    {
+     "url": "https://exsim.com.my/e-brochure/DTerra_E-Brochure.pdf",
+     "title": "D’Terra Residences e-Brochure",
+     "publisher": "EXSIM Group",
+     "page": 7
+    }
+   ],
+   "sqft": 956,
+   "georef": false,
+   "levels": [
+    {
+     "id": "dterra-type-a1-unit",
+     "label": "Type A1 · unit template",
+     "plan": true,
+     "svg": "interiors/dterra-type-a1-unit.svg",
+     "csv": "interiors/dterra-type-a1-unit.csv"
+    }
+   ]
+  },
+  {
+   "id": "dtessera-type-a1",
+   "label": "D’Tessera Residences · Type A1",
+   "development": "D’Tessera Residences",
+   "kind": "unit-template",
+   "area": "central-park",
+   "glb": "interiors/Dtessera-Type-A1-Interior.glb",
+   "scope": "One published Type A1 unit layout from D’Tessera Residences. This is an unassigned unit template, not an entire building floor or an as-built apartment survey.",
+   "sources": [
+    {
+     "url": "https://exsim.com.my/e-brochure/DTessera_E-Brochure.pdf",
+     "title": "D’Tessera Residences e-Brochure",
+     "publisher": "EXSIM Group",
+     "page": 5
+    }
+   ],
+   "sqft": 1100,
+   "georef": false,
+   "levels": [
+    {
+     "id": "dtessera-type-a1-unit",
+     "label": "Type A1 · unit template",
+     "plan": true,
+     "svg": "interiors/dtessera-type-a1-unit.svg",
+     "csv": "interiors/dtessera-type-a1-unit.csv"
+    }
+   ]
+  },
+  {
+   "id": "rafflesia-type-g",
+   "label": "Rafflesia · Type G house",
+   "development": "The Rafflesia, Damansara Perdana",
+   "kind": "house-template",
+   "area": "rafflesia",
+   "glb": "interiors/Rafflesia-Type-G-Interior.glb",
+   "scope": "Three levels of one semi-detached house, traced from the left-hand half of the developer Type G/G1 drawing. The brochure shows a mirrored pair; this is one house, not the pair or an entire street. It is not assigned to a particular existing house or strata parcel.",
+   "sources": [
+    {
+     "url": "https://therafflesia.com.my/assets/img/Rafflesia_Brochure.pdf",
+     "title": "Rafflesia brochure — Type G & G1",
+     "publisher": "Saujana Triangle / MK Land",
+     "page": 9
+    },
+    {
+     "url": "https://therafflesia.com.my/",
+     "title": "Developer project and floor-plan page",
+     "publisher": "Saujana Triangle / MK Land"
+    }
+   ],
+   "sqft": 3877,
+   "georef": false,
+   "levels": [
+    {
+     "id": "rafflesia-type-g-ground",
+     "label": "Ground floor",
+     "plan": true,
+     "svg": "interiors/rafflesia-type-g-ground.svg",
+     "csv": "interiors/rafflesia-type-g-ground.csv"
+    },
+    {
+     "id": "rafflesia-type-g-first",
+     "label": "First floor",
+     "plan": true,
+     "svg": "interiors/rafflesia-type-g-first.svg",
+     "csv": "interiors/rafflesia-type-g-first.csv"
+    },
+    {
+     "id": "rafflesia-type-g-second",
+     "label": "Second floor",
+     "plan": true,
+     "svg": "interiors/rafflesia-type-g-second.svg",
+     "csv": "interiors/rafflesia-type-g-second.csv"
+    }
+   ]
+  },
+  {
+   "id": "empire-heritage-lower-ground",
+   "label": "Empire · Heritage Lane retail section",
+   "development": "Empire Damansara",
+   "kind": "floor-template",
+   "area": "empire",
+   "glb": "interiors/Empire-Heritage-Lower-Ground-Interior.glb",
+   "scope": "Partial lower-ground floor only: the four adjacent rectangular retail bays on the eastern side of Heritage Lane and the walkway immediately in front. Bay numbers are interpreted labels, not published lot or tenancy numbers. The remaining complex, theatre, other offices and all upper floors are outside this trace.",
+   "sources": [
+    {
+     "url": "https://www.archdaily.com/490178/empire-damansara-ong-and-ong",
+     "title": "Empire Damansara / Ong & Ong — PELAN ARAS TANAH BAWAH",
+     "publisher": "ONG&ONG, published by ArchDaily"
+    },
+    {
+     "url": "https://images.adsttc.com/media/images/5332/5128/c07a/80cb/6b00/0094/large_jpg/PELAN_ARAS_TANAH_BAWAH.jpg?1395806473",
+     "title": "Architect lower-ground drawing",
+     "publisher": "ONG&ONG, published by ArchDaily"
+    }
+   ],
+   "sqft": null,
+   "georef": false,
+   "levels": [
+    {
+     "id": "empire-heritage-lower-ground-lower-ground-section",
+     "label": "Lower ground · retail section",
+     "plan": true,
+     "svg": "interiors/empire-heritage-lower-ground-lower-ground-section.svg",
+     "csv": "interiors/empire-heritage-lower-ground-lower-ground-section.csv"
+    }
+   ]
+  }
+ ]
+}
