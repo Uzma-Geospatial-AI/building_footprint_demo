@@ -309,7 +309,7 @@ async function checkRegionalModelLoading() {
       strataStageColor: () => '#123456', strataRenderPanel() {}, showToast: msg => calls.toasts.push(msg),
     });
     vm.runInContext(moduleSource + `
-      globalThis.ui = { state: S3D, select: strata3dSelectArea, group: strata3dSetGroup, remove: strata3dRemove,
+      globalThis.ui = { state: S3D, select: strata3dSelectArea, group: strata3dSetGroup, region: strata3dSetRegion, remove: strata3dRemove,
         layer: s3dCustomLayer, xray: s3dXrayHide, status: s3dMapStatus };
     `, context, { filename: 'mpk-strata3d.js' });
     const { ui } = context;
@@ -362,7 +362,11 @@ async function checkRegionalModelLoading() {
     layer.render({}, [1, 0, 0, 1]);
     assert.strictEqual(t.calls.renders.length, 2, 'MPK selection does not render Damansara models');
     await t.ui.group('dp');
-    assert.strictEqual(t.ui.state.mapEntries.length, 2, 'Returning to the Damansara group restores both regional models');
+    assert.strictEqual(t.ui.state.regionPending, true, 'Choosing Damansara asks for Damansara Perdana or Mutiara first');
+    assert.strictEqual(t.ui.state.mapEntries.length, 0, 'No model before a Damansara area is chosen');
+    await t.ui.region('Damansara Perdana');
+    assert.strictEqual(t.ui.state.area, 'damansara');
+    assert.strictEqual(t.ui.state.mapEntries.length, 2, 'Choosing the area restores both regional models');
     assert.strictEqual(t.calls.loads.length, 2, 'Returning uses already cached GLBs');
   }
   {

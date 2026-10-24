@@ -132,3 +132,12 @@ body:not(.strata-mode) .s3d-studio { display:none !important; }
 /* MPK's Kemaman aerial captures are not offered in Strata (s3dBasemapIn swaps to Google Hybrid) */
 body.strata-mode .mpk-aerial-head, body.strata-mode .mpk-aerial-opt { display:none !important; }
 .s3d-toggle + .s3d-toggle { margin-top:-4px; }
+
+/* region pickers: MPK Kemaman / Damansara, then Damansara Perdana / Mutiara Damansara */
+.s3d-pickers { display:grid; gap:6px; margin-bottom:8px; }
+.s3d-pick { display:grid; gap:3px; }
+.s3d-pick span { font-size:10px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--charcoal-light); }
+.s3d-pick select { width:100%; height:34px; padding:0 30px 0 10px; border:1.5px solid rgba(30,44,68,0.14); border-radius:8px; background:#fff; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--charcoal-dark); cursor:pointer; }
+.s3d-pick select:focus { outline:none; border-color:#7E57C2; }
+.s3d-pick.need select { border-color:#7E57C2; background:#F5F1FC; color:#5E35B1; }
+.s3d-choose { padding:10px 12px; border-radius:9px; background:#F5F1FC; font-size:11.5px; line-height:1.5; color:var(--charcoal-dark); margin-bottom:6px; }

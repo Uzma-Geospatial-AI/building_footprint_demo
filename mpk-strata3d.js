@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261025b';
+const S3D_VERSION = '20261025c';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },
@@ -344,6 +344,7 @@ function strata3dSelectArea(id, opts = {}) {
   try { localStorage.setItem('s3d_area', id); } catch (e) {}
   const kem = S3D_KEMAMAN.find(k => k.id === id);
   S3D.group = kem ? 'mpk' : 'dp';
+  S3D.regionPending = false;
   s3dTitle();
   if (kem) {
     S3D.onMap = null;
@@ -370,12 +371,31 @@ function strata3dSelectArea(id, opts = {}) {
 // The page title names the region of the selected area
 function s3dTitle() {
   const t = document.getElementById('page-title');
-  if (t && STRATA.active) t.textContent = 'Strata Titles — ' + (S3D_KEMAMAN.some(k => k.id === S3D.area) ? 'MPK Kemaman' : s3dRegion(dpArea(S3D.area)));
+  if (t && STRATA.active) t.textContent = 'Strata Titles — ' + (S3D.group === 'dp' && S3D.regionPending ? 'Damansara'
+    : S3D_KEMAMAN.some(k => k.id === S3D.area) ? 'MPK Kemaman' : s3dRegion(dpArea(S3D.area)));
 }
+// Region picker: MPK Kemaman, or Damansara — which then asks for Damansara Perdana or Mutiara Damansara
+// before any area is listed or any model is loaded
+const S3D_DP_REGIONS = ['Damansara Perdana', 'Mutiara Damansara'];
 function strata3dSetGroup(g) {
   const kem = S3D_KEMAMAN.some(k => k.id === S3D.area);
-  return strata3dSelectArea(g === 'dp' ? (kem ? 'damansara' : S3D.area) : (kem ? S3D.area : 'mpk-all'));
+  if (g === 'dp' && kem) {
+    S3D.group = 'dp';
+    S3D.regionPending = true;
+    s3dTitle();
+    s3dLoad().catch(() => {}).then(() => strataRenderPanel());
+    return Promise.resolve();
+  }
+  S3D.regionPending = false;
+  return strata3dSelectArea(g === 'dp' ? S3D.area : (kem ? S3D.area : 'mpk-all'));
 }
+function strata3dSetRegion(r) {
+  return s3dLoad().then(() => {
+    const a = S3D.cat.areas.find(x => x.overview && s3dRegion(x) === r);
+    if (a) strata3dSelectArea(a.id);
+  });
+}
+const s3dCurrentRegion = () => (S3D.group === 'dp' && !S3D.regionPending && dpArea(S3D.area) ? s3dRegion(dpArea(S3D.area)) : null);
 function strata3dFilter(q) {
   const t = q.trim().toLowerCase();
   document.querySelectorAll('#tab-strata .s3d-area[data-name]').forEach(b => { b.hidden = !!t && !b.dataset.name.includes(t); });
@@ -559,11 +579,18 @@ function s3dSearchHtml() {
     <div class="s3d-results" id="s3d-results" role="listbox"${SR.q.trim() ? '' : ' hidden'}>${s3dResultsHtml()}</div></div>`;
 }
 function strata3dPanelHtml() {
-  const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {};
-  const seg = `<div class="strata-seg" role="radiogroup" aria-label="Region">${[['mpk', 'MPK Kemaman'], ['dp', 'Damansara Perdana + Mutiara 3D']].map(([k, l]) =>
-    `<button type="button" role="radio" aria-checked="${g === k}" class="${g === k ? 'on' : ''}" onclick="strata3dSetGroup('${k}')">${l}</button>`).join('')}</div>`;
+  const g = S3D.group, schemes = (STRATA.s && STRATA.s.schemes) || {}, region = s3dCurrentRegion();
+  const opt = (v, l, on) => `<option value="${esc(v)}"${on ? ' selected' : ''}>${esc(l)}</option>`;
+  const seg = `<div class="s3d-pickers">
+      <label class="s3d-pick"><span>Region</span><select onchange="strata3dSetGroup(this.value)" aria-label="Region">
+        ${opt('mpk', 'MPK Kemaman', g === 'mpk')}${opt('dp', 'Damansara', g === 'dp')}</select></label>
+      ${g === 'dp' ? `<label class="s3d-pick${region ? '' : ' need'}"><span>Damansara area</span><select onchange="strata3dSetRegion(this.value)" aria-label="Damansara area">
+        ${region ? '' : '<option value="" selected disabled>Select…</option>'}
+        ${S3D_DP_REGIONS.map(r => opt(r, r, r === region)).join('')}</select></label>` : ''}</div>`;
   let list = '', detail = '';
-  if (g === 'mpk') {
+  if (g === 'dp' && !region) {
+    list = '<div class="s3d-choose">Choose <b>Damansara Perdana</b> or <b>Mutiara Damansara</b> above to see its areas and 3D models.</div>';
+  } else if (g === 'mpk') {
     const count = id => MPK.data ? MPK.data.buildings.features.filter(f => id === 'mpk-all' ? f.properties.kawasan : f.properties.kawasan === id).length : 0;
     list = S3D_KEMAMAN.map(k => `<button type="button" class="s3d-area${S3D.area === k.id ? ' on' : ''}" onclick="strata3dSelectArea('${k.id}')">
       <b>${esc(k.name)}</b><small>${esc(k.sub)} · ${fmt(count(k.id))} buildings</small></button>`).join('');
@@ -571,7 +598,7 @@ function strata3dPanelHtml() {
   } else if (!S3D.cat) {
     list = '<div class="mpk-reg-empty">Loading the Damansara Perdana and Mutiara Damansara areas…</div>';
   } else {
-    const areas = S3D.cat.areas;
+    const areas = S3D.cat.areas.filter(a => s3dRegion(a) === region);
     const filt = SR.q.trim().toLowerCase();
     list = `<div class="s3d-areas">${areas.map(a => {
         const names = S3D.fc.features.filter(f => s3dIncludesArea(a, f.properties.dp_area)).map(f => f.properties.nama).join(' ');
@@ -595,7 +622,7 @@ function strata3dPanelHtml() {
         <div class="mpk-note">${esc(S3D.cat.note)}<br>${esc(S3D.cat.attribution)}</div></div>`;
     }
   }
-  return `<div class="mpk-card s3d-card"><div class="mpk-card-title">Choose an area <span class="s3d-new">3D</span></div>${s3dSearchHtml()}${seg}${g === 'dp' ? s3dToggleHtml() : ''}${list}${detail}</div>`;
+  return `<div class="mpk-card s3d-card"><div class="mpk-card-title">Choose an area <span class="s3d-new">3D</span></div>${s3dSearchHtml()}${seg}${region ? s3dToggleHtml() : ''}${list}${detail}</div>`;
 }
 const s3dShort = n => String(n).replace(/\s+\d{6,}$/, '').replace(/^(.{26}).+$/, '$1…');
 function strata3dFocus(bid) {
@@ -1228,6 +1255,6 @@ const S3DUI = {
 
 Object.assign(window, { strata3dBuilding, strata3dAreaName, strata3dSync, strata3dRemove, strata3dSelectArea, strata3dSetGroup, strata3dFilter,
   strata3dPanelHtml, strata3dFocus, strata3dOnEnter, strata3dForScheme, strata3dOpen, strata3dClose, S3DUI,
-  strata3dSearch, strata3dTopSearch, strata3dSearchKey, strata3dPick, strata3dToggleModels, strata3dToggleOutlines });
+  strata3dSearch, strata3dTopSearch, strata3dSearchKey, strata3dPick, strata3dToggleModels, strata3dToggleOutlines, strata3dSetRegion });
 // Strata may already be on (restored mode) before this module ran
 if (typeof STRATA !== 'undefined' && STRATA.active) strata3dOnEnter();
