@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 const S3D_BASE = 'strata3d/';
 // Bump with the module's index.html version whenever the model catalog changes,
 // so a newly deployed UI cannot reuse an older catalog or GLB from browser cache.
-const S3D_VERSION = '20261025e';
+const S3D_VERSION = '20261025f';
 const s3dAssetUrl = file => S3D_BASE + file + '?v=' + S3D_VERSION;
 const S3D_KEMAMAN = [
   { id: 'mpk-all', name: 'All study areas', sub: 'Teluk Kalong + Binjai – Chukai' },

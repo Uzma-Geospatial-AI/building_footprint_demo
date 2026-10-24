@@ -53,6 +53,14 @@ trim geometry to reduce transfer and drawing cost; detail zones retain its
 depth. Stable `umpsa` identifiers and filenames preserve existing bookmarks,
 while the displayed region and overview name are **Pekan**.
 
+The subsequent user screenshot review restored FK's central solar-roof wing.
+It is joined to the main footprint, retaining both open forecourts. Its trace
+and source-image coordinates are recorded in `architectureReview.fkCorrection`.
+The FTKMA connector is an **open-sided covered pedestrian walkway**, with a
+thin canopy, narrow support columns and paving at grade. It has no enclosing
+walls, windows or office doors. The named library and mosque courtyard arcades
+use the same open-sided treatment. Their existing roof envelopes are retained.
+
 221 Microsoft footprint candidates were acquired for review. Their campus
 coverage included old shapes, missing wings and roof fragments; none were
 imported wholesale. Three OSM buildings outside the campus were excluded.

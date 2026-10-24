@@ -87,3 +87,13 @@ assert.equal(fc.features.find(f=>f.properties.src_id==='reference/foresthill-tow
 
 assert.equal(fc.features.filter(f=>f.properties.dp_area.startsWith("umpsa-")).length,65);
 assert.equal(cat.areas.find(a=>a.id==="umpsa").regionGroup,"umpsa");
+const campusBytes=fs.readFileSync(path.join(DIR,cat.areas.find(a=>a.id==='umpsa').glb));
+const campusJson=JSON.parse(campusBytes.subarray(20,20+campusBytes.readUInt32LE(12)).toString('utf8'));
+for(const id of ['ftkma-link','library-link','masjid-link']){
+  const n=campusJson.nodes.find(n=>n.extras?.id==='reference/umpsa-'+id);
+  assert(n.extras.architecturalFeatures.openSides,'Live overview includes open pedestrian canopy: '+id);
+  assert.equal(n.extras.architecturalFeatures.facadeBays,0);
+}
+const fk=campusJson.nodes.find(n=>n.extras?.id==='reference/umpsa-fk');
+assert(fk.extras.footprint.length>20,'FK exported outline includes its connected central wing');
+assert(fk.extras.architecturalFeatures.roofPanels>=9,'Reviewed FK solar banks survive overview export');

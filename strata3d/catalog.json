@@ -12,7 +12,7 @@
    "id": "umpsa",
    "name": "Pekan",
    "glb": "models/UMPSA-Pekan.glb",
-   "mb": 15.47,
+   "mb": 15.49,
    "center": [
     103.43,
     3.5415
@@ -774,7 +774,7 @@
    "id": "umpsa-civic",
    "name": "Pekan - Canseleri, Perpustakaan dan Dewan",
    "glb": "models/UMPSA-Pekan-civic.glb",
-   "mb": 13.85,
+   "mb": 13.57,
    "center": [
     103.4285347,
     3.5433403
@@ -802,7 +802,7 @@
    "id": "umpsa-academic",
    "name": "Pekan - Fakulti Kejuruteraan dan Makmal",
    "glb": "models/UMPSA-Pekan-academic.glb",
-   "mb": 13.31,
+   "mb": 12.89,
    "center": [
     103.4319306,
     3.5386597
@@ -830,7 +830,7 @@
    "id": "umpsa-north",
    "name": "Pekan - FK, Masjid Al-Jazari dan kampus utara",
    "glb": "models/UMPSA-Pekan-north.glb",
-   "mb": 7.31,
+   "mb": 8,
    "center": [
     103.4307135,
     3.5480903

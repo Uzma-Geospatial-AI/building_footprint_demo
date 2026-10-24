@@ -588,6 +588,34 @@
     "convocation": "Two-storey hall with triple-volume auditorium; Wau Pungguk/orbit-inspired sweeping roof, recessed walls, panelled facade, entrance awnings and soffit ribs. Exterior design reference: Kamal Engineering project renders; exact as-built dimensions are unavailable.",
     "cheese": "User-confirmed separate hall at the former civic-office feature. Solar-roof envelope retained from imagery; facade detailing indicative.",
     "otherBuildings": "Individual traced envelopes retained. Window frames, shading fins, entrance doors, industrial shutters, residential screens, roof seams and utility tank shell are indicative exterior details appropriate to building use. No unsupported interior floor plans added.",
-    "supersededName": "The original Dewan Cheese OSM point at the convocation-hall envelope is retained only in raw evidence; it is not used as the model identity."
+    "supersededName": "The original Dewan Cheese OSM point at the convocation-hall envelope is retained only in raw evidence; it is not used as the model identity.",
+    "walkways": "User confirmed FTKMA connector is an open-sided pedestrian canopy, not a teaching block. Its roof envelope is retained with slender posts, no enclosing walls or windows, and paving at grade. Named library and mosque arcades receive the same open-sided treatment.",
+    "fkCorrection": {
+      "evidence": "User screenshot and reinspection of the retained north-up imagery show the missing solar-roof central teaching wing. It is unioned into the main FK outline, keeping the two open forecourt bays.",
+      "centralWingPixels": [
+        [
+          504,
+          875
+        ],
+        [
+          584,
+          854
+        ],
+        [
+          602,
+          890
+        ],
+        [
+          530,
+          916
+        ]
+      ],
+      "image": "north",
+      "displaySize": [
+        1728,
+        1440
+      ],
+      "footprintChange": "One connected FK footprint; no duplicate overlapping central building."
+    }
   }
 }
