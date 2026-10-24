@@ -2189,6 +2189,7 @@ function mpkBindSearch() {
   input.dataset.bound = '1';
   input.addEventListener('input', () => mpkSearchRun(input.value));
   input.addEventListener('keydown', e => {
+    if (mpkStrataSearchOn()) { strata3dSearchKey(e); return; }
     if (e.key === 'Enter' && MPK_SEARCH.results.length) mpkSearchPick(0);
     if (e.key === 'Escape') mpkSearchClose();
   });
@@ -2196,7 +2197,10 @@ function mpkBindSearch() {
   document.addEventListener('click', e => { if (!e.target.closest('.mpk-search')) mpkSearchClose(); });
 }
 
+// In Strata mode the topbar searches Strata's places, addresses, buildings, schemes and owners (mpk-strata3d.js)
+const mpkStrataSearchOn = () => typeof STRATA !== 'undefined' && STRATA.active && typeof strata3dTopSearch === 'function';
 function mpkSearchRun(query) {
+  if (mpkStrataSearchOn()) { strata3dTopSearch(query); return; }
   const seq = ++MPK_SEARCH.seq;
   clearTimeout(MPK_SEARCH.placeTimer);
   const q = query.trim();
